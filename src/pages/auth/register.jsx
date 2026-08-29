@@ -18,7 +18,8 @@ export default function Register() {
   const validate = () => {
     if (!form.name.trim()) return "Full name is required.";
     if (!form.phone.trim()) return "Phone number is required.";
-    if (form.email.trim() && !EMAIL_RE.test(form.email.trim())) return "Enter a valid email address.";
+    if (!form.email.trim()) return "Email is required.";
+    if (!EMAIL_RE.test(form.email.trim())) return "Enter a valid email address.";
     if (!form.password) return "Password is required.";
     if (form.password.length < 6) return "Password must be at least 6 characters.";
     if (form.password !== form.confirmPassword) return "Passwords do not match.";
@@ -88,10 +89,11 @@ export default function Register() {
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">
-              Email (optional)
+              Email *
             </label>
             <input
               type="email"
+              required
               autoComplete="email"
               value={form.email}
               onChange={update("email")}

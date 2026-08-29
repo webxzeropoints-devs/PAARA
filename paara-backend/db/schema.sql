@@ -63,6 +63,17 @@ CREATE TABLE IF NOT EXISTS email_otps (
   verified   INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS password_reset_otps (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  email      TEXT NOT NULL,
+  code       TEXT NOT NULL,
+  user_type  TEXT NOT NULL CHECK (user_type IN ('customer','admin')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL,
+  used       INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_otps_email_user ON password_reset_otps(email, user_type);
+
 CREATE TABLE IF NOT EXISTS customer_order_details (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
@@ -173,6 +184,7 @@ CREATE TABLE IF NOT EXISTS admins (
   email             TEXT NOT NULL UNIQUE,
   password_hash     TEXT NOT NULL,
   profile_image_url TEXT,
+  must_change_password INTEGER NOT NULL DEFAULT 1,
   created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

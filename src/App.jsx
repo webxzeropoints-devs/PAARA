@@ -41,6 +41,8 @@ import TrackOrder from "./pages/account/TrackOrder";
 
 import AdminLayout from "./admin/AdminLayout";
 import AdminLogin from "./admin/AdminLogin";
+import AdminSetPassword from "./admin/AdminSetPassword";
+import AdminForgotPassword from "./admin/AdminForgotPassword";
 import AdminDashboard from "./admin/AdminDashboard";
 import AdminCollectionTiles from "./admin/AdminCollectionTiles";
 import AdminPaaraIRL from "./admin/AdminPaaraIRL";
@@ -98,6 +100,8 @@ function AnimatedRoutes() {
       <Route path="/wishlist" element={<Wishlist />} />
 
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+      <Route path="/admin/set-password" element={<AdminSetPassword />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />

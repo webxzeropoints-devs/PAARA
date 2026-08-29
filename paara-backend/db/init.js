@@ -218,10 +218,10 @@ console.log(`✔ Seeded ${imageFiles.length} products with primary images. Done.
 
 // ---- Seed: placeholder admin (paara@gmail.com / Paara@123) ----
 const insertAdmin = db.prepare(`
-  INSERT OR IGNORE INTO admins (name, email, password_hash)
-  VALUES (?, ?, ?)
+  INSERT OR IGNORE INTO admins (name, email, password_hash, must_change_password)
+  VALUES (?, ?, ?, ?)
 `);
-insertAdmin.run('Paara Admin', 'paara@gmail.com', bcrypt.hashSync('Paara@123', 10));
-console.log('✔ Seeded placeholder admin (paara@gmail.com).');
+insertAdmin.run('Paara Admin', 'paara@gmail.com', bcrypt.hashSync('Paara@123', 10), 1);
+console.log('✔ Seeded placeholder admin (paara@gmail.com) with forced password change enabled.');
 
 

@@ -84,6 +84,21 @@ db.exec(`CREATE TABLE IF NOT EXISTS customer_order_details (
   submitted_fields TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 
+const adminColumns = db.prepare("PRAGMA table_info(admins)").all().map((column) => column.name);
+if (adminColumns.length && !adminColumns.includes('must_change_password')) {
+  db.exec('ALTER TABLE admins ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 1');
+}
+
+db.exec(`CREATE TABLE IF NOT EXISTS password_reset_otps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  user_type TEXT NOT NULL CHECK (user_type IN ('customer','admin')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0
+)`);
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',

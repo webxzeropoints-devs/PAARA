@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db/database');
 const { issueEmailOtp, normalizeEmail } = require('../utils/emailOtp');
+const { issuePasswordResetOtp, consumePasswordResetOtp, markPasswordResetOtpUsed } = require('../utils/passwordReset');
 
 const router = express.Router();
 
@@ -44,6 +45,48 @@ router.post('/login', async (req, res) => {
     return res.status(503).json({ error: error.message });
   }
   res.json({ success: true, requires_otp: true, email: customer.email, customer: { id: customer.id, name: customer.name, email: customer.email } });
+});
+
+router.post('/forgot-password/request', async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  if (!email) return res.status(400).json({ error: 'A valid email address is required.' });
+  const customer = db.prepare('SELECT id FROM customers WHERE email = ?').get(email);
+  if (!customer) return res.status(404).json({ error: 'No customer account was found for that email.' });
+
+  try {
+    await issuePasswordResetOtp(email, 'customer');
+    return res.json({ success: true, message: 'Password reset code sent to your email.' });
+  } catch (error) {
+    return res.status(503).json({ error: error.message });
+  }
+});
+
+router.post('/forgot-password/reset', (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  const code = String(req.body.code || '').trim();
+  const newPassword = req.body.password;
+
+  if (!email || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: 'A valid email and 6-digit reset code are required.' });
+  }
+  if (!newPassword || String(newPassword).length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+  }
+
+  const validation = consumePasswordResetOtp(email, code, 'customer');
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.reason });
+  }
+
+  const customer = db.prepare('SELECT id FROM customers WHERE email = ?').get(email);
+  if (!customer) {
+    return res.status(404).json({ error: 'Customer account not found.' });
+  }
+
+  db.prepare('UPDATE customers SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newPassword, 10), customer.id);
+  markPasswordResetOtpUsed(validation.record.id);
+
+  return res.json({ success: true, message: 'Password reset successful.' });
 });
 
 module.exports = router;

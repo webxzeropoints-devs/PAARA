@@ -37,7 +37,10 @@ export default function AdminLogin() {
   const submitCredentials = async (e) => {
     e.preventDefault();
     try {
-      await requestLogin(email.trim(), password);
+      const res = await requestLogin(email.trim(), password);
+      if (res?.requires_password_change) {
+        navigate("/admin/set-password", { state: { adminId: res.admin_id, email: res.email } });
+      }
     } catch {
       // error is surfaced via context.error
     }
@@ -93,13 +96,22 @@ export default function AdminLogin() {
                 required
               />
               {error && <p className="text-sm text-cocoa">{error}</p>}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gold text-sand py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
-              >
-                {loading ? "Sending OTP…" : "Continue"}
-              </button>
+              <div className="space-y-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gold text-sand py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
+                >
+                  {loading ? "Sending OTP…" : "Continue"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/forgot-password")}
+                  className="w-full text-xs uppercase tracking-widest text-cocoa/60 hover:text-gold transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </form>
           ) : (
             <form onSubmit={submitOtp} className="space-y-5">
