@@ -48,9 +48,34 @@ const ACCOUNT_ITEMS = [
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
   const location = useLocation();
   const { count } = useCart();
   const [authed, setAuthed] = useState(() => Boolean(getToken()));
+
+  // Hide navbar on scroll-down, reveal on scroll-up
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 80) {
+        // Always show near the top
+        setNavVisible(true);
+      } else if (currentY < lastY) {
+        // Scrolling up → show
+        setNavVisible(true);
+      } else if (currentY > lastY + 4) {
+        // Scrolling down (with small dead-zone) → hide
+        setNavVisible(false);
+        // Also close open menus when navbar hides
+        setIsMobileMenuOpen(false);
+        setIsAccountMenuOpen(false);
+      }
+      lastY = currentY;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const sync = () => setAuthed(Boolean(getToken()));
@@ -90,11 +115,15 @@ export default function Navbar() {
 
   return (
     <>
-    <header className="w-full bg-sand/95 backdrop-blur-sm border-b border-cocoa/10 sticky top-0 z-50">
+    <header
+      className={`w-full bg-sand/95 backdrop-blur-sm border-b border-cocoa/10 sticky top-0 z-50 transition-transform duration-300 ease-in-out ${
+        navVisible ? "translate-y-0" : "-translate-y-full"
+      }`}
+    >
       <div className="max-w-[1600px] mx-auto flex items-center justify-between px-6 md:px-10 py-4">
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0" aria-label="Paara home">
-          <img src="/assets/paara-logo.png" alt="Paara Jewellery" className="h-10 md:h-12 w-auto" />
+          <img src="/assets/paara-logo.png" alt="Paara Jewellery" className="h-16 md:h-20 w-auto" />
         </Link>
 
         {/* Desktop nav */}
