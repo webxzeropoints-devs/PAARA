@@ -2,13 +2,14 @@
 // change password, logout.
 
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
-import { adminChangeEmail, adminChangePassword, adminChangeProfilePicture } from "../lib/api";
+import { adminChangeEmail, adminChangePassword, adminChangeProfilePicture, apiPost } from "../lib/api";
 import { useAdmin } from "../lib/adminAuth.jsx";
 
 export default function AdminProfile() {
   const { admin, updateProfile, logout } = useAdmin();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const [imageUrl, setImageUrl] = useState(admin?.profile_image_url || "");
@@ -25,9 +26,17 @@ export default function AdminProfile() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState("");
 
+  const [setupRequired, setSetupRequired] = useState(Boolean(location.state?.initSetup || admin?.must_change_password));
+  const [setupEmail, setSetupEmail] = useState("");
+  const [setupPassword, setSetupPassword] = useState("");
+  const [setupConfirmPassword, setSetupConfirmPassword] = useState("");
+  const [setupSaving, setSetupSaving] = useState(false);
+  const [setupMsg, setSetupMsg] = useState("");
+
   useEffect(() => {
     setImageUrl(admin?.profile_image_url || "");
-  }, [admin?.profile_image_url]);
+    setSetupRequired(Boolean(location.state?.initSetup || admin?.must_change_password));
+  }, [admin?.profile_image_url, admin?.must_change_password, location.state?.initSetup]);
 
   const saveAvatar = async (e) => {
     e.preventDefault();
@@ -82,6 +91,48 @@ export default function AdminProfile() {
     }
   };
 
+  const submitInitialSetup = async (e) => {
+    e.preventDefault();
+    setSetupMsg("");
+
+    const trimmedEmail = setupEmail.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setSetupMsg("Enter a valid email address.");
+      return;
+    }
+    if (setupPassword.length < 8) {
+      setSetupMsg("Password must be at least 8 characters.");
+      return;
+    }
+    if (setupPassword !== setupConfirmPassword) {
+      setSetupMsg("Passwords do not match.");
+      return;
+    }
+
+    setSetupSaving(true);
+    try {
+      const adminId = location.state?.adminId || admin?.id;
+      if (!adminId) {
+        throw new Error("Admin account info is missing.");
+      }
+      await apiPost("/admin-auth/set-password", {
+        admin_id: adminId,
+        new_password: setupPassword,
+        new_email: trimmedEmail,
+      });
+      await updateProfile({});
+      setSetupRequired(false);
+      setSetupEmail("");
+      setSetupPassword("");
+      setSetupConfirmPassword("");
+      setSetupMsg("Setup complete. You can continue using the dashboard.");
+    } catch (err) {
+      setSetupMsg(err.message || "Could not complete setup.");
+    } finally {
+      setSetupSaving(false);
+    }
+  };
+
   const onLogout = () => {
     logout();
     navigate("/admin/login", { replace: true });
@@ -93,6 +144,45 @@ export default function AdminProfile() {
         <p className="text-[10px] uppercase tracking-[.28em] text-gold">Account</p>
         <h1 className="font-display text-4xl text-cocoa mt-2">Profile & Security</h1>
       </div>
+
+      {setupRequired && (
+        <Card title="Complete admin setup" subtitle="Set your real admin email and password before continuing.">
+          <form onSubmit={submitInitialSetup} className="space-y-3">
+            <input
+              type="email"
+              value={setupEmail}
+              onChange={(e) => setSetupEmail(e.target.value)}
+              placeholder="real-admin@yourcompany.com"
+              required
+              className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
+            />
+            <input
+              type="password"
+              value={setupPassword}
+              onChange={(e) => setSetupPassword(e.target.value)}
+              placeholder="New password"
+              required
+              minLength={8}
+              className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
+            />
+            <input
+              type="password"
+              value={setupConfirmPassword}
+              onChange={(e) => setSetupConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              required
+              minLength={8}
+              className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
+            />
+            <Row>
+              <button type="submit" disabled={setupSaving} className="px-5 py-2 text-xs uppercase tracking-widest bg-gold text-sand hover:bg-cocoa disabled:opacity-60">
+                {setupSaving ? "Saving…" : "Save setup"}
+              </button>
+              {setupMsg && <p className="text-sm text-cocoa self-center">{setupMsg}</p>}
+            </Row>
+          </form>
+        </Card>
+      )}
 
       {/* Profile card */}
       <div className="rounded-sm border border-cocoa/10 bg-shell p-6 mb-8 flex items-center gap-5">

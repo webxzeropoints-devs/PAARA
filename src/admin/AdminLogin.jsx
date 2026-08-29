@@ -39,7 +39,7 @@ export default function AdminLogin() {
     try {
       const res = await requestLogin(email.trim(), password);
       if (res?.requires_password_change) {
-        navigate("/admin/set-password", { state: { adminId: res.admin_id, email: res.email } });
+        navigate("/admin/profile", { state: { initSetup: true, adminId: res.admin_id, email: res.email } });
       }
     } catch {
       // error is surfaced via context.error

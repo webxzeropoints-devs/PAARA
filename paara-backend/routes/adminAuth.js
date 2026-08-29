@@ -46,9 +46,11 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/set-password', (req, res) => {
-  const { admin_id, new_password } = req.body;
-  if (!admin_id || !new_password) {
-    return res.status(400).json({ error: 'admin_id and new_password are required.' });
+  const { admin_id, new_password, new_email } = req.body;
+  const normalizedEmail = String(new_email || '').trim().toLowerCase();
+
+  if (!admin_id || !new_password || !normalizedEmail) {
+    return res.status(400).json({ error: 'admin_id, new_password and new_email are required.' });
   }
 
   const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(admin_id);
@@ -56,11 +58,25 @@ router.post('/set-password', (req, res) => {
   if (new_password.length < 8) {
     return res.status(400).json({ error: 'New password must be at least 8 characters.' });
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
 
   const password_hash = bcrypt.hashSync(new_password, 10);
-  console.log('[ADMIN_SET_PASSWORD_HASH]', { admin_id: admin.id, hashPrefix: password_hash.slice(0, 18), saltRounds: 10 });
-  db.prepare('UPDATE admins SET password_hash = ?, must_change_password = 0 WHERE id = ?').run(password_hash, admin.id);
-  res.json({ success: true, message: 'Password updated successfully.' });
+  console.log('[ADMIN_SET_PASSWORD_HASH]', {
+    admin_id: admin.id,
+    newEmail: normalizedEmail,
+    hashPrefix: password_hash.slice(0, 18),
+    saltRounds: 10,
+  });
+
+  try {
+    db.prepare('UPDATE admins SET password_hash = ?, email = ?, must_change_password = 0 WHERE id = ?')
+      .run(password_hash, normalizedEmail, admin.id);
+    res.json({ success: true, message: 'Password and email updated successfully.' });
+  } catch (error) {
+    return res.status(409).json({ error: 'That email is already in use.' });
+  }
 });
 
 // STEP 2 of login: verify OTP, issue admin session JWT
@@ -121,7 +137,7 @@ router.post('/forgot-password/reset', (req, res) => {
 
 // Profile
 router.get('/me', requireAdminSession, (req, res) => {
-  const admin = db.prepare('SELECT id, name, email, profile_image_url FROM admins WHERE id = ?').get(req.admin.id);
+  const admin = db.prepare('SELECT id, name, email, profile_image_url, must_change_password FROM admins WHERE id = ?').get(req.admin.id);
   res.json(admin);
 });
 
