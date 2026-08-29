@@ -29,6 +29,7 @@ const couponsRouter = require('./routes/coupons');
 const homepageRouter = require('./routes/homepage');
 
 const app = express();
+app.set('trust proxy', 1);
 
 const productColumns = db.prepare("PRAGMA table_info(products)").all().map((column) => column.name);
 if (productColumns.length && !productColumns.includes('subcategory')) {
