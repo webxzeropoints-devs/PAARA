@@ -37,7 +37,10 @@ export default function AdminLogin() {
   const submitCredentials = async (e) => {
     e.preventDefault();
     try {
-      await requestLogin(email.trim(), password);
+      const res = await requestLogin(email.trim(), password);
+      if (res?.token) {
+        navigate("/admin/dashboard", { replace: true });
+      }
     } catch {
       // error is surfaced via context.error
     }

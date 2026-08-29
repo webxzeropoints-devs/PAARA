@@ -29,6 +29,20 @@ router.post('/login', async (req, res) => {
 
   const needsSetup = Boolean(admin.must_change_password);
 
+  if (needsSetup) {
+    const token = jwt.sign({ id: admin.id, email: admin.email, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '12h' });
+    return res.json({
+      success: true,
+      allow_access: true,
+      needs_setup: true,
+      token,
+      admin: { id: admin.id, name: admin.name, email: admin.email, profile_image_url: admin.profile_image_url },
+      admin_id: admin.id,
+      email: admin.email,
+      message: 'Temporary admin access granted. Update your email and password from profile settings.'
+    });
+  }
+
   try {
     await issueEmailOtp(admin.email, `Admin login OTP to ${admin.email}`);
   } catch (error) {
@@ -38,10 +52,8 @@ router.post('/login', async (req, res) => {
   res.json({
     success: true,
     requires_otp: true,
-    needs_setup: needsSetup,
-    message: needsSetup
-      ? 'OTP sent. Please complete your admin setup from the profile page.'
-      : 'OTP sent to admin email.',
+    needs_setup: false,
+    message: 'OTP sent to admin email.',
     admin_id: admin.id,
     email: admin.email
   });

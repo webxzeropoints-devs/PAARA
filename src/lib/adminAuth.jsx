@@ -59,7 +59,18 @@ export function AdminProvider({ children }) {
     setLoading(true);
     try {
       const res = await apiPost("/admin-auth/login", { email, password });
-      if (res.admin_id) {
+
+      if (res?.token) {
+        localStorage.setItem(ADMIN_TOKEN_KEY, res.token);
+        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(res.admin));
+        setToken(res.token);
+        setAdmin(res.admin);
+        setLoginStep("authenticated");
+        setPendingAdminId(null);
+        return res;
+      }
+
+      if (res?.admin_id) {
         setPendingAdminId(res.admin_id);
         setLoginStep("otp");
       }
