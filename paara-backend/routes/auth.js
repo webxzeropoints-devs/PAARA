@@ -13,7 +13,7 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'name, email and password are required.' });
   }
 
-  const existing = db.prepare('SELECT id FROM customers WHERE email = ?').get(normalizedEmail);
+  const existing = db.prepare('SELECT id FROM customers WHERE email = ? OR lower(email) = ?').get(normalizedEmail, normalizedEmail);
   if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
 
   const password_hash = bcrypt.hashSync(password, 10);
@@ -35,7 +35,8 @@ router.post('/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'email and password are required.' });
 
   const normalizedEmail = normalizeEmail(email);
-  const customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(normalizedEmail);
+  const customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(normalizedEmail)
+    || db.prepare('SELECT * FROM customers WHERE lower(email) = ?').get(normalizedEmail);
   const passwordMatches = !!customer && bcrypt.compareSync(password, customer.password_hash);
   console.log('[CUSTOMER_LOGIN_HASH_CHECK]', {
     email: normalizedEmail,
