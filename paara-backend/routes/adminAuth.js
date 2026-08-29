@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const { requireAdminSession } = require('../middleware/adminAuth');
-const { issueEmailOtp, consumeEmailOtp } = require('../utils/emailOtp');
 const { issuePasswordResetOtp, consumePasswordResetOtp, markPasswordResetOtpUsed } = require('../utils/passwordReset');
 
 const router = express.Router();
@@ -74,18 +73,6 @@ router.post('/set-password', (req, res) => {
   } catch (error) {
     return res.status(409).json({ error: 'That email is already in use.' });
   }
-});
-
-// STEP 2 of login: verify OTP, issue admin session JWT
-router.post('/verify-otp', (req, res) => {
-  const { admin_id, otp } = req.body;
-  if (!admin_id || !otp) return res.status(400).json({ error: 'admin_id and otp are required.' });
-
-  const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(admin_id);
-  const record = admin && consumeEmailOtp(admin.email, otp);
-  if (!record) return res.status(400).json({ error: 'Invalid or expired OTP.' });
-  const token = jwt.sign({ id: admin.id, email: admin.email, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '12h' });
-  res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email, profile_image_url: admin.profile_image_url } });
 });
 
 router.post('/forgot-password/request', async (req, res) => {

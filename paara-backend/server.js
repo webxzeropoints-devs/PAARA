@@ -88,6 +88,16 @@ const adminColumns = db.prepare("PRAGMA table_info(admins)").all().map((column) 
 if (adminColumns.length && !adminColumns.includes('must_change_password')) {
   db.exec('ALTER TABLE admins ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 1');
 }
+const adminCount = db.prepare('SELECT COUNT(*) as c FROM admins').get().c;
+if (adminCount === 0) {
+  const bcrypt = require('bcryptjs');
+  const tempHash = bcrypt.hashSync('Paara@123', 10);
+  db.prepare(`
+    INSERT INTO admins (name, email, password_hash, must_change_password)
+    VALUES (?, ?, ?, 1)
+  `).run('Admin', 'paara@gmail.com', tempHash);
+  console.log('[ADMIN SAFETY NET] No admin account found after DB init — created temp admin (paara@gmail.com / Paara@123, must_change_password=1).');
+}
 
 db.exec(`CREATE TABLE IF NOT EXISTS password_reset_otps (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -185,7 +195,6 @@ app.use('/api/auth/phone', otpLimiter);
 // times during the dashboard 2-step flow.
 const adminLoginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
 app.use('/api/admin-auth/login', adminLoginLimiter);
-app.use('/api/admin-auth/verify-otp', adminLoginLimiter);
 
 app.use('/api/auth', authRouter);
 app.use('/api/auth/phone', phoneAuthRouter);
