@@ -16,7 +16,18 @@ const localSeedPath = process.env.DB_PATH || path.join(__dirname, '..', 'paara.d
 const dbPath = isServerless ? '/tmp/paara.db' : localSeedPath;
 
 if (isServerless && !fs.existsSync(dbPath)) {
-  fs.copyFileSync(localSeedPath, dbPath);
+  try {
+    fs.copyFileSync(localSeedPath, dbPath);
+  } catch (err) {
+    // Seed file wasn't bundled into the function (e.g. Vercel's file
+    // tracer missed it) — fall back to just creating the schema so the
+    // app comes up empty rather than crashing outright.
+    console.error('Could not copy seed DB, creating schema from scratch:', err.message);
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const tmpDb = new Database(dbPath);
+    tmpDb.exec(fs.readFileSync(schemaPath, 'utf8'));
+    tmpDb.close();
+  }
 }
 
 const db = new Database(dbPath);
