@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cmd.exe /c \"mkdir D:\\\\p_jewelry-main\\\\src\\\\lib\")",
+      "PowerShell(cmd.exe /c \"ren D:\\\\p_jewelry-main\\\\src\\\\lib\\\\cart.js cart.jsx\")"
+    ]
+  }
+}

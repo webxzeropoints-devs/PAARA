@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+  <title id="title">Founder portrait placeholder</title>
+  <desc id="desc">A neutral placeholder to be replaced with the Paara founder portrait.</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9d8bf"/><stop offset="1" stop-color="#b98d60"/></linearGradient></defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <circle cx="400" cy="310" r="120" fill="#f6ecdf" opacity=".75"/>
+  <path d="M180 740c26-182 126-272 220-272s194 90 220 272" fill="#f6ecdf" opacity=".75"/>
+  <text x="400" y="735" text-anchor="middle" fill="#6b4a33" font-family="serif" font-size="25" letter-spacing="5">FOUNDER PORTRAIT</text>
+</svg>

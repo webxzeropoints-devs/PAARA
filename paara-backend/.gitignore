@@ -1,0 +1,7 @@
+node_modules/
+.env
+paara.db
+paara.db-shm
+paara.db-wal
+public/uploads/
+.DS_Store

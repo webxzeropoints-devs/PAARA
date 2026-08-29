@@ -1,0 +1,37 @@
+src/
+│
+├── components/
+│   ├── Navbar.jsx
+│   ├── Footer.jsx
+│   ├── ProductCard.jsx
+│   ├── Button.jsx
+│   └── ...
+│
+├── pages/
+│
+│   ├── home/
+│   │   └── Home.jsx
+│   │
+│   ├── products/
+│   │   ├── Products.jsx
+│   │   ├── ProductDetails.jsx
+│   │   └── Collections.jsx
+│   │
+│   ├── shopping/
+│   │   ├── Cart.jsx
+│   │   ├── Wishlist.jsx
+│   │   ├── Checkout.jsx
+│   │   └── Orders.jsx
+│   │
+│   ├── auth/
+│   │   ├── Login.jsx
+│   │   ├── Register.jsx
+│   │   └── Profile.jsx
+│   │
+│   └── content/
+│       ├── Blog.jsx
+│       ├── Instagram.jsx
+│       ├── PaaraIRL.jsx
+│       └── Reviews.jsx
+│
+└── App.jsx

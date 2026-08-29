@@ -1,0 +1,49 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const db = require('../db/database');
+const { issueEmailOtp, normalizeEmail } = require('../utils/emailOtp');
+
+const router = express.Router();
+
+router.post('/register', async (req, res) => {
+  const { name, email, password, phone } = req.body;
+  const normalizedEmail = normalizeEmail(email);
+  if (!name || !normalizedEmail || !password) {
+    return res.status(400).json({ error: 'name, email and password are required.' });
+  }
+
+  const existing = db.prepare('SELECT id FROM customers WHERE email = ?').get(normalizedEmail);
+  if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
+
+  const password_hash = bcrypt.hashSync(password, 10);
+  const info = db
+    .prepare('INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)')
+    .run(name, normalizedEmail, phone || null, password_hash);
+
+  try {
+    await issueEmailOtp(normalizedEmail, `Signup OTP to ${normalizedEmail}`);
+  } catch (error) {
+    return res.status(503).json({ error: error.message });
+  }
+  res.status(201).json({ success: true, requires_otp: true, email: normalizedEmail, customer: { id: info.lastInsertRowid, name, email: normalizedEmail } });
+});
+
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'email and password are required.' });
+
+  const normalizedEmail = normalizeEmail(email);
+  const customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(normalizedEmail);
+  if (!customer || !bcrypt.compareSync(password, customer.password_hash)) {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  try {
+    await issueEmailOtp(customer.email, `Login OTP to ${customer.email}`);
+  } catch (error) {
+    return res.status(503).json({ error: error.message });
+  }
+  res.json({ success: true, requires_otp: true, email: customer.email, customer: { id: customer.id, name: customer.name, email: customer.email } });
+});
+
+module.exports = router;

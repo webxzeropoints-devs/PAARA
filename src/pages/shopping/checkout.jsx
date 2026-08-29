@@ -1,0 +1,495 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+
+import { useCart } from "../../lib/cart.jsx";
+import {
+  apiGet,
+  apiPost,
+  getAddresses,
+  getShippingCities,
+  getToken,
+  postAddress,
+  postCreateRazorpay,
+  postOrder,
+  postShippingQuote,
+  postVerifyPayment,
+} from "../../lib/api";
+import { fadeUp } from "../../lib/motion";
+
+const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
+
+const STEPS = ["Address", "Delivery", "Payment"];
+
+export default function Checkout() {
+  const navigate = useNavigate();
+  const { items, clear } = useCart();
+  const [step, setStep] = useState(0);
+
+  // Address step
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [newAddress, setNewAddress] = useState({
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    pincode: "",
+    lat: "",
+    lng: "",
+    is_default: false,
+  });
+  const [addingAddress, setAddingAddress] = useState(false);
+
+  // Delivery step
+  const [cities, setCities] = useState([]);
+  const [shipping, setShipping] = useState(null);
+
+  // Order / payment
+  const [order, setOrder] = useState(null);
+  const [placing, setPlacing] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!getToken()) {
+      navigate("/login", { state: { redirectTo: "/checkout" }, replace: true });
+      return;
+    }
+    if (items.length === 0) {
+      navigate("/cart", { replace: true });
+      return;
+    }
+    getAddresses()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : data?.addresses || [];
+        setAddresses(list);
+        const def = list.find((a) => a.is_default) || list[0];
+        if (def) setSelectedAddressId(def.id);
+      })
+      .catch(() => setAddresses([]));
+    getShippingCities().catch(() => setCities([]));
+  }, [navigate, items.length]);
+
+  const selectedAddress = useMemo(
+    () => addresses.find((a) => a.id === selectedAddressId) || null,
+    [addresses, selectedAddressId]
+  );
+
+  // Step 1 → 2: compute shipping quote from the selected address's city.
+  const goToDelivery = async () => {
+    if (!selectedAddress) {
+      setError("Please select or add an address to continue.");
+      return;
+    }
+    setError("");
+    try {
+      const quote = await postShippingQuote({ city: selectedAddress.city });
+      setShipping(quote);
+      setStep(1);
+    } catch (err) {
+      setError(err?.message || "Could not compute shipping");
+    }
+  };
+
+  const addNewAddress = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const created = await postAddress({
+        line1: newAddress.line1,
+        line2: newAddress.line2 || undefined,
+        city: newAddress.city,
+        state: newAddress.state,
+        pincode: newAddress.pincode,
+        lat: newAddress.lat ? Number(newAddress.lat) : undefined,
+        lng: newAddress.lng ? Number(newAddress.lng) : undefined,
+        is_default: !!newAddress.is_default,
+      });
+      const refreshed = [...addresses, created];
+      setAddresses(refreshed);
+      setSelectedAddressId(created.id);
+      setAddingAddress(false);
+      setNewAddress({
+        line1: "",
+        line2: "",
+        city: "",
+        state: "",
+        pincode: "",
+        lat: "",
+        lng: "",
+        is_default: false,
+      });
+    } catch (err) {
+      setError(err?.message || "Could not save address");
+    }
+  };
+
+  // Step 2 → 3: create the order on the backend (price/shipping authoritative).
+  const placeOrder = async () => {
+    setPlacing(true);
+    setError("");
+    try {
+      const res = await postOrder({
+        items: items.map((i) => ({
+          product_id: i.product_id,
+          quantity: i.quantity,
+        })),
+        address_id: selectedAddressId,
+      });
+      setOrder(res);
+      setStep(2);
+    } catch (err) {
+      setError(err?.message || "Could not create order");
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  // Step 3: open Razorpay, then verify.
+  const payNow = async () => {
+    if (!order) return;
+    setPaying(true);
+    setError("");
+    try {
+      const rzp = await postCreateRazorpay(order.order_id);
+      const options = {
+        key: rzp.key_id,
+        amount: rzp.amount,
+        currency: rzp.currency,
+        name: "Paara",
+        description: `Order #${order.order_id}`,
+        order_id: rzp.razorpay_order_id,
+        handler: async (response) => {
+          try {
+            const verified = await postVerifyPayment({
+              paara_order_id: order.order_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            clear();
+            navigate(`/order-confirmation?order_id=${order.order_id}&payment=success`, { replace: true });
+            // verified may be unused here — backend returns a confirmation payload.
+            void verified;
+          } catch (err) {
+            setError(err?.message || "Payment verification failed");
+            setPaying(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setPaying(false);
+            setError("Payment was cancelled. You can retry without losing your cart.");
+          },
+        },
+        theme: { color: "#B8874A" },
+      };
+
+      const ensureRzp = () =>
+        new Promise((resolve, reject) => {
+          if (window.Razorpay) return resolve();
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.async = true;
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("Could not load Razorpay"));
+          document.body.appendChild(script);
+        });
+
+      await ensureRzp();
+      const rzpInstance = new window.Razorpay(options);
+      rzpInstance.on("payment.failed", () => {
+        setPaying(false);
+        setError("Payment failed. Please check your details and try again.");
+      });
+      rzpInstance.open();
+    } catch (err) {
+      setError(err?.message || "Could not start payment");
+      setPaying(false);
+    }
+  };
+
+  return (
+    <div className="min-h-[80vh] bg-sand text-cocoa font-body">
+      <div className="max-w-[1200px] mx-auto px-6 md:px-10 py-14">
+        <motion.h1
+          initial="hidden"
+          animate="show"
+          variants={fadeUp}
+          className="font-display text-3xl md:text-4xl mb-2"
+        >
+          Checkout
+        </motion.h1>
+
+        {/* Stepper */}
+        <ol className="flex items-center gap-4 my-8 text-xs uppercase tracking-widest text-cocoa/60">
+          {STEPS.map((s, i) => (
+            <li key={s} className="flex items-center gap-2">
+              <span
+                className={`w-6 h-6 rounded-full grid place-items-center text-[10px] ${
+                  i <= step ? "bg-gold text-white" : "bg-cocoa/10 text-cocoa/60"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <span className={i === step ? "text-cocoa" : ""}>{s}</span>
+              {i < STEPS.length - 1 && <span className="w-6 h-px bg-cocoa/20" />}
+            </li>
+          ))}
+        </ol>
+
+        {error && (
+          <div className="text-xs text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-sm mb-6">
+            {error}
+          </div>
+        )}
+
+        <div className="grid md:grid-cols-[1fr_360px] gap-10">
+          <main>
+            {step === 0 && (
+              <div>
+                <h2 className="font-display text-2xl mb-4">Delivery address</h2>
+                {addresses.length > 0 ? (
+                  <div className="space-y-3">
+                    {addresses.map((a) => (
+                      <label
+                        key={a.id}
+                        className={`block border rounded-sm p-4 cursor-pointer transition-colors ${
+                          selectedAddressId === a.id
+                            ? "border-gold bg-sand"
+                            : "border-cocoa/15 hover:border-cocoa/30"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            checked={selectedAddressId === a.id}
+                            onChange={() => setSelectedAddressId(a.id)}
+                            className="mt-1 accent-gold"
+                          />
+                          <div>
+                            <p className="text-sm">{a.line1}</p>
+                            {a.line2 && <p className="text-xs text-cocoa/60">{a.line2}</p>}
+                            <p className="text-xs text-cocoa/60">
+                              {a.city}, {a.state} — {a.pincode}
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-cocoa/60 mb-4">
+                    No saved addresses yet — add one to continue.
+                  </p>
+                )}
+
+                {!addingAddress ? (
+                  <button
+                    onClick={() => setAddingAddress(true)}
+                    className="mt-4 text-xs uppercase tracking-widest text-gold hover:text-cocoa transition-colors"
+                  >
+                    + Add a new address
+                  </button>
+                ) : (
+                  <form onSubmit={addNewAddress} className="mt-6 space-y-3 border border-cocoa/15 rounded-sm p-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        required
+                        placeholder="Line 1"
+                        value={newAddress.line1}
+                        onChange={(e) => setNewAddress({ ...newAddress, line1: e.target.value })}
+                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none col-span-2"
+                      />
+                      <input
+                        placeholder="Line 2 (optional)"
+                        value={newAddress.line2}
+                        onChange={(e) => setNewAddress({ ...newAddress, line2: e.target.value })}
+                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none col-span-2"
+                      />
+                      <input
+                        required
+                        placeholder="City"
+                        value={newAddress.city}
+                        onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
+                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none"
+                      />
+                      <input
+                        required
+                        placeholder="State"
+                        value={newAddress.state}
+                        onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
+                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none"
+                      />
+                      <input
+                        required
+                        placeholder="Pincode"
+                        value={newAddress.pincode}
+                        onChange={(e) => setNewAddress({ ...newAddress, pincode: e.target.value })}
+                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none"
+                      />
+                      <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-cocoa/70 col-span-2 mt-2">
+                        <input
+                          type="checkbox"
+                          checked={newAddress.is_default}
+                          onChange={(e) =>
+                            setNewAddress({ ...newAddress, is_default: e.target.checked })
+                          }
+                          className="accent-gold"
+                        />
+                        Set as default
+                      </label>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        type="submit"
+                        className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors"
+                      >
+                        Save address
+                      </motion.button>
+                      <button
+                        type="button"
+                        onClick={() => setAddingAddress(false)}
+                        className="px-6 py-2 text-xs uppercase tracking-widest text-cocoa/60 hover:text-cocoa transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="flex justify-between mt-8">
+                  <Link to="/cart" className="text-xs uppercase tracking-widest text-cocoa/60 hover:text-cocoa">
+                    ← Back to bag
+                  </Link>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={goToDelivery}
+                    disabled={!selectedAddressId}
+                    className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
+                  >
+                    Continue
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div>
+                <h2 className="font-display text-2xl mb-4">Delivery</h2>
+                <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-5">
+                  <p className="text-xs uppercase tracking-widest text-cocoa/60">
+                    Shipping to {selectedAddress?.city}
+                  </p>
+                  {shipping ? (
+                    <div className="mt-3 text-sm">
+                      <p>
+                        Method:{" "}
+                        <span className="font-medium">
+                          {shipping.method || "Standard"}
+                        </span>
+                      </p>
+                      <p className="mt-1">{formatPrice(shipping.amount)}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-cocoa/60 mt-2">Calculating shipping…</p>
+                  )}
+                </div>
+
+                {cities.length > 0 && (
+                  <p className="text-xs text-cocoa/50 mt-3">
+                    We currently ship to {cities.length} cities with flat-rate delivery.
+                  </p>
+                )}
+
+                <div className="flex justify-between mt-8">
+                  <button
+                    onClick={() => setStep(0)}
+                    className="text-xs uppercase tracking-widest text-cocoa/60 hover:text-cocoa"
+                  >
+                    ← Back
+                  </button>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={placeOrder}
+                    disabled={placing || !shipping}
+                    className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
+                  >
+                    {placing ? "Placing order…" : "Review & Pay"}
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && order && (
+              <div>
+                <h2 className="font-display text-2xl mb-4">Payment</h2>
+                <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-5 mb-6">
+                  <p className="text-xs uppercase tracking-widest text-cocoa/60">
+                    Order #{order.order_id}
+                  </p>
+                  <p className="text-2xl mt-1">{formatPrice(order.total_amount)}</p>
+                  <p className="text-xs text-cocoa/60 mt-1">
+                    Pay securely via Razorpay — UPI, cards, wallets, and netbanking supported.
+                  </p>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={payNow}
+                  disabled={paying}
+                  className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
+                >
+                  {paying ? "Opening payment…" : "Pay with Razorpay"}
+                </motion.button>
+              </div>
+            )}
+          </main>
+
+          <aside className="bg-sand/60 border border-cocoa/10 rounded-sm p-6 h-fit md:sticky md:top-24">
+            <h2 className="font-display text-xl mb-4">Order Summary</h2>
+            <ul className="text-sm divide-y divide-cocoa/10 mb-4">
+              {items.map((line) => (
+                <li key={line.product_id} className="py-2 flex justify-between">
+                  <span className="text-cocoa/70">
+                    Product #{line.product_id} × {line.quantity}
+                  </span>
+                  <span>—</span>
+                </li>
+              ))}
+            </ul>
+
+            {order ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-cocoa/70">Subtotal</span>
+                  <span>{formatPrice(order.subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-cocoa/70">Shipping</span>
+                  <span>{formatPrice(order.shipping_amount)}</span>
+                </div>
+                <div className="flex justify-between border-t border-cocoa/15 pt-2 mt-2 font-medium">
+                  <span>Total</span>
+                  <span>{formatPrice(order.total_amount)}</span>
+                </div>
+                <p className="text-[11px] text-cocoa/50 mt-3 leading-relaxed">
+                  Order expires at{" "}
+                  {order.expires_at
+                    ? new Date(order.expires_at).toLocaleTimeString("en-IN")
+                    : "—"}
+                  . Pay before then to lock in this total.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-cocoa/60">
+                Shipping will be calculated by the backend once you place the order. Product prices include applicable taxes.
+              </p>
+            )}
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}

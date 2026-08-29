@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+paara-backend/node_modules/
+
+# Production builds
+dist/
+dist-ssr/
+build/
+
+# Environment files & secrets
+.env
+.env.local
+.env.*.local
+paara-backend/.env
+paara-backend/.env.local
+!paara-backend/.env.example
+!.env.example
+
+# SQLite databases & logs
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+paara-backend/paara.db*
+paara-backend/*.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

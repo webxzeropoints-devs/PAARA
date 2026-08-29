@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "BrilliantCut";
+  src: url("/fonts/BrilliantCutPro-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: "Jost", sans-serif;
+  font-weight: 300;
+  background-color: #F7F1E6;
+  color: #4A3626;
+  letter-spacing: 0.01em;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+#root {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Logo wordmark styling */
+.paara-logo {
+  font-family: "BrilliantCut", cursive;
+  color: #6B4A33;
+}
+
+/* Shared display treatment for page and product headings. */
+.font-display {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.heading-wave {
+  display: block;
+  width: 100%;
+  height: 0.5rem;
+  color: #B8874A;
+}
+
+.heading-wave-wrap {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.founder-pearl-ring {
+  isolation: isolate;
+}
+
+.scroll-reveal-pending {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--scroll-reveal-delay, 0ms), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--scroll-reveal-delay, 0ms);
+}
+
+.scroll-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal-pending,
+  .scroll-reveal-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@keyframes paara-love-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes paara-collection-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.love-marquee,
+.collection-marquee {
+  overflow: hidden;
+}
+
+.love-track {
+  display: flex;
+  width: max-content;
+  gap: 1.5rem;
+  animation: paara-love-marquee 34s linear infinite;
+}
+
+/* Preserve the existing marquee card treatment while preventing flex sizing
+   from collapsing a card during the continuous track animation. */
+.love-track > article {
+  flex: 0 0 290px;
+  width: 290px;
+  min-width: 290px;
+  min-height: 228px;
+}
+
+.collection-track {
+  display: flex;
+  width: max-content;
+  animation: paara-collection-marquee 18s linear infinite;
+}
+
+.collection-marquee-full .collection-track {
+  width: 600%;
+  height: 100%;
+}
+
+.collection-marquee-full .collection-marquee-image {
+  flex: 0 0 calc(100% / 6);
+  width: calc(100% / 6);
+  height: 100%;
+}
+
+.love-marquee:hover .love-track,
+.collection-marquee:hover .collection-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .love-track,
+  .collection-track {
+    animation-play-state: paused;
+  }
+}
+
+@media (min-width: 768px) {
+  .love-track > article {
+    flex-basis: 360px;
+    width: 360px;
+    min-width: 360px;
+    min-height: 242px;
+  }
+}

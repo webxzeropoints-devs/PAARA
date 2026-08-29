@@ -1,0 +1,12 @@
+import { useCallback, useEffect, useState } from "react";
+import { adminRequest } from "../lib/api";
+const blank = () => ({ image_url: "", caption: "", instagram_post_url: "", likes: 0 });
+const readImage = (file, onRead, onError) => { if (!file) return; if (!file.type.startsWith("image/")) return onError("Please choose an image file."); const reader = new FileReader(); reader.onload = () => onRead(String(reader.result)); reader.onerror = () => onError("Could not read that image."); reader.readAsDataURL(file); };
+export default function AdminWornByYou() {
+  const [slots, setSlots] = useState([blank(), blank(), blank()]), [error, setError] = useState("");
+  const load = useCallback(async () => { try { const rows = await adminRequest("/admin/worn-by-you"); setSlots([0, 1, 2].map((i) => ({ ...blank(), ...(rows[i] || {}) }))); } catch (err) { setError(err.message); } }, []);
+  useEffect(() => { load(); }, [load]);
+  const update = (index, values) => setSlots((current) => current.map((slot, i) => i === index ? { ...slot, ...values } : slot));
+  const save = async (index) => { try { setError(""); await adminRequest("/admin/worn-by-you/" + index, { method: "PUT", body: JSON.stringify(slots[index]) }); await load(); } catch (err) { setError(err.message); } };
+  return <div className="max-w-5xl"><h1 className="font-display text-4xl text-cocoa mb-6">Worn by You</h1>{error && <p>{error}</p>}<div className="grid md:grid-cols-3 gap-5">{slots.map((slot, index) => <form key={index} onSubmit={(e) => { e.preventDefault(); save(index); }} className="border border-cocoa/10 bg-shell p-4 space-y-3"><h2 className="font-display text-xl">Slot {index + 1}</h2><input required placeholder="Image link" value={slot.image_url} onChange={(e) => update(index, { image_url: e.target.value })} className="w-full border-b bg-transparent py-2" /><label className="block text-xs uppercase tracking-widest">Or upload a photo<input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0], (image_url) => update(index, { image_url }), setError)} className="block w-full mt-2 text-sm normal-case" /></label><input placeholder="Caption" value={slot.caption || ""} onChange={(e) => update(index, { caption: e.target.value })} className="w-full border-b bg-transparent py-2" />{slot.image_url && <img src={slot.image_url} alt="Preview" className="aspect-[3/4] w-full object-cover" />}<button className="px-3 py-2 text-xs uppercase tracking-widest bg-gold text-sand">Save Slot {index + 1}</button></form>)}</div></div>;
+}
