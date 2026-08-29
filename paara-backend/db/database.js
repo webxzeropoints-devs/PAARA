@@ -17,12 +17,16 @@ const dbPath = isServerless ? '/tmp/paara.db' : localSeedPath;
 
 if (isServerless && !fs.existsSync(dbPath)) {
   try {
-    fs.copyFileSync(localSeedPath, dbPath);
+    // Embedded as a JS module (base64 Buffer) rather than read via a raw fs
+    // path — Vercel's file tracer only bundles files reached through
+    // require()/import, so a plain fs.copyFileSync() from a data file was
+    // silently dropped from the deployed function (see: ENOENT, then later
+    // an empty-but-not-crashing schema fallback). Requiring it guarantees
+    // inclusion.
+    const seedBuffer = require('./seed-data.js');
+    fs.writeFileSync(dbPath, seedBuffer);
   } catch (err) {
-    // Seed file wasn't bundled into the function (e.g. Vercel's file
-    // tracer missed it) — fall back to just creating the schema so the
-    // app comes up empty rather than crashing outright.
-    console.error('Could not copy seed DB, creating schema from scratch:', err.message);
+    console.error('Could not load embedded seed DB, creating schema from scratch:', err.message);
     const schemaPath = path.join(__dirname, 'schema.sql');
     const tmpDb = new Database(dbPath);
     tmpDb.exec(fs.readFileSync(schemaPath, 'utf8'));
