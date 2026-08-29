@@ -1,4 +1,12 @@
 require('dotenv').config();
+const REQUIRED_ENV_VARS = ['JWT_SECRET', 'ADMIN_API_KEY'];
+const missingEnvVars = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
+if (missingEnvVars.length > 0) {
+  console.error(`\n[STARTUP ERROR] Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  console.error('Copy .env.example to .env and fill in these values before starting the server.\n');
+  process.exit(1);
+}
+
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');

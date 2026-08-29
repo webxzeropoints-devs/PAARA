@@ -41,7 +41,13 @@ router.post('/verify-otp', (req, res) => {
     customer.email = email;
   }
 
-  const token = jwt.sign({ id: customer.id, email: customer.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  let token;
+  try {
+    token = jwt.sign({ id: customer.id, email: customer.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  } catch (err) {
+    console.error('[JWT_SIGN_ERROR]', err.message);
+    return res.status(500).json({ error: 'Server configuration error. Contact support.' });
+  }
   res.json({ token, customer: { id: customer.id, name: customer.name, email: customer.email } });
 });
 

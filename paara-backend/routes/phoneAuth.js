@@ -110,7 +110,13 @@ router.post('/verify-otp', (req, res) => {
     customer = { id: info.lastInsertRowid, name: `User ${normalizedPhone.slice(-4)}`, phone: normalizedPhone };
   }
 
-  const token = jwt.sign({ id: customer.id, phone: customer.phone }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  let token;
+  try {
+    token = jwt.sign({ id: customer.id, phone: customer.phone }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  } catch (err) {
+    console.error('[JWT_SIGN_ERROR]', err.message);
+    return res.status(500).json({ error: 'Server configuration error. Contact support.' });
+  }
   res.json({ token, customer: { id: customer.id, name: customer.name, phone: customer.phone } });
 });
 
