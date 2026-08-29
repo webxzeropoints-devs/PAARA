@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const db = require('./db/database');
@@ -85,21 +84,38 @@ db.exec(`CREATE TABLE IF NOT EXISTS customer_order_details (
   submitted_fields TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 
-// Allowed origins: always includes local dev ports, plus any extra origins
-// supplied via the ALLOWED_ORIGINS env var (comma-separated), e.g.
-// ALLOWED_ORIGINS=https://paara.vercel.app,https://www.paara.com
-const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000'];
-const extraOrigins = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
-const allowedOrigins = [...defaultOrigins, ...extraOrigins];
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL, // e.g. https://paara-jewellery.vercel.app
+].filter(Boolean);
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // allow no-origin requests (curl, server-to-server, Razorpay webhook)
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    // allow any Vercel preview deployment of the frontend
+    if (/\.vercel\.app$/.test(new URL(origin).hostname)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
 }));
+
+// On Vercel, make sure the (possibly blob-restored) DB file has finished
+// loading before handling any request, and persist writes back to Blob
+// storage afterwards so they survive past this invocation.
+if (db.isServerless) {
+  app.use((req, res, next) => {
+    db.ready.then(() => next()).catch(next);
+  });
+  app.use((req, res, next) => {
+    res.on('finish', () => {
+      if (req.method !== 'GET' && res.statusCode < 400) db.persist();
+    });
+    next();
+  });
+}
 
 // The webhook route needs the RAW request body to verify Razorpay's signature,
 // so it's mounted BEFORE express.json() with its own raw parser.
@@ -107,12 +123,6 @@ app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Serve uploaded product images (previously written to disk by routes/admin.js
-// but never exposed over HTTP — fixed here so /uploads/products/<file> resolves).
-// Matches UPLOADS_DIR used in routes/admin.js so this points at the same folder.
-const uploadsRoot = process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads');
-app.use('/uploads', express.static(uploadsRoot));
 
 // Multer setup for file uploads (in-memory storage for temporary processing)
 const upload = multer({ 
@@ -156,7 +166,6 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/payment', paymentRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
-app.get('/', (req, res) => res.json({ ok: true, service: 'paara-backend' }));
 
 // Central error handler
 app.use((err, req, res, next) => {
@@ -164,42 +173,47 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong.' });
 });
 
-const PORT = process.env.PORT || 4000;
-const server = app.listen(PORT, () => console.log(`Paara backend running on http://localhost:${PORT}`));
+if (db.isServerless) {
+  // Vercel calls this exported handler per-request; no app.listen here.
+  module.exports = app;
+} else {
+  const PORT = process.env.PORT || 4000;
+  const server = app.listen(PORT, () => console.log(`Paara backend running on http://localhost:${PORT}`));
 
-server.on('error', (e) => {
-  if (e.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Stop the process using that port, then restart Paara.`);
-    process.exitCode = 1;
-  } else {
-    console.error('Server error:', e);
-    process.exitCode = 1;
-  }
-});
-
-let shuttingDown = false;
-const gracefulShutdown = () => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  console.log('Received kill signal, shutting down gracefully.');
-  const forceTimer = setTimeout(() => {
-    console.error('Could not close connections in time, forcefully shutting down');
-    try { db.close(); } catch { /* already closed */ }
-    process.exit(1);
-  }, 10000);
-  forceTimer.unref();
-  server.close(() => {
-    console.log('Closed out remaining connections.');
-    console.log('Closing database connection...');
-    try { db.close(); } catch { /* already closed */ }
-    clearTimeout(forceTimer);
-    process.exit(0);
+  server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Stop the process using that port, then restart Paara.`);
+      process.exitCode = 1;
+    } else {
+      console.error('Server error:', e);
+      process.exitCode = 1;
+    }
   });
-};
 
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  gracefulShutdown();
-});
+  let shuttingDown = false;
+  const gracefulShutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log('Received kill signal, shutting down gracefully.');
+    const forceTimer = setTimeout(() => {
+      console.error('Could not close connections in time, forcefully shutting down');
+      try { db.close(); } catch { /* already closed */ }
+      process.exit(1);
+    }, 10000);
+    forceTimer.unref();
+    server.close(() => {
+      console.log('Closed out remaining connections.');
+      console.log('Closing database connection...');
+      try { db.close(); } catch { /* already closed */ }
+      clearTimeout(forceTimer);
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    gracefulShutdown();
+  });
+}

@@ -7,13 +7,10 @@ const fs = require('fs');
 const router = express.Router();
 router.use(requireAdmin);
 
-// Ensure uploads directory exists. UPLOADS_DIR can point this at a persistent
-// disk (e.g. Render's mounted /data) so images survive redeploys; falls back
-// to a local folder for development.
-const uploadsDir = process.env.UPLOADS_DIR
-  ? path.join(process.env.UPLOADS_DIR, 'products')
-  : path.join(__dirname, '../public/uploads/products');
-if (!fs.existsSync(uploadsDir)) {
+// Local dev keeps writing to disk (public/uploads); on Vercel the filesystem
+// isn't writable/persistent, so uploads go to Vercel Blob storage instead.
+const uploadsDir = path.join(__dirname, '../public/uploads/products');
+if (!db.isServerless && !fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
@@ -34,16 +31,32 @@ const writeImages = (id, images) => {
   clean.forEach((url, index) => add.run(id, url, index));
 };
 
-// Helper function to save uploaded files
-const saveUploadedImages = (files) => {
+// Helper function to save uploaded files — Vercel Blob when serverless
+// (persistent, public URL), local disk otherwise (unchanged dev behaviour).
+const saveUploadedImages = async (files) => {
   if (!files || files.length === 0) return [];
-  
+
+  if (db.isServerless) {
+    const { put } = require('@vercel/blob');
+    return Promise.all(files.map(async (file) => {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8);
+      const filename = `product-${timestamp}-${random}${path.extname(file.originalname)}`;
+      const blob = await put(`products/${filename}`, file.buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: file.mimetype,
+      });
+      return blob.url;
+    }));
+  }
+
   return files.map((file) => {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
     const filename = `product-${timestamp}-${random}${path.extname(file.originalname)}`;
     const filepath = path.join(uploadsDir, filename);
-    
+
     fs.writeFileSync(filepath, file.buffer);
     return `/uploads/products/${filename}`;
   });
@@ -113,12 +126,12 @@ router.post('/vault', (q, s) => {
   s.json({ success: true });
 });
 
-router.post('/products', (q, s) => {
+router.post('/products', async (q, s) => {
   try {
     const { category_id, name, slug, description = null, price, material = null, subcategory = null, stock = 0, is_exclusive = false, is_bestseller = false, is_active = true, is_vault = false, release_date } = q.body;
     
     // Handle uploaded files
-    const uploadedImages = saveUploadedImages(q.files);
+    const uploadedImages = await saveUploadedImages(q.files);
     const existingImages = q.body.existingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
     const allImages = [...uploadedImages, ...existingImages];
 
@@ -132,13 +145,13 @@ router.post('/products', (q, s) => {
   }
 });
 
-router.put('/products/:id', (q, s) => {
+router.put('/products/:id', async (q, s) => {
   try {
     const current = db.prepare('SELECT * FROM products WHERE id=?').get(q.params.id);
     if (!current) return s.status(404).json({ error: 'Product not found.' });
 
     // Handle uploaded files
-    const uploadedImages = saveUploadedImages(q.files);
+    const uploadedImages = await saveUploadedImages(q.files);
     const existingImages = q.body.existingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
     const allImages = [...uploadedImages, ...existingImages];
 
