@@ -8,40 +8,29 @@ const BLOB_PATHNAME = 'paara-db/paara.db';
 
 // Local dev: use the repo's paara.db file directly, unchanged behaviour.
 // On Vercel: the filesystem is read-only except /tmp, and /tmp is wiped
-// between cold starts, so we copy the DB into /tmp and sync it to Vercel
-// Blob storage (a persistent store) after writes.
+// between cold starts. We seed /tmp synchronously from the bundled DB file
+// on every cold start (guarantees the schema/tables exist before ANY
+// require() runs — several route files run db.prepare() at module load
+// time, so this must be synchronous, not awaited).
 const localSeedPath = process.env.DB_PATH || path.join(__dirname, '..', 'paara.db');
 const dbPath = isServerless ? '/tmp/paara.db' : localSeedPath;
 
-let ready = Promise.resolve();
-
-if (isServerless) {
-  ready = (async () => {
-    if (fs.existsSync(dbPath)) return; // warm invocation, already restored
-    try {
-      const { head } = require('@vercel/blob');
-      const info = await head(BLOB_PATHNAME).catch(() => null);
-      if (info?.url) {
-        const res = await fetch(info.url);
-        const buf = Buffer.from(await res.arrayBuffer());
-        fs.writeFileSync(dbPath, buf);
-        return;
-      }
-    } catch (err) {
-      console.error('Blob DB restore failed, falling back to seed copy:', err.message);
-    }
-    // No blob copy yet (first ever deploy) — seed /tmp from the bundled file.
-    fs.copyFileSync(localSeedPath, dbPath);
-  })();
+if (isServerless && !fs.existsSync(dbPath)) {
+  fs.copyFileSync(localSeedPath, dbPath);
 }
 
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// Call after any write on Vercel to persist /tmp/paara.db back to Blob.
-// Cheap enough for this app's traffic; last-write-wins like the rest of
-// the file-backed setup.
+// Call after any write on Vercel to back up /tmp/paara.db to Blob storage.
+// NOTE: this is a best-effort backup, not live cross-cold-start persistence
+// — better-sqlite3 can't safely swap its open file out from under itself,
+// so a brand-new cold start always starts from the bundled seed file again,
+// not from the latest Blob backup. For a store handling real orders/payments,
+// treat this as a safety net (and a way to manually pull recent writes),
+// not as your actual database. Migrating to a hosted DB (Turso/Postgres) is
+// the real fix if this needs to reliably retain data across cold starts.
 async function persist() {
   if (!isServerless) return;
   try {
@@ -55,6 +44,6 @@ async function persist() {
 }
 
 module.exports = db;
-module.exports.ready = ready;
+module.exports.ready = Promise.resolve();
 module.exports.persist = persist;
 module.exports.isServerless = isServerless;
