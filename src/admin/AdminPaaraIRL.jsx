@@ -16,7 +16,7 @@ export default function AdminPaaraIRL() {
   const save = async (event) => { event.preventDefault(); setError(""); try { await adminRequest("/admin/paara-irl", { method: "PUT", body: JSON.stringify(form) }); await load(); setSaved("Saved."); } catch (err) { setError(err.message); } };
   return (
     <div className="max-w-2xl">
-      <h1 className="font-display text-4xl text-cocoa mb-2">Para IRL</h1>
+      <h1 className="font-display text-4xl text-cocoa mb-2">Paara IRL</h1>
       <p className="mb-6 text-sm text-cocoa/65">Manage the homepage image and the photo shown beside the Meet the Owner video.</p>
       {error && <p className="mb-4 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <form onSubmit={save} className="border border-cocoa/10 bg-shell p-5 space-y-7">

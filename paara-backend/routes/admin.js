@@ -129,11 +129,18 @@ router.post('/vault', (q, s) => {
 router.post('/products', async (q, s) => {
   try {
     const { category_id, name, slug, description = null, price, material = null, subcategory = null, stock = 0, is_exclusive = false, is_bestseller = false, is_active = true, is_vault = false, release_date } = q.body;
-    
-    // Handle uploaded files
-    const uploadedImages = await saveUploadedImages(q.files);
-    const existingImages = q.body.existingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
-    const allImages = [...uploadedImages, ...existingImages];
+        // Ensure req.files is an array (may be undefined when no files are uploaded)
+      const filesArray = Array.isArray(q.files) ? q.files : (q.files ? [q.files] : []);
+      let uploadedImages = [];
+      try {
+        uploadedImages = await saveUploadedImages(filesArray);
+      } catch (imgErr) {
+        console.error('Image upload failed:', imgErr.message);
+        return s.status(400).json({ error: 'Failed to process uploaded images.' });
+      }
+
+      const existingImages = q.body.existingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
+      const allImages = [...uploadedImages, ...existingImages];
 
     const result = db.prepare('INSERT INTO products (category_id,name,slug,description,price,material,subcategory,stock,is_exclusive,is_bestseller,is_active,is_vault,release_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
       category_id, name, slug, description, price, material, subcategory, stock, is_exclusive ? 1 : 0, is_bestseller ? 1 : 0, is_active ? 1 : 0, is_vault ? 1 : 0, release_date || new Date().toISOString()

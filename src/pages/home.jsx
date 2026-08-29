@@ -6,6 +6,7 @@ import ProductFlipCard from "../components/ProductFlipCard";
 import VaultScrollStage from "../components/VaultScrollStage";
 import { apiGet, getProducts, getVaultNext, getVaultToday } from "../lib/api";
 import { fadeUp, heroParent, childFadeUp } from "../lib/motion";
+import { NEXT_DROP_DATE } from "../lib/countdownConfig";
 
 const placeholderImg = (label, index = 0) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -157,11 +158,12 @@ export default function Home() {
       if (cancelled) return;
       // eslint-disable-next-line no-console
       console.log("[vault/next] raw response:", data);
-      const next = data?.next_drop || data?.release_date || data?.next_release || data?.date || null;
+      const next = data?.next_drop || data?.release_date || data?.next_release || data?.date || NEXT_DROP_DATE;
       setNextRelease(next);
     }).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn("[vault/next] fetch failed:", err?.message || err);
+      setNextRelease(NEXT_DROP_DATE);
     });
     getProducts({ bestseller: true, limit: 9 })
       .then((data) => !cancelled && setBestsellers(Array.isArray(data) ? data : data?.products || []))

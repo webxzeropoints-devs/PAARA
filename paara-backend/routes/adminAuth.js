@@ -14,10 +14,11 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'email and password are required.' });
 
-  const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(String(email).toLowerCase());
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(normalizedEmail);
   const passwordMatches = !!admin && bcrypt.compareSync(password, admin.password_hash);
   console.log('[ADMIN_LOGIN_HASH_CHECK]', {
-    email: String(email).toLowerCase(),
+    email: normalizedEmail,
     adminFound: !!admin,
     storedHashPresent: !!admin?.password_hash,
     passwordMatches,
@@ -27,35 +28,17 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
-  const needsSetup = Boolean(admin.must_change_password);
-
-  if (needsSetup) {
-    const token = jwt.sign({ id: admin.id, email: admin.email, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '12h' });
-    return res.json({
-      success: true,
-      allow_access: true,
-      needs_setup: true,
-      token,
-      admin: { id: admin.id, name: admin.name, email: admin.email, profile_image_url: admin.profile_image_url },
-      admin_id: admin.id,
-      email: admin.email,
-      message: 'Temporary admin access granted. Update your email and password from profile settings.'
-    });
-  }
-
-  try {
-    await issueEmailOtp(admin.email, `Admin login OTP to ${admin.email}`);
-  } catch (error) {
-    return res.status(503).json({ error: error.message });
-  }
-
-  res.json({
+  const token = jwt.sign({ id: admin.id, email: admin.email, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '12h' });
+  return res.json({
     success: true,
-    requires_otp: true,
-    needs_setup: false,
-    message: 'OTP sent to admin email.',
+    token,
+    admin: { id: admin.id, name: admin.name, email: admin.email, profile_image_url: admin.profile_image_url },
     admin_id: admin.id,
-    email: admin.email
+    email: admin.email,
+    needs_setup: Boolean(admin.must_change_password),
+    message: Boolean(admin.must_change_password)
+      ? 'Temporary admin access granted. Update your email and password from profile settings.'
+      : 'Admin login successful.'
   });
 });
 

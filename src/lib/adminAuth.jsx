@@ -70,13 +70,9 @@ export function AdminProvider({ children }) {
         return res;
       }
 
-      if (res?.admin_id) {
-        setPendingAdminId(res.admin_id);
-        setLoginStep("otp");
-      }
       return res;
     } catch (err) {
-      setError(err.message || "Failed to send OTP.");
+      setError(err.message || "Login failed.");
       throw err;
     } finally {
       setLoading(false);

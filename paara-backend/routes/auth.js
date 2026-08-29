@@ -22,6 +22,16 @@ router.post('/register', async (req, res) => {
     .prepare('INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)')
     .run(name, normalizedEmail, phone || null, password_hash);
 
+  // Persist the new customer record in serverless environments (Vercel) so it survives cold starts.
+  if (db.persist) {
+    try {
+      await db.persist();
+    } catch (persistErr) {
+      console.error('Database persist after registration failed:', persistErr.message);
+      // Continue; the registration succeeded even if persisting failed.
+    }
+  }
+
   try {
     await issueEmailOtp(normalizedEmail, `Signup OTP to ${normalizedEmail}`);
   } catch (error) {

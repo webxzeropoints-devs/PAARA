@@ -43,7 +43,11 @@ export default function AdminProfile() {
     setImageMsg("");
     setImageSaving(true);
     try {
-      await adminChangeProfilePicture(imageUrl.trim());
+      const nextImageUrl = imageUrl.trim();
+      if (!nextImageUrl) {
+        throw new Error("Choose an image or paste an image URL.");
+      }
+      await adminChangeProfilePicture(nextImageUrl);
       await updateProfile({});
       setImageMsg("Saved.");
     } catch (err) {
@@ -204,7 +208,7 @@ export default function AdminProfile() {
       </div>
 
       {/* Change avatar */}
-      <Card title="Change profile picture" subtitle="Paste a public image URL.">
+      <Card title="Change profile picture" subtitle="Upload a file or paste a public image URL.">
         <form onSubmit={saveAvatar} className="space-y-3">
           <input
             type="url"
@@ -213,6 +217,26 @@ export default function AdminProfile() {
             placeholder="https://…"
             className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
           />
+          <label className="block text-xs uppercase tracking-widest text-cocoa/60">
+            Upload image
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (!file.type.startsWith("image/")) {
+                  setImageMsg("Please choose an image file.");
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => setImageUrl(String(reader.result));
+                reader.onerror = () => setImageMsg("Could not read that image.");
+                reader.readAsDataURL(file);
+              }}
+              className="mt-2 block w-full text-sm text-cocoa"
+            />
+          </label>
           <Row>
             <button
               type="submit"
