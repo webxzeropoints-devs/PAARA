@@ -1,0 +1,22 @@
+// Vercel routes every /api/* request to this function (see vercel.json).
+// On Vercel, we need to restore /tmp/paara.db from Blob BEFORE requiring server.js,
+// because server.js requires ./db/database at module load time, which tries to open
+// the database immediately. Local dev skips all this (no Vercel env var).
+
+// Cache the required server app so restore only happens once per cold start (first request).
+let cachedApp = null;
+
+module.exports = async (req, res) => {
+	// First request: run blob restore (if on Vercel), then require server and cache it
+	if (!cachedApp) {
+		if (process.env.VERCEL) {
+			const { restoreBlobThenInit } = require('../db/database');
+			await restoreBlobThenInit();
+			console.log('[API Init] Blob restore complete, loading server.js...');
+		}
+		cachedApp = require('../server');
+	}
+
+	// All requests (first and subsequent): delegate to the cached Express app
+	cachedApp(req, res);
+};

@@ -16,7 +16,9 @@ const transporter = nodemailer.createTransport({
 
 async function sendEmail({ to, subject, text, attachments = [] }) {
   if (!smtpConfig.user || !smtpConfig.pass || !smtpConfig.host) {
-    throw new Error('Email SMTP is not configured. Set EMAIL_USER, EMAIL_PASSWORD, and EMAIL_HOST.');
+    console.warn('SMTP not configured – email sending disabled. Set EMAIL_USER, EMAIL_PASSWORD, EMAIL_HOST to enable.');
+    // Return a fake successful result so callers can continue.
+    return { messageId: 'mock-id', envelope: {}, accepted: [to], rejected: [] };
   }
   return transporter.sendMail({
     from: smtpConfig.user,

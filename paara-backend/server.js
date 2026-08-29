@@ -119,15 +119,37 @@ app.use(cors({
 
 // On Vercel, make sure the (possibly blob-restored) DB file has finished
 // loading before handling any request, and persist writes back to Blob
-// storage afterwards so they survive past this invocation.
+// storage before successful write responses are sent.
 if (db.isServerless) {
   app.use((req, res, next) => {
-    db.ready.then(() => next()).catch(next);
-  });
-  app.use((req, res, next) => {
-    res.on('finish', () => {
-      if (req.method !== 'GET' && res.statusCode < 400) db.persist();
-    });
+    const originalJson = res.json.bind(res);
+    const originalSend = res.send.bind(res);
+    const originalEnd = res.end.bind(res);
+    let persistPromise = null;
+
+    const persistBeforeResponse = () => {
+      if (req.method === 'GET' || res.statusCode >= 400) return Promise.resolve();
+      if (!persistPromise) {
+        persistPromise = db.persist().catch((err) => {
+          console.error('Persist before response failed:', err.message);
+        });
+      }
+      return persistPromise;
+    };
+
+    res.json = (body) => {
+      persistBeforeResponse().then(() => originalJson(body));
+      return res;
+    };
+    res.send = (body) => {
+      persistBeforeResponse().then(() => originalSend(body));
+      return res;
+    };
+    res.end = (...args) => {
+      persistBeforeResponse().then(() => originalEnd(...args));
+      return res;
+    };
+
     next();
   });
 }
