@@ -17,6 +17,7 @@ router.post('/register', async (req, res) => {
   if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
 
   const password_hash = bcrypt.hashSync(password, 10);
+  console.log('[CUSTOMER_REGISTER_HASH]', { email: normalizedEmail, hashPrefix: password_hash.slice(0, 18), saltRounds: 10 });
   const info = db
     .prepare('INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)')
     .run(name, normalizedEmail, phone || null, password_hash);
@@ -35,7 +36,15 @@ router.post('/login', async (req, res) => {
 
   const normalizedEmail = normalizeEmail(email);
   const customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(normalizedEmail);
-  if (!customer || !bcrypt.compareSync(password, customer.password_hash)) {
+  const passwordMatches = !!customer && bcrypt.compareSync(password, customer.password_hash);
+  console.log('[CUSTOMER_LOGIN_HASH_CHECK]', {
+    email: normalizedEmail,
+    customerFound: !!customer,
+    storedHashPresent: !!customer?.password_hash,
+    passwordMatches,
+    hashPrefix: customer?.password_hash?.slice(0, 18),
+  });
+  if (!customer || !passwordMatches) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 

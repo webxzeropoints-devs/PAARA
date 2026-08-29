@@ -15,7 +15,15 @@ router.post('/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'email and password are required.' });
 
   const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(String(email).toLowerCase());
-  if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+  const passwordMatches = !!admin && bcrypt.compareSync(password, admin.password_hash);
+  console.log('[ADMIN_LOGIN_HASH_CHECK]', {
+    email: String(email).toLowerCase(),
+    adminFound: !!admin,
+    storedHashPresent: !!admin?.password_hash,
+    passwordMatches,
+    hashPrefix: admin?.password_hash?.slice(0, 18),
+  });
+  if (!admin || !passwordMatches) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
@@ -50,6 +58,7 @@ router.post('/set-password', (req, res) => {
   }
 
   const password_hash = bcrypt.hashSync(new_password, 10);
+  console.log('[ADMIN_SET_PASSWORD_HASH]', { admin_id: admin.id, hashPrefix: password_hash.slice(0, 18), saltRounds: 10 });
   db.prepare('UPDATE admins SET password_hash = ?, must_change_password = 0 WHERE id = ?').run(password_hash, admin.id);
   res.json({ success: true, message: 'Password updated successfully.' });
 });
