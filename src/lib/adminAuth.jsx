@@ -61,7 +61,7 @@ export function AdminProvider({ children }) {
       const res = await apiPost("/admin-auth/login", { email, password });
       if (res.admin_id) {
         setPendingAdminId(res.admin_id);
-        setLoginStep(res.requires_password_change ? "password-change" : "otp");
+        setLoginStep("otp");
       }
       return res;
     } catch (err) {

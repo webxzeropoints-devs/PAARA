@@ -27,22 +27,24 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
-  if (admin.must_change_password) {
-    return res.json({
-      success: true,
-      requires_password_change: true,
-      admin_id: admin.id,
-      email: admin.email,
-      message: 'Password change required before OTP can be sent.'
-    });
-  }
+  const needsSetup = Boolean(admin.must_change_password);
 
   try {
     await issueEmailOtp(admin.email, `Admin login OTP to ${admin.email}`);
   } catch (error) {
     return res.status(503).json({ error: error.message });
   }
-  res.json({ success: true, requires_otp: true, message: 'OTP sent to admin email.', admin_id: admin.id, email: admin.email });
+
+  res.json({
+    success: true,
+    requires_otp: true,
+    needs_setup: needsSetup,
+    message: needsSetup
+      ? 'OTP sent. Please complete your admin setup from the profile page.'
+      : 'OTP sent to admin email.',
+    admin_id: admin.id,
+    email: admin.email
+  });
 });
 
 router.post('/set-password', (req, res) => {

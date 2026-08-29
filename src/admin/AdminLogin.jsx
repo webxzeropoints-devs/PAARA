@@ -37,10 +37,7 @@ export default function AdminLogin() {
   const submitCredentials = async (e) => {
     e.preventDefault();
     try {
-      const res = await requestLogin(email.trim(), password);
-      if (res?.requires_password_change) {
-        navigate("/admin/profile", { state: { initSetup: true, adminId: res.admin_id, email: res.email } });
-      }
+      await requestLogin(email.trim(), password);
     } catch {
       // error is surfaced via context.error
     }

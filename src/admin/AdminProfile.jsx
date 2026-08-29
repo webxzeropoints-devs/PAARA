@@ -125,7 +125,10 @@ export default function AdminProfile() {
       setSetupEmail("");
       setSetupPassword("");
       setSetupConfirmPassword("");
-      setSetupMsg("Setup complete. You can continue using the dashboard.");
+      navigate("/admin/login", {
+        replace: true,
+        state: { message: "Admin setup complete. Please sign in with your new credentials." },
+      });
     } catch (err) {
       setSetupMsg(err.message || "Could not complete setup.");
     } finally {

@@ -24,6 +24,12 @@ const NAV = [
 function AdminRouteGuard() {
   const { token, loginStep } = useAdmin();
   const location = useLocation();
+  const isPasswordSetupRoute = loginStep === "password-change" && location.pathname.startsWith("/admin/profile");
+
+  if (isPasswordSetupRoute) {
+    return <Outlet />;
+  }
+
   if (!token || loginStep !== "authenticated") {
     return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
   }
