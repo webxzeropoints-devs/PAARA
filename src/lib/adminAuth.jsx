@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { apiGet, apiPost } from "./api";
+import { adminRequest, apiPost } from "./api";
 
 const ADMIN_TOKEN_KEY = "paara_admin_token";
 const ADMIN_USER_KEY = "paara_admin_user";
@@ -36,7 +36,7 @@ export function AdminProvider({ children }) {
   useEffect(() => {
     const savedToken = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (savedToken) {
-      apiGet("/admin-auth/me")
+      adminRequest("/admin-auth/me")
         .then((data) => {
           if (data && data.id) {
             setAdmin(data);
@@ -78,7 +78,7 @@ export function AdminProvider({ children }) {
 
   const updateProfile = useCallback(async (updatedData = {}) => {
     try {
-      const fresh = await apiGet("/admin-auth/me");
+      const fresh = await adminRequest("/admin-auth/me");
       if (fresh) {
         const merged = { ...fresh, ...updatedData };
         setAdmin(merged);

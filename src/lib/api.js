@@ -15,10 +15,9 @@ export const getAdminToken = () => localStorage.getItem(ADMIN_TOKEN_KEY);
 export const setAdminToken = (token) => localStorage.setItem(ADMIN_TOKEN_KEY, token);
 export const clearAdminToken = () => localStorage.removeItem(ADMIN_TOKEN_KEY);
 
-const buildHeaders = (extra = {}) => {
+const buildHeaders = (extra = {}, useAdminToken = false) => {
   const headers = { "Content-Type": "application/json", ...extra };
-  const adminToken = getAdminToken();
-  const token = adminToken || getToken();
+  const token = useAdminToken ? getAdminToken() : getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 };
@@ -108,7 +107,7 @@ export const apiDelete = wrapFetch((path) =>
 
 export const adminRequest = wrapFetch((path, options = {}) => {
   const { method = "GET", body, headers: extraHeaders = {} } = options;
-  const headers = buildHeaders(extraHeaders);
+  const headers = buildHeaders(extraHeaders, true);
   const payload = prepareRequestBody(body, headers);
   return fetch(`${BASE_URL}${path}`, {
     method,
