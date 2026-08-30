@@ -123,6 +123,11 @@ router.get('/', requireAuth, (req, res) => {
   const orders = db
     .prepare('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC')
     .all(req.customer.id);
+  const itemsForOrder = db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC');
+  orders.forEach((order) => {
+    order.order_id = order.id;
+    order.items = itemsForOrder.all(order.id);
+  });
   res.json(orders);
 });
 

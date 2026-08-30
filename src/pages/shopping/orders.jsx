@@ -75,15 +75,26 @@ export default function Orders() {
         )}
 
         <div className="space-y-4">
-          {orders.map((order) => (
+          {orders.map((order) => {
+            const orderId = order.id ?? order.order_id;
+            return (
             <div
-              key={order.id || order.order_id}
+              key={orderId}
               className="border border-cocoa/10 rounded-sm p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
             >
               <div>
                 <p className="text-xs uppercase tracking-widest text-cocoa/60">
-                  Order #{(order.id || order.order_id)?.toString().slice(0, 8)}
+                  Order #{orderId?.toString().slice(0, 8)}
                 </p>
+                {Array.isArray(order.items) && order.items.length > 0 && (
+                  <div className="mt-2 space-y-1 text-sm">
+                    {order.items.map((item) => (
+                      <p key={item.id ?? `${orderId}-${item.product_id}-${item.product_name}`}>
+                        {item.product_name || `Product #${item.product_id}`} × {item.quantity}
+                      </p>
+                    ))}
+                  </div>
+                )}
                 <p className="text-lg mt-1">
                   <span className="font-numeric">{formatPrice(order.total_amount)}</span>
                 </p>
@@ -102,14 +113,15 @@ export default function Orders() {
                   {order.status || "confirmed"}
                 </span>
                 <Link
-                  to={`/order-confirmation?order_id=${order.id || order.order_id}`}
+                  to={`/order-confirmation?order_id=${orderId}`}
                   className="text-xs uppercase tracking-widest text-gold hover:text-cocoa transition-colors"
                 >
                   View →
                 </Link>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

@@ -128,7 +128,7 @@ h3 {
 
 @keyframes paara-collection-marquee {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(calc(-50% - 28px)); }
 }
 
 .love-marquee,
@@ -170,6 +170,19 @@ h3 {
 .customer-love-section {
   height: 65vh;
   min-height: 420px;
+}
+
+.customer-love-section > .relative.z-10.text-center {
+  position: relative;
+  z-index: 20;
+}
+
+.customer-love-section > .love-marquee {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%);
 }
 
 .collection-track {
