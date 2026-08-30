@@ -26,4 +26,23 @@ function normalizePhone(value) {
 
 const PHONE_ERROR = 'Please enter a valid 10-digit mobile number.';
 
-module.exports = { isPincode, isPositiveInt, validatePassword, PASSWORD_ERROR, normalizePhone, PHONE_ERROR };
+function maskEmail(value) {
+  const email = String(value || '');
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return '[invalid-email]';
+  return `${local.slice(0, 2)}***@${domain}`;
+}
+
+function maskPhone(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length < 4) return '[invalid-phone]';
+  return `${digits.slice(0, 2)}${'*'.repeat(Math.max(0, digits.length - 4))}${digits.slice(-2)}`;
+}
+
+function maskSensitiveText(value) {
+  return String(value || '')
+    .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, (email) => maskEmail(email))
+    .replace(/(?<!\d)\d{10,}(?!\d)/g, (phone) => maskPhone(phone));
+}
+
+module.exports = { isPincode, isPositiveInt, validatePassword, PASSWORD_ERROR, normalizePhone, PHONE_ERROR, maskEmail, maskPhone, maskSensitiveText };

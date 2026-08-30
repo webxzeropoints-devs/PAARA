@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const crypto = require('crypto');
-const { normalizePhone, PHONE_ERROR } = require('../utils/validate');
+const { normalizePhone, PHONE_ERROR, maskPhone, maskSensitiveText } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -44,7 +44,7 @@ async function sendSms(phone, otp) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    console.error('[WhatsApp API error]', payload);
+    console.error('[WhatsApp API error]', { message: maskSensitiveText(payload?.error?.message || 'unknown error') });
     const message = payload?.error?.message || 'WhatsApp message delivery failed.';
     throw new Error(message);
   }
@@ -68,10 +68,10 @@ router.post('/request-otp', async (req, res) => {
 
   try {
     const deliveryResponse = await sendSms(normalizedPhone, otp);
-    console.log('[AUTH_OTP_SENT]', { channel: 'phone' });
+    console.log('[AUTH_OTP_SENT]', { channel: 'phone', phone: maskPhone(normalizedPhone) });
     res.json({ ok: true, success: true, message: 'OTP sent.' });
   } catch (error) {
-    console.error('OTP send failed:', error);
+    console.error('OTP send failed:', { message: maskSensitiveText(error.message), name: error.name });
     return res.status(503).json({ ok: false, code: 'OTP_DELIVERY_UNAVAILABLE', message: 'Unable to send OTP right now. Please try again.' });
   }
 });
@@ -105,7 +105,7 @@ router.post('/verify-otp', (req, res) => {
 
   db.prepare('UPDATE phone_otps SET verified = 1 WHERE id = ?').run(record.id);
 
-  let customer = db.prepare('SELECT * FROM customers WHERE phone = ?').get(normalizedPhone);
+  let customer = db.prepare('SELECT id, name, email, phone FROM customers WHERE phone = ?').get(normalizedPhone);
   if (!customer) {
     const info = db.prepare(`
       INSERT INTO customers (name, email, phone, password_hash)

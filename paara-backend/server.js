@@ -12,6 +12,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const db = require('./db/database');
+const { maskSensitiveText } = require('./utils/validate');
 
 const productsRouter = require('./routes/products');
 const vaultRouter = require('./routes/vault');
@@ -112,7 +113,7 @@ if (adminCount === 0) {
     INSERT INTO admins (name, email, password_hash, must_change_password)
     VALUES (?, ?, ?, 1)
   `).run('Admin', 'paara@gmail.com', tempHash);
-  console.log('[ADMIN SAFETY NET] No admin account found after DB init — created temp admin (paara@gmail.com / Paara@123, must_change_password=1).');
+  console.log('[ADMIN SAFETY NET] No admin account found after DB init; created temporary admin requiring password change.');
 }
 
 db.exec(`CREATE TABLE IF NOT EXISTS password_reset_otps (
@@ -261,7 +262,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Central error handler
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error('[REQUEST_ERROR]', { message: maskSensitiveText(err.message), name: err.name, method: req.method, path: req.path });
   res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Something went wrong. Please try again.' });
 });
 
@@ -305,7 +306,7 @@ if (db.isServerless) {
   process.on('SIGTERM', gracefulShutdown);
   process.on('SIGINT', gracefulShutdown);
   process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    console.error('Uncaught Exception:', { message: maskSensitiveText(err.message), name: err.name });
     gracefulShutdown();
   });
 }

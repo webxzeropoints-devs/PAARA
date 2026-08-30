@@ -29,7 +29,7 @@ async function request(path, body = {}) {
 
   // Customer fresh registration path.
   const blank = await request('/auth/register', { name: 'Blank Email Test', password: customerPassword, phone: '9999999999' });
-  console.log('BLANK_EMAIL_SIGNUP', blank.status, JSON.stringify(blank.data));
+  console.log('BLANK_EMAIL_SIGNUP', blank.status);
 
   const customerCreate = await request('/auth/register', {
     name: 'Fresh Customer',
@@ -37,31 +37,30 @@ async function request(path, body = {}) {
     password: customerPassword,
     phone: '9999999999',
   });
-  console.log('CUSTOMER_REGISTER', customerCreate.status, JSON.stringify(customerCreate.data));
+  console.log('CUSTOMER_REGISTER', customerCreate.status);
 
   const signupOtp = db.prepare('SELECT code FROM email_otps WHERE email = ? ORDER BY id DESC LIMIT 1').get(customerEmail);
   const signupVerify = await request('/auth/email/verify-otp', { email: customerEmail, code: signupOtp.code });
-  console.log('CUSTOMER_SIGNUP_VERIFY', signupVerify.status, JSON.stringify(signupVerify.data));
+  console.log('CUSTOMER_SIGNUP_VERIFY', signupVerify.status, !!signupVerify.data?.token);
 
   const loginResult = await request('/auth/login', { email: customerEmail, password: customerPassword });
-  console.log('CUSTOMER_LOGIN_WITH_SAME_PASSWORD', loginResult.status, JSON.stringify(loginResult.data));
+  console.log('CUSTOMER_LOGIN_WITH_SAME_PASSWORD', loginResult.status, !!loginResult.data?.requires_otp);
 
   const customerLoginCheck = !loginResult.data || loginResult.data.requires_otp || loginResult.data.success;
   console.log('CUSTOMER_LOGIN_PASSED', customerLoginCheck);
 
   const adminTempLogin = await request('/admin-auth/login', { email: adminEmail, password: adminOldPassword });
-  console.log('ADMIN_TEMP_LOGIN', adminTempLogin.status, JSON.stringify(adminTempLogin.data));
+  console.log('ADMIN_TEMP_LOGIN', adminTempLogin.status, !!adminTempLogin.data?.admin_id);
 
   const adminId = db.prepare('SELECT id FROM admins WHERE email = ?').get(adminEmail).id;
   const adminSetPassword = await request('/admin-auth/set-password', { admin_id: adminId, new_password: adminNewPassword });
-  console.log('ADMIN_SET_PASSWORD', adminSetPassword.status, JSON.stringify(adminSetPassword.data));
+  console.log('ADMIN_SET_PASSWORD', adminSetPassword.status, !!adminSetPassword.data?.success);
 
   const adminAfterSet = await request('/admin-auth/login', { email: adminEmail, password: adminNewPassword });
-  console.log('ADMIN_LOGIN_AFTER_SET', adminAfterSet.status, JSON.stringify(adminAfterSet.data));
+  console.log('ADMIN_LOGIN_AFTER_SET', adminAfterSet.status, !!adminAfterSet.data?.admin_id);
 
   const adminHash = db.prepare('SELECT password_hash FROM admins WHERE email = ?').get(adminEmail).password_hash;
   console.log('ADMIN_HASH_MATCHES', bcrypt.compareSync(adminNewPassword, adminHash));
-  console.log('ADMIN_HASH_PREFIX', adminHash.slice(0, 30));
 
   const customerHash = db.prepare('SELECT password_hash FROM customers WHERE email = ?').get(customerEmail).password_hash;
   console.log('CUSTOMER_HASH_MATCHES', bcrypt.compareSync(customerPassword, customerHash));

@@ -222,6 +222,6 @@ const insertAdmin = db.prepare(`
   VALUES (?, ?, ?, ?)
 `);
 insertAdmin.run('Paara Admin', 'paara@gmail.com', bcrypt.hashSync('Paara@123', 10), 1);
-console.log('✔ Seeded placeholder admin (paara@gmail.com) with forced password change enabled.');
+console.log('✔ Seeded placeholder admin with forced password change enabled.');
 
 

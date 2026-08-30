@@ -5,6 +5,7 @@ const razorpay = require('../utils/razorpay');
 const { requireAuth } = require('../middleware/auth');
 const { trySendEmail } = require('../utils/email');
 const { createInvoicePdf } = require('../utils/invoice');
+const { maskSensitiveText } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -67,7 +68,7 @@ router.post('/create-razorpay-order', requireAuth, async (req, res) => {
       paara_order_id: order.id
     });
   } catch (err) {
-    console.error('Razorpay order creation failed:', err);
+    console.error('Razorpay order creation failed:', { message: maskSensitiveText(err.message), name: err.name });
     res.status(502).json({ error: 'Could not initiate payment. Please try again.' });
   }
 });
@@ -114,7 +115,7 @@ router.post('/verify', requireAuth, (req, res) => {
 
   // Signature valid — mark the order paid, snapshot eligibility, and decrement stock once.
   markOrderPaid(order.id, razorpay_payment_id);
-  sendPaidInvoice(order.id, req.customer.id).catch((error) => console.error('Invoice email flow failed:', error));
+  sendPaidInvoice(order.id, req.customer.id).catch((error) => console.error('Invoice email flow failed:', { message: maskSensitiveText(error.message), name: error.name }));
 
   res.json({ success: true, order_id: order.id, message: 'Payment verified. Order confirmed.' });
 });

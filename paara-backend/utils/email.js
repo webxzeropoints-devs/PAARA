@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { maskSensitiveText } = require('./validate');
 
 const smtpConfig = {
   user: String(process.env.EMAIL_USER || '').trim(),
@@ -32,10 +33,10 @@ async function sendEmail({ to, subject, text, attachments = [] }) {
 async function trySendEmail(options, context) {
   try {
     const result = await sendEmail(options);
-    console.log(`[Email sent] ${context}`, { messageId: result.messageId });
+    console.log(`[Email sent] ${maskSensitiveText(context)}`, { messageId: result.messageId });
     return { success: true, result };
   } catch (error) {
-    console.error(`[Email failed] ${context}`, error);
+    console.error(`[Email failed] ${maskSensitiveText(context)}`, { message: maskSensitiveText(error.message), name: error.name });
     return { success: false, error };
   }
 }

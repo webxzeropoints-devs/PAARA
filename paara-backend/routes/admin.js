@@ -148,7 +148,7 @@ router.post('/products', async (q, s) => {
     writeImages(result.lastInsertRowid, allImages);
     s.json(decorate([db.prepare('SELECT * FROM products WHERE id=?').get(result.lastInsertRowid)])[0]);
   } catch (err) {
-    s.status(400).json({ error: err.message });
+    s.status(400).json({ error: 'Could not create the product.' });
   }
 });
 
@@ -171,7 +171,7 @@ router.put('/products/:id', async (q, s) => {
     db.prepare('UPDATE products SET ' + Object.keys(updates).map(k => k + '=?').join(',') + ' WHERE id=?').run(...Object.values(updates), q.params.id);
     s.json(decorate([db.prepare('SELECT * FROM products WHERE id=?').get(q.params.id)])[0]);
   } catch (err) {
-    s.status(400).json({ error: err.message });
+    s.status(400).json({ error: 'Could not update the product.' });
   }
 });
 

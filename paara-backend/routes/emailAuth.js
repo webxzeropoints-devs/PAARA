@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const { issueEmailOtp, consumeEmailOtp, normalizeEmail } = require('../utils/emailOtp');
+const { maskEmail } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -19,10 +20,10 @@ router.post('/verify-otp', (req, res) => {
   if (!email || !/^\d{6}$/.test(code)) return res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message: 'email and a 6-digit code are required.' });
   const record = consumeEmailOtp(email, code);
   if (!record) return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
-  console.log('[AUTH_OTP_VERIFY]', { channel: 'email', success: true });
+  console.log('[AUTH_OTP_VERIFY]', { channel: 'email', email: maskEmail(email), success: true });
 
-  let customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(email)
-    || db.prepare('SELECT * FROM customers WHERE lower(email) = ?').get(email);
+  let customer = db.prepare('SELECT id, name, email FROM customers WHERE email = ?').get(email)
+    || db.prepare('SELECT id, name, email FROM customers WHERE lower(email) = ?').get(email);
 
   if (!customer) return res.status(404).json({ ok: false, code: 'ACCOUNT_NOT_FOUND', message: 'No customer account was found for this email.' });
 

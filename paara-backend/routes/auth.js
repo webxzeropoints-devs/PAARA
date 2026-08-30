@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../db/database');
 const { issueEmailOtp, normalizeEmail } = require('../utils/emailOtp');
 const { issuePasswordResetOtp, consumePasswordResetOtp, markPasswordResetOtpUsed } = require('../utils/passwordReset');
-const { normalizePhone, validatePassword, PASSWORD_ERROR, PHONE_ERROR } = require('../utils/validate');
+const { normalizePhone, validatePassword, PASSWORD_ERROR, PHONE_ERROR, maskEmail } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -21,7 +21,7 @@ router.post('/register', async (req, res) => {
   if (existing) return res.status(409).json({ ok: false, code: 'ACCOUNT_EXISTS', message: 'An account with this email already exists.' });
 
   const password_hash = bcrypt.hashSync(password, 10);
-  console.log('[AUTH_REGISTER]', { emailDomain: normalizedEmail.split('@')[1] });
+  console.log('[AUTH_REGISTER]', { email: maskEmail(normalizedEmail) });
   const info = db
     .prepare('INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)')
     .run(name, normalizedEmail, normalizedPhone, password_hash);
@@ -41,19 +41,13 @@ router.post('/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message: 'email and password are required.' });
 
   const normalizedEmail = normalizeEmail(email);
-  const customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(normalizedEmail)
-    || db.prepare('SELECT * FROM customers WHERE lower(email) = ?').get(normalizedEmail);
+  const customer = db.prepare('SELECT id, name, email, phone, password_hash FROM customers WHERE email = ?').get(normalizedEmail)
+    || db.prepare('SELECT id, name, email, phone, password_hash FROM customers WHERE lower(email) = ?').get(normalizedEmail);
   const passwordMatches = !!customer && bcrypt.compareSync(password, customer.password_hash);
   console.log('[AUTH_LOGIN]', {
-    emailDomain: normalizedEmail?.split('@')[1],
+    email: maskEmail(normalizedEmail),
     customerFound: !!customer,
     passwordMatches,
-    hashExists: !!customer?.password_hash,
-    hashLength: customer?.password_hash?.length,
-    hashPrefix: customer?.password_hash?.substring(0, 7),
-    bcryptRounds: customer?.password_hash
-      ? bcrypt.getRounds(customer.password_hash)
-      : null
   });
   if (!customer || !passwordMatches) {
     return res.status(401).json({ ok: false, code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' });
@@ -78,7 +72,7 @@ router.post('/forgot-password/request', async (req, res) => {
     await issuePasswordResetOtp(email, 'customer');
     return res.json({ success: true, message: 'Password reset code sent to your email.' });
   } catch (error) {
-    return res.status(503).json({ error: error.message });
+    return res.status(503).json({ error: 'Unable to send the password reset email right now.' });
   }
 });
 
