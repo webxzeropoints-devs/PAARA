@@ -206,7 +206,7 @@ router.put('/paara-irl', (q, s) => {
   const { image_url, owner_image_url, caption } = q.body;
   const existing = db.prepare('SELECT image_url FROM paara_irl WHERE id=1').get();
   const nextImageUrl = image_url || existing?.image_url || '';
-  db.prepare('UPDATE paara_irl SET image_url=?,owner_image_url=?,caption=?,updated_at=datetime("now") WHERE id=1').run(nextImageUrl, owner_image_url || null, caption || null);
+  db.prepare("UPDATE paara_irl SET image_url=?,owner_image_url=?,caption=?,updated_at=datetime('now') WHERE id=1").run(nextImageUrl, owner_image_url || null, caption || null);
   s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get());
 });
 
@@ -253,7 +253,7 @@ router.post('/gift-card-rules', (q, s) => {
 router.put('/gift-card-rules/:id', (q, s) => {
   const { product_id, gift_card_value, is_active } = q.body;
   if (!product_id || !Number.isFinite(Number(gift_card_value)) || Number(gift_card_value) <= 0) return s.status(400).json({ error: 'Invalid gift card rule data.' });
-  const r = db.prepare('UPDATE gift_card_rules SET product_id=?,gift_card_value=?,is_active=?,updated_at=datetime("now") WHERE id=?').run(product_id, gift_card_value, is_active ? 1 : 0, q.params.id);
+  const r = db.prepare("UPDATE gift_card_rules SET product_id=?,gift_card_value=?,is_active=?,updated_at=datetime('now') WHERE id=?").run(product_id, gift_card_value, is_active ? 1 : 0, q.params.id);
   if (!r.changes) return s.status(404).json({ error: 'Gift card rule not found.' });
   s.json({ success: true });
 });
@@ -271,7 +271,7 @@ router.post('/orders/:id/grant-gift-card', (q, s) => {
     const order = db.prepare('SELECT id,customer_id,gift_card_eligible_amount,gift_card_granted_at FROM orders WHERE id=?').get(q.params.id);
     if (!order) throw new Error('Order not found.');
     if (order.gift_card_granted_at) throw new Error('Gift card already granted for this order.');
-    db.prepare('UPDATE orders SET gift_card_granted_at=datetime("now"),gift_card_granted_by=? WHERE id=?').run(q.body.admin_id || 1, q.params.id);
+    db.prepare("UPDATE orders SET gift_card_granted_at=datetime('now'),gift_card_granted_by=? WHERE id=?").run(q.body.admin_id || 1, q.params.id);
     db.prepare('UPDATE customers SET gift_card_balance = gift_card_balance + ? WHERE id=?').run(order.gift_card_eligible_amount, order.customer_id);
     return { success: true, amount: order.gift_card_eligible_amount };
   })();
