@@ -412,7 +412,6 @@ export default function Checkout() {
                           {shipping.method || "Standard"}
                         </span>
                       </p>
-                      <p className="font-numeric mt-1">{formatPrice(shipping.amount)}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-cocoa/60 mt-2">Calculating shipping…</p>
@@ -487,10 +486,6 @@ export default function Checkout() {
                   <span className="text-cocoa/70">Subtotal</span>
                   <span className="font-numeric">{formatPrice(order.subtotal)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-cocoa/70">Shipping</span>
-                  <span className="font-numeric">{formatPrice(order.shipping_amount)}</span>
-                </div>
                 <div className="flex justify-between border-t border-cocoa/15 pt-2 mt-2 font-medium">
                   <span>Total</span>
                   <span className="font-numeric">{formatPrice(order.total_amount)}</span>
@@ -505,7 +500,7 @@ export default function Checkout() {
               </div>
             ) : (
               <p className="text-xs text-cocoa/60">
-                Shipping will be calculated by the backend once you place the order. Product prices include applicable taxes.
+                Product prices include applicable taxes.
               </p>
             )}
           </aside>

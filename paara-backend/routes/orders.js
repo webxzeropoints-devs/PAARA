@@ -6,6 +6,8 @@ const { calculateShipping } = require('../utils/shipping');
 const { createInvoicePdf } = require('../utils/invoice');
 
 const router = express.Router();
+// Keep shipping calculation active, but temporarily exclude its charge from customer totals.
+const INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL = process.env.INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL === 'true';
 
 /**
  * POST /api/orders
@@ -57,7 +59,7 @@ router.post('/', requireAuth, (req, res) => {
 
   const { gstAmount } = calculateGST(subtotal);
   const shipping = calculateShipping({ city: address.city, lat: address.lat, lng: address.lng });
-  const totalAmount = round2(subtotal + gstAmount + shipping.amount);
+  const totalAmount = round2(subtotal + gstAmount + (INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL ? shipping.amount : 0));
 
   const insertOrder = db.prepare(`
     INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount)
