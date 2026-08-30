@@ -114,16 +114,16 @@ h3 {
 .love-track {
   display: flex;
   width: max-content;
-  gap: 1.5rem;
+  gap: 3rem;
   animation: paara-love-marquee 34s linear infinite;
 }
 
 /* Preserve the existing marquee card treatment while preventing flex sizing
    from collapsing a card during the continuous track animation. */
 .love-track > article {
-  flex: 0 0 290px;
-  width: 290px;
-  min-width: 290px;
+  flex: 0 0 580px;
+  width: 580px;
+  min-width: 580px;
   min-height: 228px;
   padding: 0;
   background: transparent;
@@ -159,9 +159,9 @@ h3 {
 
 @media (min-width: 768px) {
   .love-track > article {
-    flex-basis: 360px;
-    width: 360px;
-    min-width: 360px;
+    flex-basis: 720px;
+    width: 720px;
+    min-width: 720px;
     min-height: 242px;
   }
 }
