@@ -123,7 +123,7 @@ h3 {
 
 @keyframes paara-love-marquee {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(calc(-50% - 28px)); }
 }
 
 @keyframes paara-collection-marquee {
@@ -136,8 +136,14 @@ h3 {
   overflow: hidden;
 }
 
+.love-marquee {
+  display: flex;
+  align-items: center;
+}
+
 .love-track {
   display: flex;
+  align-items: center;
   width: max-content;
   margin-left: calc((100vw - 540px) / 2);
   gap: 3.5rem;
@@ -153,6 +159,12 @@ h3 {
   min-height: 228px;
   padding: 0;
   background: transparent;
+  transition: transform 300ms ease-out, filter 300ms ease-out;
+}
+
+.love-track > article:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 12px 22px rgba(74, 54, 38, 0.22));
 }
 
 .customer-love-section {

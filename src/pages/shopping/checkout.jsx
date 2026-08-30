@@ -528,6 +528,10 @@ export default function Checkout() {
                   <span className="text-cocoa/70">Subtotal</span>
                   <span className="font-numeric">{formatPrice(order.subtotal)}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-cocoa/70">Delivery</span>
+                  <span className="font-numeric">₹0</span>
+                </div>
                 <div className="flex justify-between border-t border-cocoa/15 pt-2 mt-2 font-medium">
                   <span>Total</span>
                   <span className="font-numeric">{formatPrice(customerTotal)}</span>
@@ -543,6 +547,10 @@ export default function Checkout() {
               </div>
             ) : (
               <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-cocoa/70">Delivery</span>
+                  <span className="font-numeric">₹0</span>
+                </div>
                 <div className="flex justify-between border-t border-cocoa/15 pt-2 font-medium">
                   <span>Total</span>
                   <span className="font-numeric">{formatPrice(customerTotal)}</span>
