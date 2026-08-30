@@ -44,7 +44,17 @@ router.post('/login', async (req, res) => {
   const customer = db.prepare('SELECT * FROM customers WHERE email = ?').get(normalizedEmail)
     || db.prepare('SELECT * FROM customers WHERE lower(email) = ?').get(normalizedEmail);
   const passwordMatches = !!customer && bcrypt.compareSync(password, customer.password_hash);
-  console.log('[AUTH_LOGIN]', { emailDomain: normalizedEmail?.split('@')[1], customerFound: !!customer, passwordMatches });
+  console.log('[AUTH_LOGIN]', {
+    emailDomain: normalizedEmail?.split('@')[1],
+    customerFound: !!customer,
+    passwordMatches,
+    hashExists: !!customer?.password_hash,
+    hashLength: customer?.password_hash?.length,
+    hashPrefix: customer?.password_hash?.substring(0, 7),
+    bcryptRounds: customer?.password_hash
+      ? bcrypt.getRounds(customer.password_hash)
+      : null
+  });
   if (!customer || !passwordMatches) {
     return res.status(401).json({ ok: false, code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' });
   }
