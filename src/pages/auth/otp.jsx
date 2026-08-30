@@ -3,10 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import OTPVerification from "../../components/OTPVerification";
-import { apiPost, setToken } from "../../lib/api";
+import { apiPost } from "../../lib/api";
 
-// Frontend-only OTP step used after Login and Register.
-// Expects location.state = { pendingToken, redirectTo, mode: "login" | "register" }
+// Frontend-only OTP step used after registration.
+// Expects location.state = { email, mode: "register" }
 export default function OTP() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -21,12 +21,8 @@ export default function OTP() {
   }, []);
 
   const onVerified = async (code) => {
-    const result = await apiPost("/auth/email/verify-otp", { email: state.email, code });
-    if (result?.token) {
-      setToken(result.token);
-      window.dispatchEvent(new Event("paara-auth-change"));
-    }
-    navigate(state.redirectTo || "/account/orders", { replace: true });
+    await apiPost("/auth/email/verify-otp", { email: state.email, code });
+    navigate("/login", { replace: true });
   };
 
   const onResend = () => apiPost("/auth/email/request-otp", { email: state.email });
@@ -36,7 +32,7 @@ export default function OTP() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <OTPVerification
           title="Verify it's you"
-          subtitle={`${state.mode === "register" ? "One quick step to finish creating your account." : "Enter the code to finish signing in."} Sent to ${state.email}.`}
+          subtitle={`One quick step to finish creating your account. Sent to ${state.email}.`}
           onVerified={onVerified}
           onResend={onResend}
           onBack={() => navigate(-1)}

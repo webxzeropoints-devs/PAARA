@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const { issueEmailOtp, normalizeEmail } = require('../utils/emailOtp');
 const { issuePasswordResetOtp, consumePasswordResetOtp, markPasswordResetOtpUsed } = require('../utils/passwordReset');
@@ -53,12 +54,14 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ ok: false, code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' });
   }
 
+  let token;
   try {
-    await issueEmailOtp(customer.email, 'Login OTP');
+    token = jwt.sign({ id: customer.id, email: customer.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
   } catch (error) {
-    return res.status(503).json({ ok: false, code: 'OTP_DELIVERY_UNAVAILABLE', message: 'Verification email could not be sent. Please try again.' });
+    console.error('[JWT_SIGN_ERROR]', error.message);
+    return res.status(500).json({ ok: false, code: 'CONFIGURATION_ERROR', message: 'Server configuration error. Contact support.' });
   }
-  res.json({ ok: true, success: true, requires_otp: true, requiresOtp: true, email: customer.email, customer: { id: customer.id, name: customer.name, email: customer.email } });
+  res.json({ ok: true, success: true, token, customer: { id: customer.id, name: customer.name, email: customer.email } });
 });
 
 router.post('/forgot-password/request', async (req, res) => {

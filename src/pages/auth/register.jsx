@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-import { authRegister, setToken } from "../../lib/api";
+import { authRegister } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import { isStrongPassword, normalizePhone, PASSWORD_ERROR, PHONE_ERROR } from "../../lib/validation";
 

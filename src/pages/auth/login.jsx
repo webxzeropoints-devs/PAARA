@@ -18,8 +18,10 @@ export default function Login() {
     setSubmitting(true);
     try {
       const res = await authLogin(email.trim(), password);
-      if (!res?.requires_otp || !res.email) throw new Error("No OTP challenge returned");
-      navigate("/otp", { state: { email: res.email, redirectTo: "/account/orders", mode: "login" } });
+      if (!res?.token) throw new Error("No login token returned");
+      setToken(res.token);
+      window.dispatchEvent(new Event("paara-auth-change"));
+      navigate("/account/orders", { replace: true });
     } catch (err) {
       setError(err?.message || "Login failed");
     } finally {
