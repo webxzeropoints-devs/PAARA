@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ["Playfair Display", "serif"],
+        display: ["Cormorant Garamond", "serif"],
         script: ["BrilliantCut", "cursive"],
         body: ["Jost", "sans-serif"],
       },

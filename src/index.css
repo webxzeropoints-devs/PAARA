@@ -39,8 +39,8 @@ body {
 
 /* Shared display treatment for page and product headings. */
 .font-display {
-  font-family: "Playfair Display", serif;
-  font-weight: 600;
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -48,8 +48,8 @@ body {
 h1,
 h2,
 h3 {
-  font-family: "Playfair Display", serif;
-  font-weight: 600;
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }

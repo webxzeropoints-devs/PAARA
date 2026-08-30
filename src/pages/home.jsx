@@ -278,7 +278,7 @@ function MeetOwner() {
           </div>
           <div className="max-w-sm pt-1">
             <blockquote className="text-2xl md:text-[1.9rem] leading-[1.22] text-cocoa/85 italic font-medium" style={{ fontFamily: "Cormorant Garamond, serif" }}>“Paara is a reflection of my love for the ocean and the belief that simplicity is the truest form of elegance.”</blockquote>
-            <p className="font-script mt-7 text-3xl md:text-4xl text-cocoa">— Parul A.</p>
+            <p className="font-script mt-7 text-3xl md:text-4xl text-cocoa">— Dharshini</p>
             <p className="mt-1 text-[10px] uppercase tracking-[.24em] text-cocoa/60">Founder</p>
             <Link to="/our-story" className="inline-block mt-7 text-xs uppercase tracking-[.18em] text-gold border-b border-gold/70 pb-1">Read our story →</Link>
           </div>
