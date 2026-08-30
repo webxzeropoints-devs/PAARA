@@ -20,7 +20,6 @@ export function AdminProvider({ children }) {
     const savedToken = localStorage.getItem(ADMIN_TOKEN_KEY);
     return savedToken ? "authenticated" : "credentials";
   });
-  const [pendingAdminId, setPendingAdminId] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +29,6 @@ export function AdminProvider({ children }) {
     setToken("");
     setAdmin(null);
     setLoginStep("credentials");
-    setPendingAdminId(null);
     setError("");
   }, []);
 
@@ -66,35 +64,12 @@ export function AdminProvider({ children }) {
         setToken(res.token);
         setAdmin(res.admin);
         setLoginStep("authenticated");
-        setPendingAdminId(null);
         return res;
       }
 
       return res;
     } catch (err) {
       setError(err.message || "Login failed.");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const verifyOtp = useCallback(async (adminId, otp) => {
-    setError("");
-    setLoading(true);
-    try {
-      const res = await apiPost("/admin-auth/verify-otp", { admin_id: adminId, otp });
-      if (res.token) {
-        localStorage.setItem(ADMIN_TOKEN_KEY, res.token);
-        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(res.admin));
-        setToken(res.token);
-        setAdmin(res.admin);
-        setLoginStep("authenticated");
-        setPendingAdminId(null);
-      }
-      return res;
-    } catch (err) {
-      setError(err.message || "Invalid OTP.");
       throw err;
     } finally {
       setLoading(false);
@@ -118,11 +93,9 @@ export function AdminProvider({ children }) {
     token,
     admin,
     loginStep,
-    pendingAdminId,
     error,
     loading,
     requestLogin,
-    verifyOtp,
     logout,
     updateProfile,
   };

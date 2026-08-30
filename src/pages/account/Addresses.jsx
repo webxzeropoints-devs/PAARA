@@ -1,70 +1,44 @@
 import React, { useEffect, useState } from "react";
-import { Pencil, Trash2, Star, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import AccountPageLayout from "./AccountPageLayout";
+import { getAddresses, postAddress } from "../../lib/api";
 
-const KEY = "paara_addresses";
-
-const readAddresses = () => {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeAddresses = (list) => {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(list));
-  } catch {
-    // ignore quota errors
-  }
-};
-
-const emptyForm = { name: "", line1: "", line2: "", city: "", state: "", pincode: "", phone: "" };
+const emptyForm = { line1: "", line2: "", city: "", state: "", pincode: "" };
 
 export default function Addresses() {
-  const [addresses, setAddresses] = useState(() => readAddresses());
-  const [editingId, setEditingId] = useState(null);
+  const [addresses, setAddresses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    writeAddresses(addresses);
-  }, [addresses]);
+    getAddresses()
+      .then((data) => setAddresses(Array.isArray(data) ? data : data?.addresses || []))
+      .catch((err) => setError(err.message || "Could not load saved addresses."));
+  }, []);
 
   const openAdd = () => {
     setForm(emptyForm);
-    setEditingId(null);
+    setError("");
     setShowForm(true);
   };
 
-  const openEdit = (address) => {
-    setForm(address);
-    setEditingId(address.id);
-    setShowForm(true);
-  };
-
-  const remove = (id) => {
-    setAddresses((prev) => prev.filter((a) => a.id !== id));
-  };
-
-  const setDefault = (id) => {
-    setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })));
-  };
-
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      setAddresses((prev) => prev.map((a) => (a.id === editingId ? { ...form, id: editingId, isDefault: a.isDefault } : a)));
-    } else {
-      const isDefault = addresses.length === 0;
-      setAddresses((prev) => [...prev, { ...form, id: `addr-${Date.now()}`, isDefault }]);
+    setError("");
+    setSaving(true);
+    try {
+      const created = await postAddress({ ...form, is_default: addresses.length === 0 });
+      setAddresses((prev) => [created, ...prev.filter((address) => address.id !== created.id)]);
+      setShowForm(false);
+      setForm(emptyForm);
+    } catch (err) {
+      setError(err.message || "Could not save address.");
+    } finally {
+      setSaving(false);
     }
-    setShowForm(false);
-    setForm(emptyForm);
-    setEditingId(null);
   };
 
   return (
@@ -88,10 +62,6 @@ export default function Addresses() {
 
       {showForm && (
         <form onSubmit={onSubmit} className="border border-cocoa/10 rounded-sm p-6 mb-6 bg-white/50 space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <Field label="Full name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
-            <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} required />
-          </div>
           <Field label="Address line 1" value={form.line1} onChange={(v) => setForm({ ...form, line1: v })} required />
           <Field label="Address line 2" value={form.line2} onChange={(v) => setForm({ ...form, line2: v })} />
           <div className="grid md:grid-cols-3 gap-4">
@@ -101,13 +71,12 @@ export default function Addresses() {
           </div>
           <div className="flex gap-3 pt-2">
             <button type="submit" className="bg-gold text-white px-6 py-2.5 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors">
-              {editingId ? "Save changes" : "Save address"}
+              {saving ? "Saving..." : "Save address"}
             </button>
             <button
               type="button"
               onClick={() => {
                 setShowForm(false);
-                setEditingId(null);
               }}
               className="px-6 py-2.5 text-xs uppercase tracking-widest text-cocoa/60 hover:text-cocoa transition-colors"
             >
@@ -117,34 +86,17 @@ export default function Addresses() {
         </form>
       )}
 
+      {error && <p className="mb-6 text-sm text-red-700">{error}</p>}
+
       <div className="space-y-4">
         {addresses.map((address) => (
           <div key={address.id} className="border border-cocoa/10 rounded-sm p-5 flex flex-col md:flex-row md:items-start md:justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <p className="font-display text-lg">{address.name}</p>
-                {address.isDefault && (
-                  <span className="text-[10px] uppercase tracking-widest bg-cocoa text-sand px-2 py-0.5 rounded-sm">Default</span>
-                )}
-              </div>
+              {address.is_default && <span className="text-[10px] uppercase tracking-widest bg-cocoa text-sand px-2 py-0.5 rounded-sm">Default</span>}
               <p className="text-sm text-cocoa/70 mt-1">
                 {address.line1}
                 {address.line2 ? `, ${address.line2}` : ""}, {address.city}, {address.state} - {address.pincode}
               </p>
-              <p className="text-sm text-cocoa/60 mt-1">{address.phone}</p>
-            </div>
-            <div className="flex items-center gap-4 shrink-0">
-              {!address.isDefault && (
-                <button type="button" onClick={() => setDefault(address.id)} aria-label="Set as default" className="text-cocoa/60 hover:text-gold transition-colors" title="Set as default">
-                  <Star size={16} strokeWidth={1.4} />
-                </button>
-              )}
-              <button type="button" onClick={() => openEdit(address)} aria-label="Edit address" className="text-cocoa/60 hover:text-gold transition-colors">
-                <Pencil size={16} strokeWidth={1.4} />
-              </button>
-              <button type="button" onClick={() => remove(address.id)} aria-label="Delete address" className="text-cocoa/60 hover:text-red-600 transition-colors">
-                <Trash2 size={16} strokeWidth={1.4} />
-              </button>
             </div>
           </div>
         ))}
