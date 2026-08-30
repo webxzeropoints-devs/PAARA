@@ -154,7 +154,7 @@ export default function AdminDashboard() {
                           ) : null}
                         </div>
                         <div className="leading-tight">
-                          <p className="text-cocoa">{product.name}</p>
+                          <p className="font-product-name text-cocoa">{product.name}</p>
                           <p className="text-[10px] uppercase tracking-[.14em] text-cocoa/50">{product.slug}</p>
                         </div>
                       </div>
@@ -253,7 +253,7 @@ function ProductCard({ product, onSelect, isSelected }) {
 
       <div className="p-3">
         <div className="text-[10px] uppercase tracking-[.22em] font-display text-cocoa/60">PAARA. COLLECTION</div>
-        <p className="mt-1 text-sm font-display text-cocoa truncate">{product.name}</p>
+        <p className="mt-1 text-sm font-product-name text-cocoa truncate">{product.name}</p>
         <p className="mt-1 text-xs text-cocoa/60 font-numeric">₹{Number(product.price).toLocaleString("en-IN")}</p>
       </div>
 
@@ -380,7 +380,7 @@ function VaultSelector({ products, initialSelection, onSaved }) {
                     <ProductImage src={product.images[0]} alt={product.name} />
                   ) : <ProductPlaceholder />}
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                    <p className="text-sm text-sand">{product.name}</p>
+                    <p className="font-product-name text-sm text-sand">{product.name}</p>
                   </div>
                   <div className="absolute top-2 right-2 flex gap-1">
                     <button

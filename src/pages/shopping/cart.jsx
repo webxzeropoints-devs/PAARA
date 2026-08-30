@@ -127,7 +127,7 @@ export default function Cart() {
                     <div>
                       <Link
                         to={`/product/${line.product?.slug || line.product_id}`}
-                        className="font-display text-base hover:text-gold transition-colors block"
+                        className="font-product-name text-base hover:text-gold transition-colors block"
                       >
                         {line.product?.name || "Paara piece"}
                       </Link>

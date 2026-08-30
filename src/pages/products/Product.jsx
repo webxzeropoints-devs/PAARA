@@ -1159,6 +1159,7 @@ const Product = () => {
                     </div>
 
                     <h3
+                      className="font-product-name"
                       onClick={() =>
                         openProduct(product)
                       }

@@ -166,7 +166,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
         <Link
           to={`/product/${product?.slug || product?.id}`}
           onClick={(e) => e.stopPropagation()}
-          className={`font-display text-base text-cocoa hover:text-gold transition-colors block`}
+          className={`font-product-name text-base text-cocoa hover:text-gold transition-colors block`}
         >
           {product?.name}
         </Link>

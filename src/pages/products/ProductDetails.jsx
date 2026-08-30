@@ -143,7 +143,7 @@ export default function ProductDetails() {
                 {product.category}
               </p>
             )}
-            <h1 className="font-display text-3xl md:text-4xl mb-3">{product.name}</h1>
+            <h1 className="font-product-name text-3xl md:text-4xl mb-3">{product.name}</h1>
             {product.description && (
               <p className="text-sm text-cocoa/70 leading-relaxed mb-6">{product.description}</p>
             )}

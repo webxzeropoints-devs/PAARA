@@ -32,6 +32,12 @@ body {
   letter-spacing: 0.025em;
 }
 
+.font-product-name {
+  font-family: "Spectral", serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
 select {
   transition: background-color 200ms ease, border-color 200ms ease, opacity 200ms ease, transform 200ms ease;
 }
@@ -133,16 +139,16 @@ h3 {
 .love-track {
   display: flex;
   width: max-content;
-  gap: 2rem;
+  gap: 2.5rem;
   animation: paara-love-marquee 34s linear infinite;
 }
 
 /* Preserve the existing marquee card treatment while preventing flex sizing
    from collapsing a card during the continuous track animation. */
 .love-track > article {
-  flex: 0 0 360px;
-  width: 360px;
-  min-width: 360px;
+  flex: 0 0 450px;
+  width: 450px;
+  min-width: 450px;
   min-height: 228px;
   padding: 0;
   background: transparent;
@@ -183,9 +189,9 @@ h3 {
 
 @media (min-width: 768px) {
   .love-track > article {
-    flex-basis: 360px;
-    width: 360px;
-    min-width: 360px;
+    flex-basis: 450px;
+    width: 450px;
+    min-width: 450px;
     min-height: 242px;
   }
 }

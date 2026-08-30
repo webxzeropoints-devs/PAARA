@@ -111,7 +111,7 @@ export default function OrderConfirmation() {
                       key={idx}
                       className="flex items-center justify-between border-b border-cocoa/10 pb-3 text-sm"
                     >
-                      <span>
+                      <span className="font-product-name">
                         {item.name || `Product ${item.product_id}`}{" "}
                         <span className="text-cocoa/50">× {item.quantity}</span>
                       </span>
