@@ -9,6 +9,23 @@ const router = express.Router();
 // Keep shipping calculation active, but temporarily exclude its charge from customer totals.
 const INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL = process.env.INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL === 'true';
 
+function buildLineItems(items) {
+  const lineItems = [];
+  let subtotal = 0;
+  for (const item of items) {
+    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+      throw new Error('Each item quantity must be a positive integer.');
+    }
+    const product = db.prepare('SELECT * FROM products WHERE id = ? AND is_active = 1').get(item.product_id);
+    if (!product) throw new Error(`Product ${item.product_id} not found.`);
+    if (product.stock < item.quantity) throw new Error(`"${product.name}" only has ${product.stock} in stock.`);
+    const lineTotal = round2(product.price * item.quantity);
+    subtotal = round2(subtotal + lineTotal);
+    lineItems.push({ product_id: product.id, product_name: product.name, unit_price: product.price, quantity: item.quantity, line_total: lineTotal });
+  }
+  return { lineItems, subtotal };
+}
+
 /**
  * POST /api/orders
  * body: { items: [{ product_id, quantity }], address_id }
@@ -29,32 +46,12 @@ router.post('/', requireAuth, (req, res) => {
   if (!address) return res.status(400).json({ error: 'Invalid address.' });
   const customer = db.prepare('SELECT name, email, phone FROM customers WHERE id = ?').get(req.customer.id);
 
-  // Validate items + compute subtotal from real DB prices
-  const lineItems = [];
-  let subtotal = 0;
-
-  for (const item of items) {
-    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
-      return res.status(400).json({ error: 'Each item quantity must be a positive integer.' });
-    }
-    const product = db
-      .prepare('SELECT * FROM products WHERE id = ? AND is_active = 1')
-      .get(item.product_id);
-
-    if (!product) return res.status(400).json({ error: `Product ${item.product_id} not found.` });
-    if (product.stock < item.quantity) {
-      return res.status(400).json({ error: `"${product.name}" only has ${product.stock} in stock.` });
-    }
-
-    const lineTotal = round2(product.price * item.quantity);
-    subtotal = round2(subtotal + lineTotal);
-    lineItems.push({
-      product_id: product.id,
-      product_name: product.name,
-      unit_price: product.price,
-      quantity: item.quantity,
-      line_total: lineTotal
-    });
+  let lineItems;
+  let subtotal;
+  try {
+    ({ lineItems, subtotal } = buildLineItems(items));
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
 
   const { gstAmount } = calculateGST(subtotal);
@@ -98,6 +95,27 @@ router.post('/', requireAuth, (req, res) => {
     total_amount: totalAmount,
     items: lineItems
   });
+});
+
+router.post('/proforma', requireAuth, (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Cart items are required.' });
+  try {
+    const { lineItems, subtotal } = buildLineItems(items);
+    const { gstAmount } = calculateGST(subtotal);
+    createInvoicePdf({ id: 'PROFORMA', created_at: new Date().toISOString(), status: 'proforma', payment_status: 'unpaid', subtotal, gst_amount: gstAmount, shipping_amount: 0, total_amount: round2(subtotal + gstAmount) }, lineItems, null)
+      .then((pdf) => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="paara-proforma-invoice.pdf"');
+        res.end(pdf);
+      })
+      .catch((error) => {
+        console.error('[PROFORMA_GENERATION_FAILED]', { message: error.message, name: error.name });
+        res.status(500).json({ error: 'Could not generate proforma invoice.' });
+      });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // GET /api/orders — this customer's order history

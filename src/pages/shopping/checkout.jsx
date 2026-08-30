@@ -11,6 +11,7 @@ import {
   getShippingCities,
   getToken,
   postAddress,
+  previewInvoice,
   postCreateRazorpay,
   postOrder,
   postShippingQuote,
@@ -52,6 +53,8 @@ export default function Checkout() {
   const [order, setOrder] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [previewingInvoice, setPreviewingInvoice] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -86,11 +89,29 @@ export default function Checkout() {
       const product = products.find((candidate) => String(candidate.id) === String(line.product_id));
       return {
         ...line,
-        product_name: product?.name || `Product #${line.product_id}`,
-        line_total: product?.price != null ? product.price * line.quantity : null,
+        product_name: product?.name || line.name || `Product #${line.product_id}`,
+        line_total: product?.price != null ? product.price * line.quantity : line.price != null ? line.price * line.quantity : null,
       };
     });
   }, [items, order?.items, products]);
+
+  const productSubtotal = useMemo(
+    () => summaryItems.reduce((sum, line) => sum + (Number(line.line_total) || 0), 0),
+    [summaryItems]
+  );
+  const customerTotal = order?.total_amount ?? Math.round(productSubtotal * 1.18 * 100) / 100;
+
+  const openInvoicePreview = async () => {
+    setPreviewingInvoice(true);
+    setError("");
+    try {
+      setPreviewUrl(await previewInvoice(items.map(({ product_id, quantity }) => ({ product_id, quantity }))));
+    } catch (err) {
+      setError(err?.message || "Could not preview invoice");
+    } finally {
+      setPreviewingInvoice(false);
+    }
+  };
 
   // Step 1 → 2: compute shipping quote from the selected address's city.
   const goToDelivery = async () => {
@@ -111,6 +132,10 @@ export default function Checkout() {
   const addNewAddress = async (e) => {
     e.preventDefault();
     setError("");
+    if (!newAddress.line1.trim() || !newAddress.city.trim() || !newAddress.state.trim() || !newAddress.pincode.trim()) {
+      setError("Line 1, city, state and pincode are required.");
+      return;
+    }
     try {
       const created = await postAddress({
         line1: newAddress.line1,
@@ -122,9 +147,12 @@ export default function Checkout() {
         lng: newAddress.lng ? Number(newAddress.lng) : undefined,
         is_default: !!newAddress.is_default,
       });
+      if (!created?.id) throw new Error("Address was not saved. Please try again.");
       const refreshed = [...addresses, created];
       setAddresses(refreshed);
       setSelectedAddressId(created.id);
+      const persisted = await getAddresses();
+      setAddresses(Array.isArray(persisted) ? persisted : refreshed);
       setAddingAddress(false);
       setNewAddress({
         line1: "",
@@ -186,7 +214,6 @@ export default function Checkout() {
             });
             clear();
             navigate(`/order-confirmation?order_id=${order.order_id}&payment=success`, { replace: true });
-            // verified may be unused here — backend returns a confirmation payload.
             void verified;
           } catch (err) {
             setError(err?.message || "Payment verification failed");
@@ -228,6 +255,17 @@ export default function Checkout() {
 
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
+      {previewUrl && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-cocoa/50 p-4">
+          <div className="flex h-[90vh] w-full max-w-3xl flex-col bg-shell">
+            <div className="flex items-center justify-between border-b border-cocoa/10 px-4 py-3">
+              <span className="text-xs uppercase tracking-widest">Proforma invoice preview</span>
+              <button type="button" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(""); }} className="text-xs uppercase tracking-widest text-cocoa/60 hover:text-cocoa">Close</button>
+            </div>
+            <iframe title="Proforma invoice preview" src={previewUrl} className="min-h-0 flex-1" />
+          </div>
+        </div>
+      )}
       <div className="max-w-[1200px] mx-auto px-6 md:px-10 py-14">
         <motion.h1
           initial="hidden"
@@ -450,7 +488,8 @@ export default function Checkout() {
                   <p className="text-xs uppercase tracking-widest text-cocoa/60">
                     Order #{order.order_id}
                   </p>
-                  <p className="font-numeric text-2xl mt-1">{formatPrice(order.total_amount)}</p>
+                  <p className="font-numeric text-2xl mt-1">{formatPrice(customerTotal)}</p>
+                  <p className="text-xs text-cocoa/60 mt-1">Inclusive of all taxes</p>
                   <p className="text-xs text-cocoa/60 mt-1">
                     Pay securely via Razorpay — UPI, cards, wallets, and netbanking supported.
                   </p>
@@ -469,6 +508,9 @@ export default function Checkout() {
 
           <aside className="bg-sand/60 border border-cocoa/10 rounded-sm p-6 h-fit md:sticky md:top-24">
             <h2 className="font-display text-xl mb-4">Order Summary</h2>
+            <button type="button" onClick={openInvoicePreview} disabled={previewingInvoice} className="mb-3 text-xs uppercase tracking-widest text-gold hover:text-cocoa transition-colors disabled:opacity-60">
+              {previewingInvoice ? "Preparing preview…" : "Preview invoice"}
+            </button>
             <ul className="text-sm divide-y divide-cocoa/10 mb-4">
               {summaryItems.map((line) => (
                 <li key={line.product_id} className="py-2 flex justify-between">
@@ -488,8 +530,9 @@ export default function Checkout() {
                 </div>
                 <div className="flex justify-between border-t border-cocoa/15 pt-2 mt-2 font-medium">
                   <span>Total</span>
-                  <span className="font-numeric">{formatPrice(order.total_amount)}</span>
+                  <span className="font-numeric">{formatPrice(customerTotal)}</span>
                 </div>
+                <p className="text-[11px] text-cocoa/50">Inclusive of all taxes</p>
                 <p className="text-[11px] text-cocoa/50 mt-3 leading-relaxed">
                   Order expires at{" "}
                   {order.expires_at
@@ -499,9 +542,13 @@ export default function Checkout() {
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-cocoa/60">
-                Product prices include applicable taxes.
-              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between border-t border-cocoa/15 pt-2 font-medium">
+                  <span>Total</span>
+                  <span className="font-numeric">{formatPrice(customerTotal)}</span>
+                </div>
+                <p className="text-[11px] text-cocoa/50">Inclusive of all taxes. Shipping is currently free.</p>
+              </div>
             )}
           </aside>
         </div>

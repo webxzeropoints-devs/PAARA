@@ -60,7 +60,7 @@ export default function ProductDetails() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    addItem(product.id, quantity);
+    addItem(product.id, quantity, product);
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   };

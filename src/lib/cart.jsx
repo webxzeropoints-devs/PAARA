@@ -28,7 +28,7 @@ export function CartProvider({ children }) {
     }
   }, [items]);
 
-  const addItem = useCallback((product_id, quantity = 1) => {
+  const addItem = useCallback((product_id, quantity = 1, product = null) => {
     setItems((prev) => {
       const idx = prev.findIndex((i) => i.product_id === product_id);
       if (idx >= 0) {
@@ -36,7 +36,7 @@ export function CartProvider({ children }) {
         next[idx] = { ...next[idx], quantity: next[idx].quantity + quantity };
         return next;
       }
-      return [...prev, { product_id, quantity }];
+      return [...prev, { product_id, quantity, ...(product ? { name: product.name, price: product.price } : {}) }];
     });
   }, []);
 

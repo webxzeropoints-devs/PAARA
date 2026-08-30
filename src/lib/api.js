@@ -155,6 +155,21 @@ export const getAddresses = () => apiGet("/addresses");
 export const postAddress = (payload) => apiPost("/addresses", payload);
 
 export const postOrder = (payload) => apiPost("/orders", payload);
+export const previewInvoice = async (items) => {
+  const res = await fetch(`${BASE_URL}/orders/proforma`, {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    const payload = text ? JSON.parse(text) : {};
+    throw new Error(payload?.error || "Could not preview invoice.");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  return url;
+};
 export const getOrders = () => apiGet("/orders");
 export const getOrderById = (id) => apiGet(`/orders/${id}`);
 

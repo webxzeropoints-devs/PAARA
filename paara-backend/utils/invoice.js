@@ -58,8 +58,8 @@ function createInvoicePdf(order, items, address) {
     doc.moveDown(0.3);
     doc.font('Helvetica').fontSize(10).fillColor('#3d2b24');
     doc.text(`Subtotal: ${money(order.subtotal)}`, left + 300, doc.y, { width: 185, align: 'right' });
-    doc.text('Taxes: Included in product prices', left + 300, doc.y, { width: 185, align: 'right' });
-    doc.text(`Shipping: ${money(order.shipping_amount)}`, left + 300, doc.y, { width: 185, align: 'right' });
+    if (!order.hideTaxBreakdown) doc.text('Taxes: Included in product prices', left + 300, doc.y, { width: 185, align: 'right' });
+    if (!order.hideTaxBreakdown) doc.text(`Shipping: ${money(order.shipping_amount)}`, left + 300, doc.y, { width: 185, align: 'right' });
     doc.moveDown(0.4);
     const totalTop = doc.y;
     doc.rect(left + 280, totalTop, 205, 29).fill('#3d2b24');

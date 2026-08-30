@@ -1,16 +1,15 @@
 const GST_PERCENT = Number(process.env.GST_PERCENT || 18);
 
 /**
- * Product prices are tax-inclusive. Keep the legacy return shape for stored
- * order fields, but do not add tax to the customer total.
+ * Product prices are the pre-tax subtotal used for checkout calculations.
  * Always compute this server-side — never trust a total sent from the client.
  */
 function calculateGST(subtotal) {
-  const gstAmount = 0;
+  const gstAmount = round2(subtotal * (GST_PERCENT / 100));
   return {
     gstPercent: GST_PERCENT,
     gstAmount,
-    totalWithGST: round2(subtotal)
+    totalWithGST: round2(subtotal + gstAmount)
   };
 }
 
