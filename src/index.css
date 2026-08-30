@@ -27,9 +27,28 @@ body {
 }
 
 .font-numeric {
-  font-family: "Spectral", serif;
+  font-family: "Poppins", sans-serif;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.025em;
+}
+
+select {
+  transition: background-color 200ms ease, border-color 200ms ease, opacity 200ms ease, transform 200ms ease;
+}
+
+select:focus {
+  transform: translateY(1px);
+}
+
+.dropdown-panel {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.dropdown-panel.is-open {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 #root {
@@ -127,6 +146,11 @@ h3 {
   min-height: 228px;
   padding: 0;
   background: transparent;
+}
+
+.customer-love-section {
+  height: 65vh;
+  min-height: 420px;
 }
 
 .collection-track {
