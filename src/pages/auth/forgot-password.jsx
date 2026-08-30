@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { apiPost } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import { isStrongPassword, PASSWORD_ERROR } from "../../lib/validation";
+import PasswordRequirements from "../../components/PasswordRequirements";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -120,6 +121,7 @@ export default function ForgotPassword() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm transition-colors"
               />
+              <PasswordRequirements password={password} />
             </div>
             <div>
               <label className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">Confirm password</label>

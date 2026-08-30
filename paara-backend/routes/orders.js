@@ -118,10 +118,18 @@ router.get('/:id', requireAuth, (req, res) => {
 });
 
 router.get('/:id/invoice', requireAuth, (req, res) => {
+  const orderId = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(orderId) || orderId < 1) {
+    return res.status(404).json({ error: 'Order not found.' });
+  }
+
   const order = db
     .prepare('SELECT * FROM orders WHERE id = ? AND customer_id = ?')
-    .get(req.params.id, req.customer.id);
-  if (!order) return res.status(404).json({ error: 'Order not found.' });
+    .get(orderId, req.customer.id);
+  if (!order) {
+    console.warn('[INVOICE_NOT_FOUND]', { orderId, customerId: req.customer.id });
+    return res.status(404).json({ error: 'Order not found for this account.' });
+  }
 
   const items = db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC').all(order.id);
   const address = db
@@ -130,10 +138,17 @@ router.get('/:id/invoice', requireAuth, (req, res) => {
 
   const invoiceName = `paara-invoice-${order.id}.pdf`;
 
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${invoiceName}"`);
-
-  createInvoicePdf(order, items, address).then((pdf) => res.end(pdf)).catch(() => {
+  createInvoicePdf(order, items, address).then((pdf) => {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${invoiceName}"`);
+    res.end(pdf);
+  }).catch((error) => {
+    console.error('[INVOICE_GENERATION_FAILED]', {
+      orderId: order.id,
+      customerId: req.customer.id,
+      message: error.message,
+      name: error.name,
+    });
     if (!res.headersSent) res.status(500).json({ error: 'Could not generate invoice.' });
   });
 });

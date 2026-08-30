@@ -139,6 +139,7 @@ h3 {
 .love-track {
   display: flex;
   width: max-content;
+  margin-left: calc((100vw - 495px) / 2);
   gap: 2.5rem;
   animation: paara-love-marquee 34s linear infinite;
 }

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { authRegister } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import { isStrongPassword, normalizePhone, PASSWORD_ERROR, PHONE_ERROR } from "../../lib/validation";
+import PasswordRequirements from "../../components/PasswordRequirements";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -116,6 +117,7 @@ export default function Register() {
               onChange={update("password")}
               className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm transition-colors"
             />
+            <PasswordRequirements password={form.password} />
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">

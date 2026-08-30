@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { adminChangeEmail, adminChangePassword, adminChangeProfilePicture, apiPost } from "../lib/api";
 import { useAdmin } from "../lib/adminAuth.jsx";
 import { isStrongPassword, PASSWORD_ERROR } from "../lib/validation";
+import PasswordRequirements from "../components/PasswordRequirements";
 
 export default function AdminProfile() {
   const { admin, updateProfile, logout } = useAdmin();
@@ -173,6 +174,7 @@ export default function AdminProfile() {
               minLength={12}
               className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
             />
+            <PasswordRequirements password={setupPassword} />
             <input
               type="password"
               value={setupConfirmPassword}
@@ -305,6 +307,7 @@ export default function AdminProfile() {
             autoComplete="new-password"
             className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
           />
+          <PasswordRequirements password={newPw} />
           <Row>
             <button
               type="submit"

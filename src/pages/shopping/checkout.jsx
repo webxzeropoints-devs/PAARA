@@ -7,6 +7,7 @@ import {
   apiGet,
   apiPost,
   getAddresses,
+  getProducts,
   getShippingCities,
   getToken,
   postAddress,
@@ -45,6 +46,7 @@ export default function Checkout() {
   // Delivery step
   const [cities, setCities] = useState([]);
   const [shipping, setShipping] = useState(null);
+  const [products, setProducts] = useState([]);
 
   // Order / payment
   const [order, setOrder] = useState(null);
@@ -70,12 +72,25 @@ export default function Checkout() {
       })
       .catch(() => setAddresses([]));
     getShippingCities().catch(() => setCities([]));
+    getProducts().then((data) => setProducts(Array.isArray(data) ? data : [])).catch(() => setProducts([]));
   }, [navigate, items.length]);
 
   const selectedAddress = useMemo(
     () => addresses.find((a) => a.id === selectedAddressId) || null,
     [addresses, selectedAddressId]
   );
+
+  const summaryItems = useMemo(() => {
+    if (Array.isArray(order?.items) && order.items.length > 0) return order.items;
+    return items.map((line) => {
+      const product = products.find((candidate) => String(candidate.id) === String(line.product_id));
+      return {
+        ...line,
+        product_name: product?.name || `Product #${line.product_id}`,
+        line_total: product?.price != null ? product.price * line.quantity : null,
+      };
+    });
+  }, [items, order?.items, products]);
 
   // Step 1 → 2: compute shipping quote from the selected address's city.
   const goToDelivery = async () => {
@@ -456,12 +471,12 @@ export default function Checkout() {
           <aside className="bg-sand/60 border border-cocoa/10 rounded-sm p-6 h-fit md:sticky md:top-24">
             <h2 className="font-display text-xl mb-4">Order Summary</h2>
             <ul className="text-sm divide-y divide-cocoa/10 mb-4">
-              {items.map((line) => (
+              {summaryItems.map((line) => (
                 <li key={line.product_id} className="py-2 flex justify-between">
-                  <span className="text-cocoa/70">
-                    Product #{line.product_id} × {line.quantity}
+                  <span className="font-product-name text-cocoa/70">
+                    {line.product_name || line.name || `Product #${line.product_id}`} × {line.quantity}
                   </span>
-                  <span>—</span>
+                  <span className="font-numeric">{line.line_total != null ? formatPrice(line.line_total) : "—"}</span>
                 </li>
               ))}
             </ul>
