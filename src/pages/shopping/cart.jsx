@@ -164,7 +164,7 @@ export default function Cart() {
                     </div>
                     <div className="text-sm">
                       {line.product?.price != null ? (
-                        <span>{formatPrice(line.subtotal)}</span>
+                        <span className="font-numeric">{formatPrice(line.subtotal)}</span>
                       ) : (
                         <span className="text-cocoa/40">—</span>
                       )}
@@ -180,7 +180,7 @@ export default function Cart() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-cocoa/70">Subtotal</span>
-                <span>{formatPrice(subtotal)}</span>
+                <span className="font-numeric">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-cocoa/50 text-xs">
                 <span>Shipping</span>

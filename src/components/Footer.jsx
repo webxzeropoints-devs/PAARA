@@ -77,7 +77,6 @@ export default function Footer() {
             <h4 className="text-sm tracking-widest uppercase text-cocoa mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-cocoa/70">
               <li><a href="#our-story" className="hover:text-gold transition-colors">Our Story</a></li>
-              <li><a href="/careers" className="hover:text-gold transition-colors">Careers</a></li>
               <li><a href="/sustainability" className="hover:text-gold transition-colors">Sustainability</a></li>
               <li><a href="/contact" className="hover:text-gold transition-colors">Contact Us</a></li>
             </ul>
@@ -122,7 +121,6 @@ export default function Footer() {
 
         <div className="border-t border-cocoa/10 mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-cocoa/60">
           <p>© 2026 Paara Jewellery. All Rights Reserved.</p>
-          <p>Crafted with 🧡 by the ocean.</p>
         </div>
       </div>
     </footer>

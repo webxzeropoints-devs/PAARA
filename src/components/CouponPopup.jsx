@@ -100,7 +100,7 @@ export default function CouponPopup() {
             <p className="mt-3 text-sm text-cocoa/70">
               {coupon.discount_type === "percent"
                 ? `${coupon.discount_value}% off your next order`
-                : `₹${Number(coupon.discount_value).toLocaleString("en-IN")} off your next order`}
+                : <><span className="font-numeric">₹{Number(coupon.discount_value).toLocaleString("en-IN")}</span> off your next order</>}
             </p>
             <button
               type="button"

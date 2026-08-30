@@ -23,7 +23,7 @@ export default function GiftCards() {
     try {
       const { amount, balance: updatedBalance } = await apiPost("/coupons/redeem-gift-card", { code: trimmed });
       setBalance(Number(updatedBalance));
-      setMessage(`₹${Number(amount).toLocaleString("en-IN")} added to your balance.`);
+      setMessage(<><span className="font-numeric">₹{Number(amount).toLocaleString("en-IN")}</span> added to your balance.</>);
       setCode("");
     } catch (err) {
       setMessage(err.message || "Could not redeem this loyalty card code.");
@@ -37,7 +37,7 @@ export default function GiftCards() {
           <span className="text-xs uppercase tracking-[.3em] text-sand/70">Paara Loyalty Card</span>
           <Gift size={20} strokeWidth={1.4} />
         </div>
-        <p className="font-display text-4xl mt-8">₹{balance.toLocaleString("en-IN")}</p>
+        <p className="font-numeric text-4xl mt-8">₹{balance.toLocaleString("en-IN")}</p>
         <p className="text-xs uppercase tracking-widest text-sand/60 mt-2">Available balance</p>
       </div>
 

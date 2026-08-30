@@ -89,15 +89,15 @@ export default function OrderConfirmation() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-cocoa/70">Subtotal</span>
-                    <span>{formatPrice(order.subtotal)}</span>
+                    <span className="font-numeric">{formatPrice(order.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-cocoa/70">Shipping</span>
-                    <span>{formatPrice(order.shipping_amount)}</span>
+                    <span className="font-numeric">{formatPrice(order.shipping_amount)}</span>
                   </div>
                   <div className="flex justify-between border-t border-cocoa/15 pt-2 mt-2 font-medium">
                     <span>Total</span>
-                    <span>{formatPrice(order.total_amount)}</span>
+                    <span className="font-numeric">{formatPrice(order.total_amount)}</span>
                   </div>
                   <p className="text-[11px] text-cocoa/50 pt-1">Taxes included in product prices.</p>
                 </div>

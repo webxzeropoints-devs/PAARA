@@ -397,7 +397,7 @@ export default function Checkout() {
                           {shipping.method || "Standard"}
                         </span>
                       </p>
-                      <p className="mt-1">{formatPrice(shipping.amount)}</p>
+                      <p className="font-numeric mt-1">{formatPrice(shipping.amount)}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-cocoa/60 mt-2">Calculating shipping…</p>
@@ -436,7 +436,7 @@ export default function Checkout() {
                   <p className="text-xs uppercase tracking-widest text-cocoa/60">
                     Order #{order.order_id}
                   </p>
-                  <p className="text-2xl mt-1">{formatPrice(order.total_amount)}</p>
+                  <p className="font-numeric text-2xl mt-1">{formatPrice(order.total_amount)}</p>
                   <p className="text-xs text-cocoa/60 mt-1">
                     Pay securely via Razorpay — UPI, cards, wallets, and netbanking supported.
                   </p>
@@ -470,15 +470,15 @@ export default function Checkout() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-cocoa/70">Subtotal</span>
-                  <span>{formatPrice(order.subtotal)}</span>
+                  <span className="font-numeric">{formatPrice(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-cocoa/70">Shipping</span>
-                  <span>{formatPrice(order.shipping_amount)}</span>
+                  <span className="font-numeric">{formatPrice(order.shipping_amount)}</span>
                 </div>
                 <div className="flex justify-between border-t border-cocoa/15 pt-2 mt-2 font-medium">
                   <span>Total</span>
-                  <span>{formatPrice(order.total_amount)}</span>
+                  <span className="font-numeric">{formatPrice(order.total_amount)}</span>
                 </div>
                 <p className="text-[11px] text-cocoa/50 mt-3 leading-relaxed">
                   Order expires at{" "}

@@ -26,6 +26,12 @@ body {
   max-width: 100vw;
 }
 
+.font-numeric {
+  font-family: "Spectral", serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.025em;
+}
+
 #root {
   overflow-x: hidden;
   width: 100%;
@@ -119,6 +125,8 @@ h3 {
   width: 290px;
   min-width: 290px;
   min-height: 228px;
+  padding: 0;
+  background: transparent;
 }
 
 .collection-track {

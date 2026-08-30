@@ -36,7 +36,7 @@ export default function AdminOrders() {
                 <td className="px-4 py-3 text-cocoa">#{order.id}</td>
                 <td className="px-4 py-3 capitalize text-cocoa/75">{order.status}</td>
                 <td className="px-4 py-3 capitalize text-cocoa/75">{order.payment_status}</td>
-                <td className="px-4 py-3 text-cocoa">₹{Number(order.total_amount).toLocaleString("en-IN")}</td>
+                <td className="px-4 py-3 text-cocoa font-numeric">₹{Number(order.total_amount).toLocaleString("en-IN")}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-cocoa/70">{new Date(order.created_at.replace(" ", "T") + "Z").toLocaleString()}</td>
                 <td className="min-w-[220px] px-4 py-3">{eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Gift card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for gift card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant gift card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
               </tr>;

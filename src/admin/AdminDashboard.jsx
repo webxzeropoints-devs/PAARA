@@ -172,7 +172,7 @@ export default function AdminDashboard() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-cocoa">₹{Number(product.price).toLocaleString("en-IN")}</td>
+                    <td className="px-4 py-3 text-cocoa font-numeric">₹{Number(product.price).toLocaleString("en-IN")}</td>
                     <td className="px-4 py-3 text-center">
                       <button
                         type="button"
@@ -254,7 +254,7 @@ function ProductCard({ product, onSelect, isSelected }) {
       <div className="p-3">
         <div className="text-[10px] uppercase tracking-[.22em] font-display text-cocoa/60">PAARA. COLLECTION</div>
         <p className="mt-1 text-sm font-display text-cocoa truncate">{product.name}</p>
-        <p className="mt-1 text-xs text-cocoa/60">₹{Number(product.price).toLocaleString("en-IN")}</p>
+        <p className="mt-1 text-xs text-cocoa/60 font-numeric">₹{Number(product.price).toLocaleString("en-IN")}</p>
       </div>
 
       {isSelected && (

@@ -85,7 +85,7 @@ export default function Orders() {
                   Order #{(order.id || order.order_id)?.toString().slice(0, 8)}
                 </p>
                 <p className="text-lg mt-1">
-                  {formatPrice(order.total_amount)}
+                  <span className="font-numeric">{formatPrice(order.total_amount)}</span>
                 </p>
                 <p className="text-xs text-cocoa/60 mt-1">
                   {order.created_at

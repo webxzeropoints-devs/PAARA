@@ -1177,14 +1177,14 @@ const Product = () => {
                     </div>
 
                     <div className="price-row">
-                      <span className="current-price">
+                      <span className="current-price font-numeric">
                         ₹
                         {product.price.toLocaleString(
                           "en-IN"
                         )}
                       </span>
 
-                      <span className="old-price">
+                      <span className="old-price font-numeric">
                         ₹
                         {product.oldPrice.toLocaleString(
                           "en-IN"

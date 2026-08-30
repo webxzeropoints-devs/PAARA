@@ -103,7 +103,8 @@ function useHomeZoomStack(containerRef) {
         section.style.top = "0";
         section.style.transform = `translateZ(0) scale(${1 - progress * 0.07})`;
         section.style.opacity = String(1 - progress * 0.4);
-        section.style.filter = `blur(${progress * 1.5}px)`;
+        const blurProgress = Math.min(progress / 0.7, 1);
+        section.style.filter = `blur(${(1 - blurProgress) * 0.75}px)`;
         section.style.willChange = "transform, opacity, filter";
         section.style.transition = "none";
       });
@@ -345,7 +346,7 @@ function Vault({ products, countdown }) {
 
 function CustomerLove() {
   const notes = ["“The most beautiful little package to open.”", "“I wear my pearl hoops with everything.”", "“Delicate, special and so beautifully made.”", "“My new everyday favourite.”"];
-  return <section className="relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat py-24 md:py-28"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-3">Customer Love</h2><HeadingWave className="mt-3" /></span></div><div className="relative z-10 love-marquee mt-12"><div className="love-track">{[...notes, ...notes].map((note, index) => <article key={index} className="relative w-[270px] md:w-[340px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-[5%] h-[90%] w-[90%] object-contain mix-blend-multiply" /><div className="relative z-10 flex h-full flex-col items-center justify-start px-[20%] pt-[31%] text-center"><p className="text-xl md:text-2xl leading-snug text-cocoa">{note}</p><p className="mt-4 text-[10px] tracking-[.2em] uppercase text-cocoa/60">Paara. customer</p></div></article>)}</div></div></section>;
+  return <section className="relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat py-24 md:py-28"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-3">Customer Love</h2><HeadingWave className="mt-3" /></span></div><div className="relative z-10 love-marquee mt-12"><div className="love-track">{[...notes, ...notes].map((note, index) => <article key={index} className="relative w-[270px] md:w-[340px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-[5%] h-[90%] w-[90%] object-contain" /><div className="relative z-10 flex h-full flex-col items-center justify-start px-[20%] pt-[31%] text-center"><p className="text-xl md:text-2xl leading-snug text-cocoa">{note}</p><p className="mt-4 text-[10px] tracking-[.2em] uppercase text-cocoa/60">Paara. customer</p></div></article>)}</div></div></section>;
 }
 
 function Collections() {

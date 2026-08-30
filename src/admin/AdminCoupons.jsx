@@ -115,7 +115,7 @@ export default function AdminCoupons() {
                   <tr key={coupon.id} className="border-b border-cocoa/10 odd:bg-sand/35 hover:bg-sand">
                     <td className="px-4 py-3 font-medium tracking-[.14em] text-gold">{coupon.code}</td>
                     <td className="px-4 py-3 text-cocoa/85">{coupon.description || "—"}</td>
-                    <td className="px-4 py-3 text-cocoa">{formatDiscount(coupon)}</td>
+                    <td className="px-4 py-3 text-cocoa font-numeric">{formatDiscount(coupon)}</td>
                     <td className="px-4 py-3 text-cocoa/85 whitespace-nowrap">
                       {new Date(coupon.deadline.replace(" ", "T")).toLocaleString()}
                     </td>
