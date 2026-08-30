@@ -3,7 +3,17 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { dbPath, isServerless, storeIdFromUrl } = require('./blobRestore');
+const blobReadWriteToken = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
 const blobStoreId = String(process.env.BLOB_STORE_ID || '').trim();
+const blobAuthOptions = blobReadWriteToken
+  ? { token: blobReadWriteToken }
+  : (blobStoreId ? { storeId: blobStoreId } : {});
+const tokenStoreId = blobReadWriteToken
+  ? (() => {
+    const parts = blobReadWriteToken.split('_');
+    return parts.length > 3 && parts[3] ? `store_${parts[3]}` : '(not parseable)';
+  })()
+  : '(no read-write token)';
 
 // By the time this file is required, api/index.js has already awaited
 // restoreBlobThenInit() on Vercel — dbPath is guaranteed to contain either
@@ -27,6 +37,8 @@ async function persist() {
   const diagnostics = {
     pathname,
     configuredStoreId: blobStoreId || '(not set)',
+    tokenStoreId,
+    storeIdMismatch: Boolean(blobStoreId && blobReadWriteToken && tokenStoreId !== blobStoreId),
     hasReadWriteToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
     hasOidcToken: Boolean(process.env.VERCEL_OIDC_TOKEN),
   };
@@ -39,7 +51,7 @@ async function persist() {
       access: 'private',
       addRandomSuffix: false,
       allowOverwrite: true,
-      ...(blobStoreId ? { storeId: blobStoreId } : {}),
+      ...blobAuthOptions,
     });
     console.log('[DB_PERSIST] Database uploaded to private Blob.', {
       ...diagnostics,

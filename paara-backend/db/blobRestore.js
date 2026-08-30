@@ -4,11 +4,24 @@ const path = require('path');
 const isServerless = !!process.env.VERCEL;
 const BLOB_PATHNAME = 'paara-db/paara.db';
 const blobStoreId = String(process.env.BLOB_STORE_ID || '').trim();
+const blobReadWriteToken = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
 const dbPath = isServerless ? '/tmp/paara.db' : (process.env.DB_PATH || path.join(__dirname, '..', 'paara.db'));
+
+function storeIdFromReadWriteToken(token) {
+  const parts = String(token || '').split('_');
+  return parts.length > 3 && parts[3] ? `store_${parts[3]}` : '(not parseable)';
+}
+
+const tokenStoreId = storeIdFromReadWriteToken(blobReadWriteToken);
+const blobAuthOptions = blobReadWriteToken
+  ? { token: blobReadWriteToken }
+  : (blobStoreId ? { storeId: blobStoreId } : {});
 
 const blobDiagnostics = () => ({
   pathname: BLOB_PATHNAME,
   configuredStoreId: blobStoreId || '(not set)',
+  tokenStoreId: blobReadWriteToken ? tokenStoreId : '(no read-write token)',
+  storeIdMismatch: Boolean(blobStoreId && blobReadWriteToken && tokenStoreId !== blobStoreId),
   hasReadWriteToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
   hasOidcToken: Boolean(process.env.VERCEL_OIDC_TOKEN),
 });
@@ -36,7 +49,7 @@ async function restoreBlobThenInit() {
   const blob = await get(BLOB_PATHNAME, {
     access: 'private',
     useCache: false,
-    ...(blobStoreId ? { storeId: blobStoreId } : {}),
+    ...blobAuthOptions,
   });
   if (blob) {
     console.log('[DB_RESTORE] Private Blob found.', {
