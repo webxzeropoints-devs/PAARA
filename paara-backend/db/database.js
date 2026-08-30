@@ -3,6 +3,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { dbPath, isServerless } = require('./blobRestore');
+const blobStoreId = String(process.env.BLOB_STORE_ID || '').trim();
 
 // By the time this file is required, api/index.js has already awaited
 // restoreBlobThenInit() on Vercel — dbPath is guaranteed to contain either
@@ -26,7 +27,12 @@ async function persist() {
     db.pragma('wal_checkpoint(TRUNCATE)');
     const { put } = require('@vercel/blob');
     const buf = fs.readFileSync(dbPath);
-    await put('paara-db/paara.db', buf, { access: 'private', addRandomSuffix: false, allowOverwrite: true });
+    await put('paara-db/paara.db', buf, {
+      access: 'private',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      ...(blobStoreId ? { storeId: blobStoreId } : {}),
+    });
   } catch (err) {
     console.error('Blob DB persist failed:', err.message);
     throw err;

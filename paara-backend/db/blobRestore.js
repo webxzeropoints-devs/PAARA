@@ -3,6 +3,7 @@ const path = require('path');
 
 const isServerless = !!process.env.VERCEL;
 const BLOB_PATHNAME = 'paara-db/paara.db';
+const blobStoreId = String(process.env.BLOB_STORE_ID || '').trim();
 const dbPath = isServerless ? '/tmp/paara.db' : (process.env.DB_PATH || path.join(__dirname, '..', 'paara.db'));
 
 // Deliberately does NOT require better-sqlite3 or ./database. Requiring
@@ -14,7 +15,11 @@ async function restoreBlobThenInit() {
 
   try {
     const { get } = require('@vercel/blob');
-    const blob = await get(BLOB_PATHNAME, { access: 'private', useCache: false });
+    const blob = await get(BLOB_PATHNAME, {
+      access: 'private',
+      useCache: false,
+      ...(blobStoreId ? { storeId: blobStoreId } : {}),
+    });
     if (blob) {
       console.log('[DB Restore] Private Blob found, downloading database...');
       const reader = blob.stream.getReader();
