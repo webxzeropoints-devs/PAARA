@@ -162,7 +162,14 @@ if (db.isServerless) {
     const originalEnd = res.end.bind(res);
     let persistPromise = null;
     const respondPersistFailure = (err) => {
-      console.error('Persist before response failed:', err.message);
+      console.error('[DB_PERSIST] Response blocked because persistence failed.', {
+        method: req.method,
+        path: req.path,
+        error: err.message,
+        errorName: err.name,
+        errorCode: err.code,
+        headersSent: res.headersSent,
+      });
       if (!res.headersSent) {
         res.statusCode = 503;
         res.setHeader('Content-Type', 'application/json');
@@ -173,7 +180,10 @@ if (db.isServerless) {
     const persistBeforeResponse = () => {
       const isReadOnlyAdminLogin = req.method === 'POST' && req.path === '/api/admin-auth/login';
       if (req.method === 'GET' || isReadOnlyAdminLogin || res.statusCode >= 400) return Promise.resolve();
-      if (!persistPromise) persistPromise = db.persist();
+      if (!persistPromise) {
+        console.log('[DB_PERSIST] Request requires persistence.', { method: req.method, path: req.path });
+        persistPromise = db.persist();
+      }
       return persistPromise;
     };
 
