@@ -27,7 +27,7 @@ services:
         sync: false
       - key: EMAIL_PORT
         sync: false
-      - key: ALLOWED_ORIGINS
+      - key: FRONTEND_URL
         sync: false
       - key: DB_PATH
         value: /data/paara.db

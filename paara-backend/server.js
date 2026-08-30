@@ -29,6 +29,9 @@ const couponsRouter = require('./routes/coupons');
 const homepageRouter = require('./routes/homepage');
 
 const app = express();
+// Both Vercel and Render sit behind a reverse proxy that sets X-Forwarded-For.
+// Without this, express-rate-limit can't safely derive client IPs and throws
+// ERR_ERL_FORWARDED_HEADER on every rate-limited route.
 app.set('trust proxy', 1);
 
 const productColumns = db.prepare("PRAGMA table_info(products)").all().map((column) => column.name);
