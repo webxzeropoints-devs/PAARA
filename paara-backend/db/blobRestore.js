@@ -13,14 +13,21 @@ async function restoreBlobThenInit() {
   if (fs.existsSync(dbPath)) return; // already restored earlier in this warm instance
 
   try {
-    const { head } = require('@vercel/blob');
-    const metadata = await head(BLOB_PATHNAME);
-    if (metadata && metadata.url) {
-      console.log('[DB Restore] Blob found, fetching from Vercel Blob...');
-      const response = await fetch(metadata.url);
-      if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
-      const buffer = await response.arrayBuffer();
-      fs.writeFileSync(dbPath, Buffer.from(buffer));
+    const { get } = require('@vercel/blob');
+    const blob = await get(BLOB_PATHNAME, { access: 'private', useCache: false });
+    if (blob) {
+      console.log('[DB Restore] Private Blob found, downloading database...');
+      const reader = blob.stream.getReader();
+      const chunks = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = Buffer.from(value);
+        chunks.push(chunk);
+        totalLength += chunk.length;
+      }
+      fs.writeFileSync(dbPath, Buffer.concat(chunks, totalLength));
       console.log('[DB Restore] Blob restored to /tmp/paara.db');
       return;
     }

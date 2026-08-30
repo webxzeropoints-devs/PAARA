@@ -26,7 +26,7 @@ async function persist() {
     db.pragma('wal_checkpoint(TRUNCATE)');
     const { put } = require('@vercel/blob');
     const buf = fs.readFileSync(dbPath);
-    await put('paara-db/paara.db', buf, { access: 'public', addRandomSuffix: false, allowOverwrite: true });
+    await put('paara-db/paara.db', buf, { access: 'private', addRandomSuffix: false, allowOverwrite: true });
   } catch (err) {
     console.error('Blob DB persist failed:', err.message);
   }
