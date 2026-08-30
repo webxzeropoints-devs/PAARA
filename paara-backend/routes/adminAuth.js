@@ -16,13 +16,7 @@ router.post('/login', async (req, res) => {
   const normalizedEmail = String(email).trim().toLowerCase();
   const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(normalizedEmail);
   const passwordMatches = !!admin && bcrypt.compareSync(password, admin.password_hash);
-  console.log('[ADMIN_LOGIN_HASH_CHECK]', {
-    email: normalizedEmail,
-    adminFound: !!admin,
-    storedHashPresent: !!admin?.password_hash,
-    passwordMatches,
-    hashPrefix: admin?.password_hash?.slice(0, 18),
-  });
+  console.log('[AUTH_LOGIN]', { actor: 'admin', emailDomain: normalizedEmail?.split('@')[1], adminFound: !!admin, passwordMatches });
   if (!admin || !passwordMatches) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
@@ -65,12 +59,7 @@ router.post('/set-password', (req, res) => {
   }
 
   const password_hash = bcrypt.hashSync(new_password, 10);
-  console.log('[ADMIN_SET_PASSWORD_HASH]', {
-    admin_id: admin.id,
-    newEmail: normalizedEmail,
-    hashPrefix: password_hash.slice(0, 18),
-    saltRounds: 10,
-  });
+  console.log('[AUTH_PROFILE_UPDATE]', { actor: 'admin', action: 'set-password' });
 
   try {
     db.prepare('UPDATE admins SET password_hash = ?, email = ?, must_change_password = 0 WHERE id = ?')

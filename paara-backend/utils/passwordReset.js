@@ -1,12 +1,17 @@
 const db = require('../db/database');
 const { sendEmail } = require('./email');
+const crypto = require('crypto');
 
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
 
 function generateResetCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+function hashResetCode(code) {
+  return crypto.createHash('sha256').update(code).digest('hex');
 }
 
 async function issuePasswordResetOtp(email, userType = 'customer') {
@@ -22,7 +27,7 @@ async function issuePasswordResetOtp(email, userType = 'customer') {
   db.prepare(`
     INSERT INTO password_reset_otps (email, code, user_type, expires_at, used)
     VALUES (?, ?, ?, ?, 0)
-  `).run(normalizedEmail, code, userType, expiresAt);
+  `).run(normalizedEmail, hashResetCode(code), userType, expiresAt);
 
   const subject = userType === 'admin'
     ? 'Paara admin password reset code'
@@ -50,10 +55,10 @@ function consumePasswordResetOtp(email, code, userType = 'customer') {
 
   const record = db.prepare(`
     SELECT * FROM password_reset_otps
-    WHERE email = ? AND user_type = ? AND code = ?
+    WHERE email = ? AND user_type = ?
     ORDER BY created_at DESC
     LIMIT 1
-  `).get(normalizedEmail, userType, digitCode);
+  `).get(normalizedEmail, userType);
 
   if (!record) {
     return { valid: false, reason: 'Incorrect reset code.' };
@@ -63,9 +68,23 @@ function consumePasswordResetOtp(email, code, userType = 'customer') {
     return { valid: false, reason: 'This reset code has already been used.' };
   }
 
+  if (record.attempts >= 5) {
+    db.prepare('UPDATE password_reset_otps SET used = 1 WHERE id = ?').run(record.id);
+    return { valid: false, reason: 'Too many incorrect attempts. Please request a new code.' };
+  }
+
   if (new Date(record.expires_at).getTime() <= Date.now()) {
     db.prepare('UPDATE password_reset_otps SET used = 1 WHERE id = ?').run(record.id);
     return { valid: false, reason: 'This reset code has expired. Please request a new one.' };
+  }
+
+  const expected = Buffer.from(record.code);
+  const supplied = Buffer.from(hashResetCode(digitCode));
+  const matches = expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied);
+  if (!matches) {
+    const nextAttempts = record.attempts + 1;
+    db.prepare('UPDATE password_reset_otps SET attempts = ?, used = ? WHERE id = ?').run(nextAttempts, nextAttempts >= 5 ? 1 : 0, record.id);
+    return { valid: false, reason: 'Incorrect reset code.' };
   }
 
   return { valid: true, record };

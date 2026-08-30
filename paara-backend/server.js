@@ -85,8 +85,12 @@ db.exec(`CREATE TABLE IF NOT EXISTS gift_card_rules (
 db.exec(`CREATE TABLE IF NOT EXISTS email_otps (
   id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, code TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')), expires_at TEXT NOT NULL,
-  verified INTEGER NOT NULL DEFAULT 0
+  verified INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0
 )`);
+const emailOtpColumns = db.prepare("PRAGMA table_info(email_otps)").all().map((column) => column.name);
+if (emailOtpColumns.length && !emailOtpColumns.includes('attempts')) {
+  db.exec('ALTER TABLE email_otps ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
+}
 db.exec(`CREATE TABLE IF NOT EXISTS customer_order_details (
   id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
   customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE, full_name TEXT NOT NULL,
@@ -118,8 +122,17 @@ db.exec(`CREATE TABLE IF NOT EXISTS password_reset_otps (
   user_type TEXT NOT NULL CHECK (user_type IN ('customer','admin')),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at TEXT NOT NULL,
-  used INTEGER NOT NULL DEFAULT 0
+  used INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0
 )`);
+const passwordResetOtpColumns = db.prepare("PRAGMA table_info(password_reset_otps)").all().map((column) => column.name);
+if (passwordResetOtpColumns.length && !passwordResetOtpColumns.includes('attempts')) {
+  db.exec('ALTER TABLE password_reset_otps ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
+}
+const phoneOtpColumns = db.prepare("PRAGMA table_info(phone_otps)").all().map((column) => column.name);
+if (phoneOtpColumns.length && !phoneOtpColumns.includes('attempts')) {
+  db.exec('ALTER TABLE phone_otps ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
+}
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -153,12 +166,13 @@ if (db.isServerless) {
       if (!res.headersSent) {
         res.statusCode = 503;
         res.setHeader('Content-Type', 'application/json');
-        originalEnd(JSON.stringify({ error: 'Database could not be saved. Please try again.' }));
+        originalEnd(JSON.stringify({ ok: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Database is temporarily unavailable. Please try again.' }));
       }
     };
 
     const persistBeforeResponse = () => {
-      if (req.method === 'GET' || res.statusCode >= 400) return Promise.resolve();
+      const isReadOnlyAdminLogin = req.method === 'POST' && req.path === '/api/admin-auth/login';
+      if (req.method === 'GET' || isReadOnlyAdminLogin || res.statusCode >= 400) return Promise.resolve();
       if (!persistPromise) persistPromise = db.persist();
       return persistPromise;
     };
@@ -238,7 +252,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 // Central error handler
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ error: 'Something went wrong.' });
+  res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Something went wrong. Please try again.' });
 });
 
 if (db.isServerless) {

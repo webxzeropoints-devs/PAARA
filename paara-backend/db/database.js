@@ -33,8 +33,9 @@ async function persist() {
       allowOverwrite: true,
       ...(blobStoreId ? { storeId: blobStoreId } : {}),
     });
+    console.log('[DB_PERSIST] Database uploaded to private Blob.');
   } catch (err) {
-    console.error('Blob DB persist failed:', err.message);
+    console.error('[DB_PERSIST] Private Blob upload failed:', err.message);
     throw err;
   }
 }

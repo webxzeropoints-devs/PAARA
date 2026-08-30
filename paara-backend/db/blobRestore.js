@@ -13,39 +13,36 @@ async function restoreBlobThenInit() {
   if (!isServerless) return;
   if (fs.existsSync(dbPath)) return; // already restored earlier in this warm instance
 
-  try {
-    const { get } = require('@vercel/blob');
-    const blob = await get(BLOB_PATHNAME, {
-      access: 'private',
-      useCache: false,
-      ...(blobStoreId ? { storeId: blobStoreId } : {}),
-    });
-    if (blob) {
-      console.log('[DB Restore] Private Blob found, downloading database...');
-      const reader = blob.stream.getReader();
-      const chunks = [];
-      let totalLength = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = Buffer.from(value);
-        chunks.push(chunk);
-        totalLength += chunk.length;
-      }
-      fs.writeFileSync(dbPath, Buffer.concat(chunks, totalLength));
-      console.log('[DB Restore] Blob restored to /tmp/paara.db');
-      return;
+  const { get } = require('@vercel/blob');
+  const blob = await get(BLOB_PATHNAME, {
+    access: 'private',
+    useCache: false,
+    ...(blobStoreId ? { storeId: blobStoreId } : {}),
+  });
+  if (blob) {
+    console.log('[DB_RESTORE] Private Blob found, downloading database.');
+    const reader = blob.stream.getReader();
+    const chunks = [];
+    let totalLength = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = Buffer.from(value);
+      chunks.push(chunk);
+      totalLength += chunk.length;
     }
-  } catch (err) {
-    console.log('[DB Restore] Blob restore skipped (does not exist or fetch failed):', err.message);
+    fs.writeFileSync(dbPath, Buffer.concat(chunks, totalLength));
+    console.log('[DB_RESTORE] Blob restored to /tmp/paara.db.');
+    return;
   }
 
+  // A null result means the private store is reachable but this is the first boot.
   try {
     const seedBuffer = require('./seed-data.js');
     fs.writeFileSync(dbPath, seedBuffer);
-    console.log('[DB Init] Seeded /tmp/paara.db from embedded seed data');
+    console.log('[DB_RESTORE] No database Blob found; seeded /tmp/paara.db.');
   } catch (err) {
-    console.error('[DB Init] Could not load embedded seed DB:', err.message);
+    console.error('[DB_RESTORE] Could not load embedded seed DB:', err.message);
     // leave it missing; database.js's schema.sql fallback below will create it fresh
   }
 }

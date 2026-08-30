@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { fadeUp } from "../lib/motion";
 
 const OTP_LENGTH = 6;
-const OTP_TTL_SECONDS = 120;
+const OTP_TTL_SECONDS = 600;
 const RESEND_COOLDOWN_SECONDS = 30;
 
 /**
@@ -30,6 +30,7 @@ export default function OTPVerification({
   const inputsRef = useRef([]);
 
   useEffect(() => {
+    inputsRef.current[0]?.focus();
     const id = setInterval(() => {
       setExpiresIn((value) => Math.max(0, value - 1));
       setResendIn((value) => Math.max(0, value - 1));
@@ -123,6 +124,7 @@ export default function OTPVerification({
               inputMode="numeric"
               maxLength={1}
               aria-label={`OTP digit ${index + 1}`}
+              autoFocus={index === 0}
               className="w-11 h-13 md:w-12 md:h-14 text-center text-lg bg-white/70 border border-cocoa/25 rounded-sm focus:border-gold outline-none transition-colors"
             />
           ))}

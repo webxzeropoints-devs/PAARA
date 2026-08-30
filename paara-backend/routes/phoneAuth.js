@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db/database');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -18,6 +19,8 @@ function normalizePhone(v) {
   if (/^91[6-9]\d{9}$/.test(value)) return value.slice(2);
   return null;
 }
+
+const hashOtp = (otp) => crypto.createHash('sha256').update(otp).digest('hex');
 
 async function sendSms(phone, otp) {
   if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_BUSINESS_ACCOUNT_ID || !WHATSAPP_ACCESS_TOKEN) {
@@ -64,39 +67,48 @@ router.post('/request-otp', async (req, res) => {
     return res.status(400).json({ error: 'A valid 10-digit phone number is required.' });
   }
 
-  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const otp = String(crypto.randomInt(100000, 1000000));
   const expiresAt = new Date(Date.now() + 5 * 60000).toISOString();
 
-  db.prepare('INSERT INTO phone_otps (phone, otp_code, expires_at) VALUES (?, ?, ?)')
-    .run(normalizedPhone, otp, expiresAt);
+  db.prepare('UPDATE phone_otps SET verified = 1 WHERE phone = ? AND verified = 0').run(normalizedPhone);
+  db.prepare('INSERT INTO phone_otps (phone, otp_code, expires_at, attempts) VALUES (?, ?, ?, 0)')
+    .run(normalizedPhone, hashOtp(otp), expiresAt);
 
   try {
     const deliveryResponse = await sendSms(normalizedPhone, otp);
-    console.log('[WhatsApp API success]', deliveryResponse);
-    res.json({ success: true, message: 'OTP sent.', provider_response: deliveryResponse });
+    console.log('[AUTH_OTP_SENT]', { channel: 'phone' });
+    res.json({ ok: true, success: true, message: 'OTP sent.' });
   } catch (error) {
     console.error('OTP send failed:', error);
-    return res.status(503).json({
-      error: error.message || 'Unable to send OTP right now. Check your WhatsApp configuration.'
-    });
+    return res.status(503).json({ ok: false, code: 'OTP_DELIVERY_UNAVAILABLE', message: 'Unable to send OTP right now. Please try again.' });
   }
 });
 
 router.post('/verify-otp', (req, res) => {
   const { phone, otp } = req.body;
   const normalizedPhone = normalizePhone(phone);
-  if (!normalizedPhone || !otp) {
-    return res.status(400).json({ error: 'phone and otp are required.' });
+  if (!normalizedPhone || !/^\d{6}$/.test(String(otp || '').trim())) {
+    return res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message: 'phone and otp are required.' });
   }
 
   const record = db.prepare(`
     SELECT * FROM phone_otps
-    WHERE phone = ? AND otp_code = ? AND verified = 0 AND expires_at > datetime('now')
+    WHERE phone = ? AND verified = 0
     ORDER BY id DESC LIMIT 1
-  `).get(normalizedPhone, otp);
+  `).get(normalizedPhone);
 
-  if (!record) {
-    return res.status(400).json({ error: 'Invalid or expired OTP.' });
+  if (!record) return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
+  if (new Date(record.expires_at).getTime() <= Date.now() || record.attempts >= 5) {
+    db.prepare('UPDATE phone_otps SET verified = 1 WHERE id = ?').run(record.id);
+    return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
+  }
+  const expected = Buffer.from(record.otp_code);
+  const supplied = Buffer.from(hashOtp(String(otp).trim()));
+  const matches = expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied);
+  if (!matches) {
+    const nextAttempts = record.attempts + 1;
+    db.prepare('UPDATE phone_otps SET attempts = ?, verified = ? WHERE id = ?').run(nextAttempts, nextAttempts >= 5 ? 1 : 0, record.id);
+    return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
   }
 
   db.prepare('UPDATE phone_otps SET verified = 1 WHERE id = ?').run(record.id);
@@ -115,9 +127,9 @@ router.post('/verify-otp', (req, res) => {
     token = jwt.sign({ id: customer.id, phone: customer.phone }, process.env.JWT_SECRET, { expiresIn: '30d' });
   } catch (err) {
     console.error('[JWT_SIGN_ERROR]', err.message);
-    return res.status(500).json({ error: 'Server configuration error. Contact support.' });
+    return res.status(500).json({ ok: false, code: 'CONFIGURATION_ERROR', message: 'Server configuration error. Contact support.' });
   }
-  res.json({ token, customer: { id: customer.id, name: customer.name, phone: customer.phone } });
+  res.json({ ok: true, token, customer: { id: customer.id, name: customer.name, phone: customer.phone } });
 });
 
 module.exports = router;
