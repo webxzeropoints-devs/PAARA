@@ -4,9 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import ProductFlipCard from "../components/ProductFlipCard";
 import VaultScrollStage from "../components/VaultScrollStage";
-import { apiGet, getProducts, getVaultNext, getVaultToday } from "../lib/api";
+import { apiGet, getProducts, getVaultToday } from "../lib/api";
 import { fadeUp, heroParent, childFadeUp } from "../lib/motion";
-import { NEXT_DROP_DATE } from "../lib/countdownConfig";
 
 const placeholderImg = (label, index = 0) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -26,23 +25,6 @@ const exactProducts = (products, count, label) => [
     price: "", images: [productCardImages[index % productCardImages.length]],
   })),
 ];
-
-function useCountdown(targetDate) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  // SQLite returns "YYYY-MM-DD HH:mm:ss" in UTC; make that timezone explicit
-  // before calculating the remaining time in the visitor's browser.
-  const normalizedDate = typeof targetDate === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(targetDate)
-    ? `${targetDate.replace(" ", "T")}Z`
-    : targetDate;
-  const target = normalizedDate ? new Date(normalizedDate).getTime() : NaN;
-  const difference = Number.isNaN(target) ? 0 : Math.max(0, target - now);
-  return [difference / 3600000, (difference / 60000) % 60, (difference / 1000) % 60]
-    .map((value) => String(Math.floor(value)).padStart(2, "0"));
-}
 
 function useHomeZoomStack(containerRef) {
   useEffect(() => {
@@ -142,9 +124,7 @@ export default function Home() {
   const [vault, setVault] = useState([]);
   const [bestsellers, setBestsellers] = useState([]);
   const [bestsellersLoading, setBestsellersLoading] = useState(true);
-  const [nextRelease, setNextRelease] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
-  const countdown = useCountdown(nextRelease);
   useHomeZoomStack(homeRef);
 
   useEffect(() => {
@@ -155,17 +135,6 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     getVaultToday().then((data) => !cancelled && setVault(Array.isArray(data) ? data : data?.products || [])).catch(() => {});
-    getVaultNext().then((data) => {
-      if (cancelled) return;
-      // eslint-disable-next-line no-console
-      console.log("[vault/next] raw response:", data);
-      const next = data?.next_drop || data?.release_date || data?.next_release || data?.date || NEXT_DROP_DATE;
-      setNextRelease(next);
-    }).catch((err) => {
-      // eslint-disable-next-line no-console
-      console.warn("[vault/next] fetch failed:", err?.message || err);
-      setNextRelease(NEXT_DROP_DATE);
-    });
     getProducts({ bestseller: true, limit: 9 })
       .then((data) => !cancelled && setBestsellers(Array.isArray(data) ? data : data?.products || []))
       .catch(() => !cancelled && setBestsellers([]))
@@ -178,7 +147,7 @@ export default function Home() {
       <AnimatePresence>{showSplash && <SplashScreen />}</AnimatePresence>
       <Hero />
       <MeetOwner />
-      <Vault products={exactProducts(vault, 3, "Vault piece")} countdown={countdown} />
+      <Vault products={exactProducts(vault, 3, "Vault piece")} />
       <CustomerLove />
       <Collections />
       <ProductGrid title="Our Bestsellers" products={bestsellers} loading={bestsellersLoading} />
@@ -278,7 +247,7 @@ function MeetOwner() {
             <svg aria-hidden="true" className="absolute -bottom-4 right-0 h-12 w-14 text-gold/35" viewBox="0 0 56 48" fill="none"><path d="M6 40C7 17 20 5 31 5c12 0 19 12 19 29-12-7-24-7-44 6zM22 14c7 8 11 16 12 26" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
           </div>
           <div className="max-w-sm pt-1">
-            <blockquote className="text-2xl md:text-[1.9rem] leading-[1.22] text-cocoa/85 italic font-medium" style={{ fontFamily: "Cormorant Garamond, serif" }}>“Paara is a reflection of my love for the ocean and the belief that simplicity is the truest form of elegance.”</blockquote>
+              <blockquote className="text-2xl md:text-[1.9rem] leading-[1.22] text-cocoa/85 italic font-medium" style={{ fontFamily: "Cormorant Garamond, serif" }}>“Paara is a reflection of my love for the ocean and the belief that simplicity is the truest form of elegance.”</blockquote>
             <p className="font-script mt-7 text-3xl md:text-4xl text-cocoa">— Dharshini</p>
             <p className="mt-1 text-[10px] uppercase tracking-[.24em] text-cocoa/60">Founder</p>
             <Link to="/our-story" className="inline-block mt-7 text-xs uppercase tracking-[.18em] text-gold border-b border-gold/70 pb-1">Read our story →</Link>
@@ -332,8 +301,8 @@ function PearlRing() {
   </svg>;
 }
 
-function Vault({ products, countdown }) {
-  const heading = <div className="flex flex-wrap items-end justify-between gap-y-3 mb-9"><div><p className="text-xs uppercase tracking-[.3em] text-gold">Today's drop</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">The Vault</h2><HeadingWave className="mt-3" /></span></div><div className="shrink-0 text-right border border-cocoa/20 px-4 py-2 text-sm tracking-[.16em] tabular-nums">{countdown.join(" : ")}<span className="block mt-1 text-[9px] text-cocoa/55 tracking-[.15em]">HRS · MIN · SEC</span></div></div>;
+function Vault({ products }) {
+  const heading = <div className="mb-9"><p className="text-xs uppercase tracking-[.3em] text-gold">Today's drop</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">The Vault</h2><HeadingWave className="mt-3" /></span></div>;
   return (
     <section id="vault" className="max-w-[1600px] mx-auto px-6 md:px-10 py-12">
       {heading}
@@ -346,7 +315,7 @@ function Vault({ products, countdown }) {
 
 function CustomerLove() {
   const notes = ["“The most beautiful little package to open.”", "“I wear my pearl hoops with everything.”", "“Delicate, special and so beautifully made.”", "“My new everyday favourite.”"];
-  return <section className="customer-love-section relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat px-0 py-5 md:py-6"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">Customer Love</h2><HeadingWave className="mt-2" /></span></div><div className="relative z-10 love-marquee mt-5"><div className="love-track">{[...notes, ...notes].map((note, index) => <article key={index} className="relative w-[450px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-[5%] h-[90%] w-[90%] object-contain" /><div className="relative z-10 flex h-full w-[60%] mx-auto flex-col items-center justify-start pt-[30%] text-center"><p className="text-xl md:text-2xl font-semibold leading-snug text-cocoa">{note}</p><p className="mt-4 text-[10px] tracking-[.2em] uppercase text-cocoa/60">Paara. customer</p></div></article>)}</div></div></section>;
+  return <section className="customer-love-section relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat px-0 py-5 md:py-6"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">Customer Love</h2><HeadingWave className="mt-2" /></span></div><div className="relative z-10 love-marquee mt-5"><div className="love-track">{[...notes, ...notes].map((note, index) => <article key={index} className="relative w-[450px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-[5%] h-[90%] w-[90%] object-contain" /><div className="relative z-10 flex h-full w-[60%] mx-auto flex-col items-center justify-start pt-[30%] text-center"><p className="text-[1.1rem] md:text-[1.3rem] font-semibold leading-snug text-cocoa">{note}</p><p className="mt-4 text-[9px] tracking-[.2em] uppercase text-cocoa/60">Paara. customer</p></div></article>)}</div></div></section>;
 }
 
 function Collections() {
