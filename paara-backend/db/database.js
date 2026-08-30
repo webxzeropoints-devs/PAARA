@@ -29,6 +29,7 @@ async function persist() {
     await put('paara-db/paara.db', buf, { access: 'private', addRandomSuffix: false, allowOverwrite: true });
   } catch (err) {
     console.error('Blob DB persist failed:', err.message);
+    throw err;
   }
 }
 

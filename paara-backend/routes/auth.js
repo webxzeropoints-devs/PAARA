@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
       await db.persist();
     } catch (persistErr) {
       console.error('Database persist after registration failed:', persistErr.message);
-      // Continue; the registration succeeded even if persisting failed.
+      return res.status(503).json({ error: 'Account could not be saved. Please try again.' });
     }
   }
 

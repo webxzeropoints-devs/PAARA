@@ -148,27 +148,37 @@ if (db.isServerless) {
     const originalSend = res.send.bind(res);
     const originalEnd = res.end.bind(res);
     let persistPromise = null;
+    const respondPersistFailure = (err) => {
+      console.error('Persist before response failed:', err.message);
+      if (!res.headersSent) {
+        res.statusCode = 503;
+        res.setHeader('Content-Type', 'application/json');
+        originalEnd(JSON.stringify({ error: 'Database could not be saved. Please try again.' }));
+      }
+    };
 
     const persistBeforeResponse = () => {
       if (req.method === 'GET' || res.statusCode >= 400) return Promise.resolve();
-      if (!persistPromise) {
-        persistPromise = db.persist().catch((err) => {
-          console.error('Persist before response failed:', err.message);
-        });
-      }
+      if (!persistPromise) persistPromise = db.persist();
       return persistPromise;
     };
 
     res.json = (body) => {
-      persistBeforeResponse().then(() => originalJson(body));
+      persistBeforeResponse()
+        .then(() => originalJson(body))
+        .catch(respondPersistFailure);
       return res;
     };
     res.send = (body) => {
-      persistBeforeResponse().then(() => originalSend(body));
+      persistBeforeResponse()
+        .then(() => originalSend(body))
+        .catch(respondPersistFailure);
       return res;
     };
     res.end = (...args) => {
-      persistBeforeResponse().then(() => originalEnd(...args));
+      persistBeforeResponse()
+        .then(() => originalEnd(...args))
+        .catch(respondPersistFailure);
       return res;
     };
 
