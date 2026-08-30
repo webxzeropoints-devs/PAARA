@@ -22,12 +22,12 @@ export default function AdminPaaraIRL() {
       <form onSubmit={save} className="border border-cocoa/10 bg-shell p-5 space-y-7">
         <section className="space-y-3">
           <div>
-            <h2 className="font-display text-2xl text-cocoa">Para IRL Image</h2>
-            <p className="mt-1 text-sm text-cocoa/60">This image appears in the Para IRL section on the homepage.</p>
+            <h2 className="font-display text-2xl text-cocoa">Paara IRL Image</h2>
+            <p className="mt-1 text-sm text-cocoa/60">This image appears in the Paara IRL section on the homepage.</p>
           </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="h-36 w-36 shrink-0 overflow-hidden border border-gold/35 bg-sand">
-              {form.image_url ? <img src={form.image_url} alt="Current Para IRL image" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center px-4 text-center text-xs text-cocoa/50">No image set</div>}
+              {form.image_url ? <img src={form.image_url} alt="Current Paara IRL image" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center px-4 text-center text-xs text-cocoa/50">No image set</div>}
             </div>
             <div className="min-w-0 flex-1 space-y-3">
               <label className="block text-xs uppercase tracking-widest text-cocoa">Image URL<input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case outline-none focus:border-gold" /></label>
@@ -50,7 +50,7 @@ export default function AdminPaaraIRL() {
             </div>
           </div>
         </section>
-        <label className="block border-t border-cocoa/10 pt-6 text-xs uppercase tracking-widest text-cocoa">Caption<p className="mt-1 text-sm normal-case tracking-normal text-cocoa/60">Shown with the Para IRL image content.</p><input value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case tracking-normal outline-none focus:border-gold" /></label>
+        <label className="block border-t border-cocoa/10 pt-6 text-xs uppercase tracking-widest text-cocoa">Caption<p className="mt-1 text-sm normal-case tracking-normal text-cocoa/60">Shown with the Paara IRL image content.</p><input value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case tracking-normal outline-none focus:border-gold" /></label>
         <div className="flex items-center gap-3"><button className="px-4 py-2 text-xs uppercase tracking-widest bg-gold text-sand">Save changes</button>{saved && <span className="text-sm text-cocoa">{saved}</span>}</div>
       </form>
     </div>

@@ -16,7 +16,7 @@ const formatPrice = (n) =>
     ? `₹${n.toLocaleString("en-IN")}`
     : n || "";
 
-export default function ProductFlipCard({ product, index = 0, compact = false, boutique = false, bestseller = false, disableReveal = false, navigateOnClick = false }) {
+export default function ProductFlipCard({ product, index = 0, compact = false, boutique = false, bestseller = false, disableReveal = false, navigateOnClick = false, disableFlip = false }) {
   const [flipped, setFlipped] = useState(false);
   const navigate = useNavigate();
   const reducedMotion = prefersReducedMotion();
@@ -67,22 +67,24 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
       className={`group relative ${compact ? "w-56 md:w-64 shrink-0" : "w-full"} ${boutique ? "max-w-[280px] mx-auto" : ""}`}
     >
       <div
-        className="relative w-full aspect-[4/5] [perspective:1200px] cursor-pointer"
-        onClick={onActivate}
-        role="button"
-        tabIndex={0}
-        aria-pressed={flipped}
-        aria-label={`${product?.name || "Product"} — tap to flip`}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onActivate();
-          }
-        }}
+        className={`relative w-full aspect-[4/5] ${disableFlip ? "" : "[perspective:1200px] cursor-pointer"}`}
+        {...(!disableFlip && {
+          onClick: onActivate,
+          role: "button",
+          tabIndex: 0,
+          "aria-pressed": flipped,
+          "aria-label": `${product?.name || "Product"} — tap to flip`,
+          onKeyDown: (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onActivate();
+            }
+          },
+        })}
       >
         <motion.div
-          className="absolute inset-0 [transform-style:preserve-3d]"
-          animate={{
+          className={`absolute inset-0 ${disableFlip ? "" : "[transform-style:preserve-3d]"}`}
+          animate={disableFlip ? undefined : {
             rotateY: flipped ? 180 : 0,
             scale: flipped ? 1.02 : 1,
           }}
@@ -90,7 +92,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
             rotateY: { duration: 0.7, ease: [0.45, 0, 0.55, 1] },
             scale: { duration: 0.35, ease: "easeOut" },
           }}
-          style={{ transformStyle: "preserve-3d" }}
+          style={disableFlip ? undefined : { transformStyle: "preserve-3d" }}
         >
           {/* FRONT FACE */}
           <div
@@ -127,35 +129,36 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
             </button>
           </div>
 
-          {/* BACK FACE — only animates the marquee after flipped */}
-          <div
-            className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-shell rounded-sm overflow-hidden"
-            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-          >
-            <div className="w-full h-full overflow-hidden">
-              <div
-                className="flex h-full will-change-transform"
-                style={{
-                  width: "200%",
-                  animation: flipped
-                    ? `paara-marquee ${marqueeDuration}s linear infinite`
-                    : "none",
-                  animationPlayState: flipped ? "running" : "paused",
-                }}
-              >
-                {[...marqueeImgs, ...marqueeImgs].map((src, i) => (
-                  <img
-                    key={`${src}-${i}`}
-                    src={src}
-                    alt=""
-                    aria-hidden="true"
-                    loading="lazy"
-                    className="h-full w-1/3 object-cover shrink-0"
-                  />
-                ))}
+          {!disableFlip && (
+            <div
+              className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-shell rounded-sm overflow-hidden"
+              style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+            >
+              <div className="w-full h-full overflow-hidden">
+                <div
+                  className="flex h-full will-change-transform"
+                  style={{
+                    width: "200%",
+                    animation: flipped
+                      ? `paara-marquee ${marqueeDuration}s linear infinite`
+                      : "none",
+                    animationPlayState: flipped ? "running" : "paused",
+                  }}
+                >
+                  {[...marqueeImgs, ...marqueeImgs].map((src, i) => (
+                    <img
+                      key={`${src}-${i}`}
+                      src={src}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      className="h-full w-1/3 object-cover shrink-0"
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </motion.div>
       </div>
 
