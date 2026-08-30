@@ -2,7 +2,7 @@
 // Defaults to the colocated backend in development; production can override it
 // with VITE_API_URL (for example, https://api.example.com/api).
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://paara-ivory.vercel.app/api";
 const TOKEN_KEY = "paara_token";
 
 const ADMIN_TOKEN_KEY = "paara_admin_token";
@@ -65,7 +65,7 @@ const wrapFetch = (fn) => async (...args) => {
         `[paara] backend unreachable at ${BASE_URL} — ${err.message || "network error"}`
       );
       const wrapped = new Error(
-        "Backend is unreachable. Start the API server on localhost:4000."
+        "Backend is unreachable. Please try again later."
       );
       wrapped.cause = err;
       wrapped.network = true;
