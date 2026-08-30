@@ -16,7 +16,7 @@ export default function OurStory() {
 
         <div className="mt-12 max-w-2xl mx-auto space-y-6 text-cocoa/75 leading-relaxed text-[1.05rem]">
           <motion.p initial="hidden" animate="show" variants={fadeUp}>
-            Paara Jewellery was born from my lifelong love for fashion, styling, and beautiful details.
+            Paara Jewellery was founded by Dharshini, born from her lifelong love for fashion, styling, and beautiful details.
           </motion.p>
           <motion.p initial="hidden" animate="show" variants={fadeUp}>
             Fashion designing was once a dream I wanted to pursue, but when life took me in a different direction, I decided to create my own path. That journey led me to jewellery — and what began as a small online venture slowly grew into Paara.

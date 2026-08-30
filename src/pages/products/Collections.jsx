@@ -10,7 +10,7 @@ const MATERIALS = ["sterling_silver", "stainless_steel", "brass", "titanium"];
 const VIBES = ["everyday", "festive", "minimal"];
 const GENDERS = ["women", "men", "unisex"];
 const SORTS = [
-  { value: "popularity", label: "Popularity" },
+  { value: "popularity", label: "Sort by: Popularity" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
   { value: "newest", label: "Newest" },

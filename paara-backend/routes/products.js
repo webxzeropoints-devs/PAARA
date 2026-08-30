@@ -57,7 +57,8 @@ router.get('/', (req, res) => {
     params.push(category, `%${String(category).toLowerCase()}%`);
   }
   if (subcategory) { sql += ' AND p.subcategory = ?'; params.push(subcategory); }
-  sql += sort === 'price_asc' ? ' ORDER BY p.price ASC'
+  sql += sort === 'popularity' ? ' ORDER BY p.is_bestseller DESC, p.id ASC'
+    : sort === 'price_asc' ? ' ORDER BY p.price ASC'
     : sort === 'price_desc' ? ' ORDER BY p.price DESC'
     : ' ORDER BY p.release_date DESC';
   if (req.query.limit) { sql += ` LIMIT ${parseInt(req.query.limit, 10) || 9}`; }

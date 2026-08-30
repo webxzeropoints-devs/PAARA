@@ -39,7 +39,7 @@ const NAV_ITEMS = [
 const ACCOUNT_ITEMS = [
   { label: "Orders", to: "/account/orders", icon: Package },
   { label: "Saved Addresses", to: "/account/addresses", icon: MapPin },
-  { label: "Gift Cards", to: "/account/gift-cards", icon: Gift },
+  { label: "Loyalty Card", to: "/account/gift-cards", icon: Gift },
   { label: "Notifications", to: "/account/notifications", icon: Bell },
   { label: "Customer Care", to: "/account/customer-care", icon: Headphones },
   { label: "Track Order", to: "/account/track-order", icon: Truck },
@@ -50,7 +50,7 @@ export default function Navbar() {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const location = useLocation();
-  const { count } = useCart();
+  const { count, clear: clearCart } = useCart();
   const [authed, setAuthed] = useState(() => Boolean(getToken()));
 
   // Hide navbar on scroll-down, reveal on scroll-up
@@ -106,6 +106,7 @@ export default function Navbar() {
 
   const logout = () => {
     clearToken();
+    clearCart();
     setAuthed(false);
     setIsMobileMenuOpen(false);
     setIsAccountMenuOpen(false);

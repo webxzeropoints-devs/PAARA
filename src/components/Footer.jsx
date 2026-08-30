@@ -68,7 +68,7 @@ export default function Footer() {
               <li><a href="/shop" className="hover:text-gold transition-colors">All Products</a></li>
               <li><a href="/shop?filter=new" className="hover:text-gold transition-colors">New Arrivals</a></li>
               <li><a href="/shop?filter=best-sellers" className="hover:text-gold transition-colors">Best Sellers</a></li>
-              <li><a href="/gift-cards" className="hover:text-gold transition-colors">Gift Cards</a></li>
+              <li><a href="/gift-cards" className="hover:text-gold transition-colors">Loyalty Card</a></li>
             </ul>
           </div>
 

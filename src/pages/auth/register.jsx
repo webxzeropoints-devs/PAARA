@@ -85,7 +85,8 @@ export default function Register() {
               required
               autoComplete="tel"
               value={form.phone}
-              onChange={update("phone")}
+              onChange={(e) => update("phone")({ target: { value: e.target.value.replace(/\D/g, "").slice(0, 10) } })}
+              maxLength={10}
               className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm transition-colors"
             />
           </div>

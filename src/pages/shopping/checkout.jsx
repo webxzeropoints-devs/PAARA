@@ -16,6 +16,7 @@ import {
   postVerifyPayment,
 } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
+import { INDIAN_STATES, STATE_CITIES } from "../../lib/locations";
 
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
@@ -308,20 +309,25 @@ export default function Checkout() {
                         onChange={(e) => setNewAddress({ ...newAddress, line2: e.target.value })}
                         className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none col-span-2"
                       />
-                      <input
+                      <select
                         required
-                        placeholder="City"
+                        value={newAddress.state}
+                        onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value, city: "" })}
+                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none"
+                      >
+                        <option value="">Select state</option>
+                        {INDIAN_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+                      </select>
+                      <select
+                        required
                         value={newAddress.city}
                         onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none"
-                      />
-                      <input
-                        required
-                        placeholder="State"
-                        value={newAddress.state}
-                        onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
-                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none"
-                      />
+                        disabled={!newAddress.state}
+                        className="border-b border-cocoa/30 bg-transparent py-2 text-sm focus:border-gold outline-none disabled:opacity-50"
+                      >
+                        <option value="">Select city</option>
+                        {(STATE_CITIES[newAddress.state] || cities.map((city) => city.name)).map((city) => <option key={city} value={city}>{city}</option>)}
+                      </select>
                       <input
                         required
                         placeholder="Pincode"

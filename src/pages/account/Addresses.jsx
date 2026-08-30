@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 
 import AccountPageLayout from "./AccountPageLayout";
 import { getAddresses, postAddress } from "../../lib/api";
+import { INDIAN_STATES, STATE_CITIES } from "../../lib/locations";
 
 const emptyForm = { line1: "", line2: "", city: "", state: "", pincode: "" };
 
@@ -65,8 +66,8 @@ export default function Addresses() {
           <Field label="Address line 1" value={form.line1} onChange={(v) => setForm({ ...form, line1: v })} required />
           <Field label="Address line 2" value={form.line2} onChange={(v) => setForm({ ...form, line2: v })} />
           <div className="grid md:grid-cols-3 gap-4">
-            <Field label="City" value={form.city} onChange={(v) => setForm({ ...form, city: v })} required />
-            <Field label="State" value={form.state} onChange={(v) => setForm({ ...form, state: v })} required />
+            <SelectField label="State" value={form.state} onChange={(v) => setForm({ ...form, state: v, city: "" })} options={INDIAN_STATES} required />
+            <SelectField label="City" value={form.city} onChange={(v) => setForm({ ...form, city: v })} options={STATE_CITIES[form.state] || []} required disabled={!form.state} />
             <Field label="Pincode" value={form.pincode} onChange={(v) => setForm({ ...form, pincode: v })} required />
           </div>
           <div className="flex gap-3 pt-2">
@@ -115,6 +116,18 @@ function Field({ label, value, onChange, required = false }) {
         onChange={(e) => onChange(e.target.value)}
         className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm transition-colors"
       />
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options, required = false, disabled = false }) {
+  return (
+    <div>
+      <label className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">{label}</label>
+      <select required={required} disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm transition-colors disabled:opacity-50">
+        <option value="">Select {label.toLowerCase()}</option>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
     </div>
   );
 }

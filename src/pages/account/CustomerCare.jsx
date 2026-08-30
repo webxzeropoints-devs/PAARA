@@ -9,7 +9,7 @@ const FAQS = [
   { q: "What is your return policy?", a: "Unworn pieces in original packaging can be returned within 7 days of delivery." },
   { q: "How do I exchange a piece?", a: "Contact support with your order number and we'll arrange an exchange for a different size or design." },
   { q: "Do you offer gift wrapping?", a: "Yes — every Paara order ships in our signature packaging at no extra cost." },
-  { q: "How do I use a gift card?", a: "Visit Account → Gift Cards to check your balance and redeem a code at checkout." },
+  { q: "How do I use a loyalty card?", a: "Visit Account → Loyalty Card to check your balance and redeem a code at checkout." },
 ];
 
 export default function CustomerCare() {
