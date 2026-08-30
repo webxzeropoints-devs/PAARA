@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { adminChangeEmail, adminChangePassword, adminChangeProfilePicture, apiPost } from "../lib/api";
 import { useAdmin } from "../lib/adminAuth.jsx";
+import { isStrongPassword, PASSWORD_ERROR } from "../lib/validation";
 
 export default function AdminProfile() {
   const { admin, updateProfile, logout } = useAdmin();
@@ -62,7 +63,7 @@ export default function AdminProfile() {
     setEmailMsg("");
     setEmailSaving(true);
     try {
-      await adminChangeEmail(newEmail.trim(), emailPw);
+      await adminChangeEmail(newEmail.trim().toLowerCase(), emailPw);
       await updateProfile({});
       setEmailMsg("Email updated.");
       setNewEmail("");
@@ -77,8 +78,8 @@ export default function AdminProfile() {
   const submitPassword = async (e) => {
     e.preventDefault();
     setPwMsg("");
-    if (newPw.length < 8) {
-      setPwMsg("New password must be at least 8 characters.");
+    if (!isStrongPassword(newPw)) {
+      setPwMsg(PASSWORD_ERROR);
       return;
     }
     setPwSaving(true);
@@ -104,8 +105,8 @@ export default function AdminProfile() {
       setSetupMsg("Enter a valid email address.");
       return;
     }
-    if (setupPassword.length < 8) {
-      setSetupMsg("Password must be at least 8 characters.");
+    if (!isStrongPassword(setupPassword)) {
+      setSetupMsg(PASSWORD_ERROR);
       return;
     }
     if (setupPassword !== setupConfirmPassword) {
@@ -122,7 +123,7 @@ export default function AdminProfile() {
       await apiPost("/admin-auth/set-password", {
         admin_id: adminId,
         new_password: setupPassword,
-        new_email: trimmedEmail,
+        new_email: trimmedEmail.toLowerCase(),
       });
       await updateProfile({});
       setSetupRequired(false);
@@ -169,7 +170,7 @@ export default function AdminProfile() {
               onChange={(e) => setSetupPassword(e.target.value)}
               placeholder="New password"
               required
-              minLength={8}
+              minLength={12}
               className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
             />
             <input
@@ -178,7 +179,7 @@ export default function AdminProfile() {
               onChange={(e) => setSetupConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
               required
-              minLength={8}
+              minLength={12}
               className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
             />
             <Row>

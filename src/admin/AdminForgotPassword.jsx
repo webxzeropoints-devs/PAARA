@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 
 import { apiPost } from "../lib/api";
 import { fadeUp } from "../lib/motion";
+import { isStrongPassword, PASSWORD_ERROR } from "../lib/validation";
 
 export default function AdminForgotPassword() {
   const navigate = useNavigate();
@@ -34,8 +35,8 @@ export default function AdminForgotPassword() {
     event.preventDefault();
     setError("");
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    if (!isStrongPassword(password)) {
+      setError(PASSWORD_ERROR);
       return;
     }
 

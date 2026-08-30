@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const { requireAdminSession } = require('../middleware/adminAuth');
 const { issuePasswordResetOtp, consumePasswordResetOtp, markPasswordResetOtpUsed } = require('../utils/passwordReset');
+const { normalizeEmail } = require('../utils/emailOtp');
+const { validatePassword, PASSWORD_ERROR } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -13,8 +15,9 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'email and password are required.' });
 
-  const normalizedEmail = String(email).trim().toLowerCase();
-  const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(normalizedEmail);
+  const normalizedEmail = normalizeEmail(email);
+  const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(normalizedEmail)
+    || db.prepare('SELECT * FROM admins WHERE lower(email) = ?').get(normalizedEmail);
   const passwordMatches = !!admin && bcrypt.compareSync(password, admin.password_hash);
   console.log('[AUTH_LOGIN]', { actor: 'admin', emailDomain: normalizedEmail?.split('@')[1], adminFound: !!admin, passwordMatches });
   if (!admin || !passwordMatches) {
@@ -43,7 +46,7 @@ router.post('/login', async (req, res) => {
 
 router.post('/set-password', (req, res) => {
   const { admin_id, new_password, new_email } = req.body;
-  const normalizedEmail = String(new_email || '').trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(new_email);
 
   if (!admin_id || !new_password || !normalizedEmail) {
     return res.status(400).json({ error: 'admin_id, new_password and new_email are required.' });
@@ -51,8 +54,8 @@ router.post('/set-password', (req, res) => {
 
   const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(admin_id);
   if (!admin) return res.status(404).json({ error: 'Admin not found.' });
-  if (new_password.length < 8) {
-    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  if (!validatePassword(new_password)) {
+    return res.status(400).json({ error: PASSWORD_ERROR });
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     return res.status(400).json({ error: 'A valid email address is required.' });
@@ -71,10 +74,11 @@ router.post('/set-password', (req, res) => {
 });
 
 router.post('/forgot-password/request', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   if (!email) return res.status(400).json({ error: 'A valid email address is required.' });
 
-  const admin = db.prepare('SELECT id FROM admins WHERE email = ?').get(email);
+  const admin = db.prepare('SELECT id FROM admins WHERE email = ?').get(email)
+    || db.prepare('SELECT id FROM admins WHERE lower(email) = ?').get(email);
   if (!admin) return res.status(404).json({ error: 'No admin account was found for that email.' });
 
   try {
@@ -86,15 +90,15 @@ router.post('/forgot-password/request', async (req, res) => {
 });
 
 router.post('/forgot-password/reset', (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const code = String(req.body.code || '').trim();
   const newPassword = req.body.password;
 
   if (!email || !/^\d{6}$/.test(code)) {
     return res.status(400).json({ error: 'A valid email and 6-digit reset code are required.' });
   }
-  if (!newPassword || String(newPassword).length < 8) {
-    return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+  if (!validatePassword(newPassword)) {
+    return res.status(400).json({ error: PASSWORD_ERROR });
   }
 
   const validation = consumePasswordResetOtp(email, code, 'admin');
@@ -102,7 +106,8 @@ router.post('/forgot-password/reset', (req, res) => {
     return res.status(400).json({ error: validation.reason });
   }
 
-  const admin = db.prepare('SELECT id FROM admins WHERE email = ?').get(email);
+  const admin = db.prepare('SELECT id FROM admins WHERE email = ?').get(email)
+    || db.prepare('SELECT id FROM admins WHERE lower(email) = ?').get(email);
   if (!admin) {
     return res.status(404).json({ error: 'Admin account not found.' });
   }
@@ -126,8 +131,8 @@ router.put('/change-password', requireAdminSession, (req, res) => {
   if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
     return res.status(401).json({ error: 'Current password is incorrect.' });
   }
-  if (!newPassword || newPassword.length < 8) {
-    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  if (!validatePassword(newPassword)) {
+    return res.status(400).json({ error: PASSWORD_ERROR });
   }
   db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newPassword, 10), admin.id);
   res.json({ success: true });
@@ -140,7 +145,9 @@ router.put('/change-email', requireAdminSession, (req, res) => {
     return res.status(401).json({ error: 'Current password is incorrect.' });
   }
   try {
-    db.prepare('UPDATE admins SET email = ? WHERE id = ?').run(newEmail.toLowerCase(), admin.id);
+    const normalizedEmail = normalizeEmail(newEmail);
+    if (!normalizedEmail) return res.status(400).json({ error: 'A valid email address is required.' });
+    db.prepare('UPDATE admins SET email = ? WHERE id = ?').run(normalizedEmail, admin.id);
     res.json({ success: true });
   } catch (err) {
     res.status(409).json({ error: 'That email is already in use.' });

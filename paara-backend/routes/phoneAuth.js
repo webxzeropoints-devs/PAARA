@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const crypto = require('crypto');
+const { normalizePhone, PHONE_ERROR } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -10,15 +11,6 @@ const {
   WHATSAPP_BUSINESS_ACCOUNT_ID,
   WHATSAPP_ACCESS_TOKEN,
 } = process.env;
-
-function normalizePhone(v) {
-  if (typeof v !== 'string') return null;
-  const value = v.trim();
-  if (/^[6-9]\d{9}$/.test(value)) return value;
-  if (/^\+91[6-9]\d{9}$/.test(value)) return value.slice(3);
-  if (/^91[6-9]\d{9}$/.test(value)) return value.slice(2);
-  return null;
-}
 
 const hashOtp = (otp) => crypto.createHash('sha256').update(otp).digest('hex');
 
@@ -64,7 +56,7 @@ router.post('/request-otp', async (req, res) => {
   const { phone } = req.body;
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone) {
-    return res.status(400).json({ error: 'A valid 10-digit phone number is required.' });
+    return res.status(400).json({ error: PHONE_ERROR });
   }
 
   const otp = String(crypto.randomInt(100000, 1000000));
@@ -113,7 +105,7 @@ router.post('/verify-otp', (req, res) => {
 
   db.prepare('UPDATE phone_otps SET verified = 1 WHERE id = ?').run(record.id);
 
-  let customer = db.prepare('SELECT * FROM customers WHERE phone = ?').get(phone);
+  let customer = db.prepare('SELECT * FROM customers WHERE phone = ?').get(normalizedPhone);
   if (!customer) {
     const info = db.prepare(`
       INSERT INTO customers (name, email, phone, password_hash)

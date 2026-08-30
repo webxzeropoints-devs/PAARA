@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 
 import { authRegister, setToken } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
+import { isStrongPassword, normalizePhone, PASSWORD_ERROR, PHONE_ERROR } from "../../lib/validation";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,10 +19,11 @@ export default function Register() {
   const validate = () => {
     if (!form.name.trim()) return "Full name is required.";
     if (!form.phone.trim()) return "Phone number is required.";
+    if (!normalizePhone(form.phone)) return PHONE_ERROR;
     if (!form.email.trim()) return "Email is required.";
     if (!EMAIL_RE.test(form.email.trim())) return "Enter a valid email address.";
     if (!form.password) return "Password is required.";
-    if (form.password.length < 6) return "Password must be at least 6 characters.";
+    if (!isStrongPassword(form.password)) return PASSWORD_ERROR;
     if (form.password !== form.confirmPassword) return "Passwords do not match.";
     return "";
   };
@@ -38,8 +40,8 @@ export default function Register() {
     try {
       const res = await authRegister({
         name: form.name.trim(),
-        email: form.email.trim() || undefined,
-        phone: form.phone.trim(),
+        email: form.email.trim().toLowerCase() || undefined,
+        phone: normalizePhone(form.phone),
         password: form.password,
       });
       if (!res?.requires_otp || !res.email) throw new Error("No OTP challenge returned");
@@ -107,7 +109,7 @@ export default function Register() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={12}
               autoComplete="new-password"
               value={form.password}
               onChange={update("password")}
@@ -121,7 +123,7 @@ export default function Register() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={12}
               autoComplete="new-password"
               value={form.confirmPassword}
               onChange={update("confirmPassword")}

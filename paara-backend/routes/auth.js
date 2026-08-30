@@ -3,15 +3,19 @@ const bcrypt = require('bcryptjs');
 const db = require('../db/database');
 const { issueEmailOtp, normalizeEmail } = require('../utils/emailOtp');
 const { issuePasswordResetOtp, consumePasswordResetOtp, markPasswordResetOtpUsed } = require('../utils/passwordReset');
+const { normalizePhone, validatePassword, PASSWORD_ERROR, PHONE_ERROR } = require('../utils/validate');
 
 const router = express.Router();
 
 router.post('/register', async (req, res) => {
   const { name, email, password, phone } = req.body;
   const normalizedEmail = normalizeEmail(email);
+  const normalizedPhone = normalizePhone(phone);
   if (!name || !normalizedEmail || !password) {
     return res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message: 'name, email and password are required.' });
   }
+  if (!validatePassword(password)) return res.status(400).json({ ok: false, code: 'WEAK_PASSWORD', message: PASSWORD_ERROR });
+  if (!normalizedPhone) return res.status(400).json({ ok: false, code: 'INVALID_PHONE', message: PHONE_ERROR });
 
   const existing = db.prepare('SELECT id FROM customers WHERE email = ? OR lower(email) = ?').get(normalizedEmail, normalizedEmail);
   if (existing) return res.status(409).json({ ok: false, code: 'ACCOUNT_EXISTS', message: 'An account with this email already exists.' });
@@ -20,7 +24,7 @@ router.post('/register', async (req, res) => {
   console.log('[AUTH_REGISTER]', { emailDomain: normalizedEmail.split('@')[1] });
   const info = db
     .prepare('INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)')
-    .run(name, normalizedEmail, phone || null, password_hash);
+    .run(name, normalizedEmail, normalizedPhone, password_hash);
 
   try {
     await issueEmailOtp(normalizedEmail, 'Signup OTP');
@@ -56,7 +60,8 @@ router.post('/login', async (req, res) => {
 router.post('/forgot-password/request', async (req, res) => {
   const email = normalizeEmail(req.body.email);
   if (!email) return res.status(400).json({ error: 'A valid email address is required.' });
-  const customer = db.prepare('SELECT id FROM customers WHERE email = ?').get(email);
+  const customer = db.prepare('SELECT id FROM customers WHERE email = ?').get(email)
+    || db.prepare('SELECT id FROM customers WHERE lower(email) = ?').get(email);
   if (!customer) return res.status(404).json({ error: 'No customer account was found for that email.' });
 
   try {
@@ -75,8 +80,8 @@ router.post('/forgot-password/reset', (req, res) => {
   if (!email || !/^\d{6}$/.test(code)) {
     return res.status(400).json({ error: 'A valid email and 6-digit reset code are required.' });
   }
-  if (!newPassword || String(newPassword).length < 8) {
-    return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+  if (!validatePassword(newPassword)) {
+    return res.status(400).json({ error: PASSWORD_ERROR });
   }
 
   const validation = consumePasswordResetOtp(email, code, 'customer');
@@ -84,7 +89,8 @@ router.post('/forgot-password/reset', (req, res) => {
     return res.status(400).json({ error: validation.reason });
   }
 
-  const customer = db.prepare('SELECT id FROM customers WHERE email = ?').get(email);
+  const customer = db.prepare('SELECT id FROM customers WHERE email = ?').get(email)
+    || db.prepare('SELECT id FROM customers WHERE lower(email) = ?').get(email);
   if (!customer) {
     return res.status(404).json({ error: 'Customer account not found.' });
   }

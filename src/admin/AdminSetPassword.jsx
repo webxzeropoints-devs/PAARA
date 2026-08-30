@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 
 import { apiPost } from "../lib/api";
 import { fadeUp } from "../lib/motion";
+import { isStrongPassword, PASSWORD_ERROR } from "../lib/validation";
 
 export default function AdminSetPassword() {
   const location = useLocation();
@@ -32,8 +33,8 @@ export default function AdminSetPassword() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    if (!isStrongPassword(password)) {
+      setError(PASSWORD_ERROR);
       return;
     }
 
@@ -48,7 +49,7 @@ export default function AdminSetPassword() {
       await apiPost("/admin-auth/set-password", {
         admin_id: adminId,
         new_password: password,
-        new_email: trimmedEmail,
+        new_email: trimmedEmail.toLowerCase(),
       });
       navigate("/admin/login", { state: { message: "Password and email update complete. Please log in." } });
     } catch (err) {
@@ -83,7 +84,7 @@ export default function AdminSetPassword() {
             <span className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">New password</span>
             <input
               type="password"
-              minLength={8}
+              minLength={12}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -95,7 +96,7 @@ export default function AdminSetPassword() {
             <span className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">Confirm new password</span>
             <input
               type="password"
-              minLength={8}
+              minLength={12}
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
