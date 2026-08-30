@@ -110,7 +110,6 @@ h3 {
   width: max-content;
   gap: 1.5rem;
   animation: paara-love-marquee 34s linear infinite;
-  transition: animation-duration 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Preserve the existing marquee card treatment while preventing flex sizing
@@ -137,10 +136,6 @@ h3 {
   flex: 0 0 calc(100% / 6);
   width: calc(100% / 6);
   height: 100%;
-}
-
-.love-marquee:hover .love-track {
-  animation-duration: 160s;
 }
 
 .collection-marquee:hover .collection-track {
