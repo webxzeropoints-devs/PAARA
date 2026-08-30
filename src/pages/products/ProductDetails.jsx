@@ -151,11 +151,11 @@ export default function ProductDetails() {
             <div className="border-t border-b border-cocoa/10 py-4 my-6 space-y-1.5">
               <div className="flex justify-between text-sm">
                 <span className="text-cocoa/70">Price</span>
-                <span>{formatPrice(price)}</span>
+                <span className="font-body tabular-nums tracking-[0.04em]">{formatPrice(price)}</span>
               </div>
               <div className="flex justify-between font-medium">
                 <span>Total</span>
-                <span>{formatPrice(price)}</span>
+                <span className="font-body tabular-nums tracking-[0.04em]">{formatPrice(price)}</span>
               </div>
               <p className="text-[11px] text-cocoa/50 mt-1">
                 Taxes included in the displayed product price. Shipping is calculated at checkout.

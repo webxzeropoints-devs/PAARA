@@ -151,7 +151,7 @@ export default function Collections() {
               <select
                 value={filters.sort}
                 onChange={(e) => setFilter("sort", e.target.value)}
-                className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-1 text-sm"
+                className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-1 text-sm font-semibold"
               >
                 {SORTS.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -214,13 +214,13 @@ export default function Collections() {
 function FilterGroup({ label, value, options, onChange }) {
   return (
     <div className="mt-4">
-      <p className="text-xs uppercase tracking-widest text-cocoa/60 mb-2">{label}</p>
+      <p className="text-xs uppercase tracking-widest text-cocoa/60 mb-2 font-semibold">{label}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => (
           <button
             key={opt}
             onClick={() => onChange(value === opt ? "" : opt)}
-            className={`text-xs uppercase tracking-widest px-3 py-1 rounded-sm border transition-colors ${
+            className={`text-xs uppercase tracking-widest px-3 py-1 rounded-sm border transition-colors font-semibold ${
               value === opt
                 ? "bg-cocoa text-sand border-cocoa"
                 : "border-cocoa/20 text-cocoa/70 hover:border-cocoa/40"

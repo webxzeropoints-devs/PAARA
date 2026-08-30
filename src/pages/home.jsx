@@ -103,7 +103,7 @@ function useHomeZoomStack(containerRef) {
         section.style.top = "0";
         section.style.transform = `translateZ(0) scale(${1 - progress * 0.07})`;
         section.style.opacity = String(1 - progress * 0.4);
-        section.style.filter = `blur(${progress * 4}px)`;
+        section.style.filter = `blur(${progress * 1.5}px)`;
         section.style.willChange = "transform, opacity, filter";
         section.style.transition = "none";
       });
@@ -345,7 +345,7 @@ function Vault({ products, countdown }) {
 
 function CustomerLove() {
   const notes = ["“The most beautiful little package to open.”", "“I wear my pearl hoops with everything.”", "“Delicate, special and so beautifully made.”", "“My new everyday favourite.”"];
-  return <section className="relative py-24 md:py-28 bg-[#efe4d2] overflow-hidden"><span className="absolute text-6xl left-[8%] top-10 opacity-50">🐚</span><span className="absolute text-4xl right-[12%] top-16 opacity-50">✦</span><span className="absolute text-5xl right-[7%] bottom-8 opacity-50">♡</span><span className="absolute text-3xl left-[18%] bottom-10 opacity-50">●</span><div className="text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-3">Customer Love</h2><HeadingWave className="mt-3" /></span></div><div className="love-marquee mt-12"><div className="love-track">{[...notes, ...notes].map((note, index) => <article key={index} className="w-[290px] md:w-[360px] shrink-0 rounded-[48%_52%_45%_55%/55%_44%_56%_45%] bg-sand p-7 md:p-9 shadow-[0_12px_35px_rgba(107,74,51,.08)]"><span className="text-gold">✦</span><p className="text-xl md:text-2xl leading-snug mt-4">{note}</p><p className="mt-5 text-[10px] tracking-[.2em] uppercase text-cocoa/55">Paara. customer</p></article>)}</div></div></section>;
+  return <section className="relative py-24 md:py-28 bg-[#efe4d2] overflow-hidden"><span className="absolute text-6xl left-[8%] top-10 opacity-50">🐚</span><span className="absolute text-4xl right-[12%] top-16 opacity-50">✦</span><span className="absolute text-5xl right-[7%] bottom-8 opacity-50">♡</span><span className="absolute text-3xl left-[18%] bottom-10 opacity-50">●</span><div className="text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-3">Customer Love</h2><HeadingWave className="mt-3" /></span></div><div className="love-marquee mt-12"><div className="love-track">{[...notes, ...notes].map((note, index) => <article key={index} className="w-[290px] md:w-[360px] shrink-0 rounded-xl border border-gold/25 bg-sand p-7 md:p-9 shadow-[0_12px_35px_rgba(107,74,51,.08)]"><span className="text-gold">✦</span><p className="text-xl md:text-2xl leading-snug mt-4">{note}</p><p className="mt-5 text-[10px] tracking-[.2em] uppercase text-cocoa/55">Paara. customer</p></article>)}</div></div></section>;
 }
 
 function Collections() {

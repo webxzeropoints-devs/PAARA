@@ -39,7 +39,7 @@ body {
 
 /* Shared display treatment for page and product headings. */
 .font-display {
-  font-family: "Cormorant Garamond", serif;
+  font-family: "Playfair Display", serif;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -48,7 +48,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: "Cormorant Garamond", serif;
+  font-family: "Playfair Display", serif;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -110,6 +110,7 @@ h3 {
   width: max-content;
   gap: 1.5rem;
   animation: paara-love-marquee 34s linear infinite;
+  transition: animation-duration 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Preserve the existing marquee card treatment while preventing flex sizing
@@ -138,7 +139,10 @@ h3 {
   height: 100%;
 }
 
-.love-marquee:hover .love-track,
+.love-marquee:hover .love-track {
+  animation-duration: 160s;
+}
+
 .collection-marquee:hover .collection-track {
   animation-play-state: paused;
 }

@@ -170,7 +170,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
         >
           {product?.name}
         </Link>
-        <div className={`text-gold mt-1 text-sm ${boutique ? "font-medium" : ""}`}>{formatPrice(product?.price)}</div>
+        <div className={`font-body tabular-nums tracking-[0.04em] text-gold mt-1 text-sm ${boutique ? "font-medium" : ""}`}>{formatPrice(product?.price)}</div>
       </div>
 
       <style>{`
