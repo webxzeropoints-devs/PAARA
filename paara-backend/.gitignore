@@ -5,3 +5,4 @@ paara.db-shm
 paara.db-wal
 public/uploads/
 .DS_Store
+.vercel
