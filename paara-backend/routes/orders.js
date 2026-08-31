@@ -134,7 +134,7 @@ router.post('/proforma', requireAuth, (req, res) => {
 // GET /api/orders — this customer's order history
 router.get('/', requireAuth, (req, res) => {
   const orders = db
-    .prepare('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC')
+    .prepare("SELECT * FROM orders WHERE customer_id = ? AND (status = 'Delivered' OR status = 'delivered') ORDER BY created_at DESC")
     .all(req.customer.id);
   const itemsForOrder = db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC');
   orders.forEach((order) => {

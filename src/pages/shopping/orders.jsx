@@ -43,7 +43,8 @@ export default function Orders() {
     getOrders()
       .then((data) => {
         if (cancelled) return;
-        setOrders(Array.isArray(data) ? data : data?.orders || []);
+        const customerOrders = Array.isArray(data) ? data : data?.orders || [];
+        setOrders(customerOrders.filter((order) => String(order.status || "").trim().toLowerCase() === "delivered"));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -96,9 +97,9 @@ export default function Orders() {
 
         {!loading && !error && orders.length === 0 && (
           <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-10 text-center">
-            <h2 className="font-display text-2xl mb-2">No orders yet</h2>
+            <h2 className="font-display text-2xl mb-2">No completed orders yet</h2>
             <p className="text-sm text-cocoa/60 mb-6">
-              When you place an order, it will appear here.
+              Delivered orders will appear here.
             </p>
             <Link
               to="/shop"
