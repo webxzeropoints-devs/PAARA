@@ -41,7 +41,7 @@ export default function OurStory() {
         >
           "Paara is more than a jewellery brand — it's a dream I'm building, one piece at a time."
         </motion.blockquote>
-        <p className="font-script mt-6 text-3xl text-cocoa text-center">— Parul A.</p>
+        <p className="font-script mt-6 text-3xl text-cocoa text-center">— Dharshini</p>
         <p className="mt-1 text-[10px] uppercase tracking-[.24em] text-cocoa/60 text-center">Founder</p>
       </div>
     </div>

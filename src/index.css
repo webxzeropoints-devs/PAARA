@@ -146,7 +146,7 @@ h3 {
   align-items: center;
   width: max-content;
   gap: 1.5rem;
-  animation: paara-love-marquee 36s linear infinite;
+  animation: paara-love-marquee 52s linear infinite;
   animation-timing-function: linear;
   will-change: transform;
 }
@@ -154,6 +154,7 @@ h3 {
 /* Preserve the existing marquee card treatment while preventing flex sizing
    from collapsing a card during the continuous track animation. */
 .love-track > article {
+  position: relative;
   flex: 0 0 540px;
   width: 540px;
   min-width: 540px;
@@ -161,6 +162,16 @@ h3 {
   padding: 0;
   background: transparent;
   transition: transform 300ms ease-out, filter 300ms ease-out;
+}
+
+.shell-item {
+  position: relative;
+}
+
+.shell-text {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
 }
 
 .love-track > article:hover {
