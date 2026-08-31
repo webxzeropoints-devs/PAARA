@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS orders (
   total_amount       REAL NOT NULL,
   status             TEXT NOT NULL DEFAULT 'Order Confirmed', -- Order Confirmed | Packed | Shipped | Delivered
   payment_status     TEXT NOT NULL DEFAULT 'unpaid',    -- unpaid | paid | refunded
+  payment_method     TEXT NOT NULL DEFAULT 'razorpay', -- razorpay | cod
   razorpay_order_id  TEXT,
   razorpay_payment_id TEXT,
   gift_card_eligible_amount REAL,

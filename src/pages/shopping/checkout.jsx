@@ -24,10 +24,8 @@ const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
 const STEPS = ["Address", "Delivery", "Payment"];
 const PAYMENT_METHODS = [
-  { id: "upi", label: "UPI", description: "Pay with any UPI app" },
-  { id: "card", label: "Card", description: "Credit or debit card" },
-  { id: "netbanking", label: "Net banking", description: "Choose your bank" },
-  { id: "wallet", label: "Wallet", description: "Supported digital wallets" },
+  { id: "razorpay", label: "Pay online", description: "UPI, card, net banking or wallet via Razorpay" },
+  { id: "cod", label: "Cash on Delivery", description: "Pay in cash when your order arrives" },
 ];
 
 function loadRazorpay() {
@@ -77,7 +75,7 @@ export default function Checkout() {
   const [order, setOrder] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("upi");
+  const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
   const [previewingInvoice, setPreviewingInvoice] = useState(false);
@@ -199,42 +197,33 @@ export default function Checkout() {
     }
   };
 
-  // Step 2 → 3: create the order on the backend (price/shipping authoritative).
-  const placeOrder = async () => {
-    setPlacing(true);
-    setError("");
-    try {
-      const res = await postOrder({
-        items: items.map((i) => ({
-          product_id: i.product_id,
-          quantity: i.quantity,
-        })),
-        address_id: selectedAddressId,
-      });
-      setOrder(res);
-      setStep(2);
-    } catch (err) {
-      setError(err?.message || "Could not create order");
-    } finally {
-      setPlacing(false);
-    }
-  };
-
-  // Step 3: open the payment gateway. The cart is intentionally untouched until
-  // the server verifies the gateway signature in the success callback.
+  // The payment screen creates the order. COD stops here; Razorpay continues
+  // with the existing gateway and server-side signature verification flow.
   const payNow = async () => {
-    if (!order || !paymentMethod) return;
+    if (!paymentMethod || !selectedAddressId) return;
     setPaying(true);
     setError("");
     try {
+      const createdOrder = await postOrder({
+        items: items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
+        address_id: selectedAddressId,
+        payment_method: paymentMethod,
+      });
+      setOrder(createdOrder);
+      if (paymentMethod === "cod") {
+        // COD is complete once the database confirms order creation.
+        clear();
+        navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, { replace: true, state: { recentOrder: createdOrder, selectedAddress } });
+        return;
+      }
       const Razorpay = await loadRazorpay();
-      const razorpayOrder = await postCreateRazorpay(order.order_id);
+      const razorpayOrder = await postCreateRazorpay(createdOrder.order_id);
       const razorpayCheckout = new Razorpay({
         key: razorpayOrder.key_id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         name: "Paara.",
-        description: `Order #${order.order_number || order.order_id}`,
+        description: `Order #${createdOrder.order_number || createdOrder.order_id}`,
         order_id: razorpayOrder.razorpay_order_id,
         config: {
           display: {
@@ -252,15 +241,15 @@ export default function Checkout() {
         handler: async (response) => {
           try {
             await postVerifyPayment({
-              paara_order_id: order.order_id,
+              paara_order_id: createdOrder.order_id,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
             clear();
-            navigate(`/order-confirmation?order_id=${order.order_id}&payment=success`, {
+            navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, {
               replace: true,
-              state: { recentOrder: order, selectedAddress },
+              state: { recentOrder: createdOrder, selectedAddress },
             });
           } catch (err) {
             setError(err?.message || "Payment could not be verified. Please contact support if you were charged.");
@@ -486,23 +475,23 @@ export default function Checkout() {
                   </button>
                   <motion.button
                     whileTap={{ scale: 0.97 }}
-                    onClick={placeOrder}
+                    onClick={() => setStep(2)}
                     disabled={placing || !shipping}
                     className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
                   >
-                    {placing ? "Placing order…" : "Review & Pay"}
+                    Review & Pay
                   </motion.button>
                 </div>
               </div>
             )}
 
-            {step === 2 && order && (
+            {step === 2 && (
               <div>
                 <h2 className="font-display text-2xl mb-4">Payment</h2>
                 <div className="mb-6">
                   <p className="mb-3 text-xs uppercase tracking-widest text-cocoa/60">Choose payment method</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {PAYMENT_METHODS.map((method) => (
+                      {PAYMENT_METHODS.map((method) => (
                       <label key={method.id} className={`cursor-pointer border rounded-sm p-4 transition-colors ${paymentMethod === method.id ? "border-gold bg-gold/10" : "border-cocoa/15 hover:border-cocoa/30"}`}>
                         <input type="radio" name="payment-method" value={method.id} checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="sr-only" />
                         <span className="block text-sm font-medium">{method.label}</span>
@@ -510,7 +499,7 @@ export default function Checkout() {
                       </label>
                     ))}
                   </div>
-                  {!razorpayReady && !paymentMethodsError && <p className="mt-3 text-xs text-cocoa/60">Loading payment methods...</p>}
+                  {paymentMethod === "razorpay" && !razorpayReady && !paymentMethodsError && <p className="mt-3 text-xs text-cocoa/60">Loading online payment...</p>}
                   {paymentMethodsError && <p className="mt-3 text-xs text-red-700">{paymentMethodsError}</p>}
                 </div>
                 <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-5 mb-6">
@@ -523,10 +512,10 @@ export default function Checkout() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={payNow}
-                  disabled={paying || !razorpayReady || Boolean(paymentMethodsError)}
+                  disabled={paying || (paymentMethod === "razorpay" && (!razorpayReady || Boolean(paymentMethodsError)))}
                   className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
                 >
-                  {paying ? "Opening payment…" : "Pay now"}
+                  {paying ? paymentMethod === "cod" ? "Placing COD order…" : "Opening payment…" : paymentMethod === "cod" ? "Place COD order" : "Pay online"}
                 </motion.button>
               </div>
             )}

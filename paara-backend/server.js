@@ -115,6 +115,9 @@ if (orderColumns.length && !orderColumns.includes('gift_card_granted_by')) {
 if (orderColumns.length && !orderColumns.includes('status')) {
   db.exec('ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT "Order Confirmed"');
 }
+if (orderColumns.length && !orderColumns.includes('payment_method')) {
+  db.exec('ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT "razorpay"');
+}
 db.prepare("SELECT id, created_at FROM orders WHERE order_number IS NULL OR order_number = ''").all()
   .forEach((order) => db.prepare('UPDATE orders SET order_number = ? WHERE id = ?').run(formatOrderNumber(order.created_at, order.id), order.id));
 db.exec(`

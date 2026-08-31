@@ -23,6 +23,7 @@ if (!orderColumns.includes('order_number')) db.exec('ALTER TABLE orders ADD COLU
 if (!orderColumns.includes('gift_card_eligible_amount')) db.exec('ALTER TABLE orders ADD COLUMN gift_card_eligible_amount REAL');
 if (!orderColumns.includes('gift_card_granted_at')) db.exec('ALTER TABLE orders ADD COLUMN gift_card_granted_at TEXT');
 if (!orderColumns.includes('gift_card_granted_by')) db.exec('ALTER TABLE orders ADD COLUMN gift_card_granted_by INTEGER REFERENCES admins(id)');
+if (!orderColumns.includes('payment_method')) db.exec('ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT "razorpay"');
 const { formatOrderNumber } = require('../utils/orderNumber');
 const missingOrderNumbers = db.prepare("SELECT id, created_at FROM orders WHERE order_number IS NULL OR order_number = ''").all();
 const setOrderNumber = db.prepare('UPDATE orders SET order_number = ? WHERE id = ?');

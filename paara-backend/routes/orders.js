@@ -49,7 +49,10 @@ function buildLineItems(items) {
  * page and checking out a ₹50,000 necklace for ₹5.
  */
 router.post('/', requireAuth, (req, res) => {
-  const { items, address_id } = req.body;
+  const { items, address_id, payment_method: requestedPaymentMethod = 'razorpay' } = req.body;
+  const paymentMethod = String(requestedPaymentMethod).trim().toLowerCase();
+  const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'unpaid';
+  if (!['razorpay', 'cod'].includes(paymentMethod)) return res.status(400).json({ error: 'Invalid payment method.' });
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Cart items are required.' });
   }
@@ -73,11 +76,11 @@ router.post('/', requireAuth, (req, res) => {
   const totalAmount = round2(subtotal + gstAmount + (INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL ? shipping.amount : 0));
 
   const insertOrder = db.prepare(`
-    INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount, status, payment_method, payment_status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const orderInfo = insertOrder.run(
-    req.customer.id, address_id, subtotal, gstAmount, shipping.amount, totalAmount, 'Order Confirmed'
+    req.customer.id, address_id, subtotal, gstAmount, shipping.amount, totalAmount, 'Order Confirmed', paymentMethod, paymentStatus
   );
   const orderId = orderInfo.lastInsertRowid;
   const orderNumber = formatOrderNumber(new Date().toISOString(), orderId);
@@ -105,6 +108,8 @@ router.post('/', requireAuth, (req, res) => {
   res.status(201).json({
     order_id: orderId,
     order_number: orderNumber,
+    payment_method: paymentMethod,
+    payment_status: paymentStatus,
     subtotal,
     gst_amount: gstAmount,
     shipping_amount: shipping.amount,
