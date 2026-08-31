@@ -25,7 +25,10 @@ function createInvoicePdf(order, items, address) {
       line_total: Number(item.line_total) || 0,
     }));
     const chunks = [];
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const doc = new PDFDocument({ margin: 50, size: 'A4', compress: true });
+    doc.info.Title = `Paara invoice for order ${order.id}`;
+    doc.info.Author = 'Paara Jewellery';
+    doc.info.Subject = 'Order invoice';
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
