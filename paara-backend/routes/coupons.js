@@ -6,6 +6,7 @@ const router = express.Router();
 
 // GET /api/coupons/active — currently valid, non-expired offers for the popup
 router.get('/active', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   const coupons = db.prepare(`
     SELECT id, code, description, discount_type, discount_value, deadline
     FROM coupons

@@ -12,7 +12,7 @@ export default function CouponPopup() {
 
   useEffect(() => {
     let cancelled = false;
-    apiGet("/coupons/active")
+    apiGet(`/coupons/active?fresh=${Date.now()}`)
       .then((coupons) => {
         if (!cancelled && Array.isArray(coupons) && coupons.length > 0) {
           setCoupon(coupons[0]);

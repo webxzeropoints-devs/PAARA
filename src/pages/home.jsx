@@ -421,7 +421,7 @@ function WornByYou() {
 
   useEffect(() => {
     let cancelled = false;
-    apiGet("/homepage/worn-by-you")
+    apiGet(`/homepage/worn-by-you?fresh=${Date.now()}`)
       .then((data) => {
         if (cancelled) return;
         console.log("[homepage/worn-by-you] response:", data);
