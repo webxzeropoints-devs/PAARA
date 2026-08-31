@@ -155,11 +155,11 @@ export const getAddresses = () => apiGet("/addresses");
 export const postAddress = (payload) => apiPost("/addresses", payload);
 
 export const postOrder = (payload) => apiPost("/orders", payload);
-export const previewInvoice = async (items, addressId) => {
+export const previewInvoice = async (items, addressId, paymentMethod = "razorpay") => {
   const res = await fetch(`${BASE_URL}/orders/proforma`, {
     method: "POST",
     headers: buildHeaders(),
-    body: JSON.stringify({ items, address_id: addressId }),
+    body: JSON.stringify({ items, address_id: addressId, payment_method: paymentMethod }),
   });
   if (!res.ok) {
     const text = await res.text();

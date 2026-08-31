@@ -85,11 +85,11 @@ function createInvoicePdf(order, items, address) {
     doc.text(pdfText(`Subtotal: ${money(order.subtotal)}`), left + 300, doc.y, { width: 185, align: 'right' });
     doc.text(pdfText(`Discount: ${money(order.discount_amount || 0)}`), left + 300, doc.y, { width: 185, align: 'right' });
     if (!order.hideTaxBreakdown) doc.text('Taxes: Included in product prices', left + 300, doc.y, { width: 185, align: 'right' });
-    doc.text(pdfText(`Shipping: ${money(order.shipping_amount)}`), left + 300, doc.y, { width: 185, align: 'right' });
+    doc.text(pdfText(`Delivery Charge: ${money(order.shipping_amount)}`), left + 300, doc.y, { width: 185, align: 'right' });
     doc.moveDown(0.4);
     const totalTop = doc.y;
     doc.rect(left + 280, totalTop, 205, 29).fill('#3d2b24');
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(12).text(pdfText(`TOTAL: ${money(order.total_amount)}`), left + 290, totalTop + 8, { width: 185, align: 'right' });
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(12).text(pdfText(`TOTAL PAYABLE: ${money(order.total_amount)}`), left + 290, totalTop + 8, { width: 185, align: 'right' });
     doc.y = totalTop + 42;
     doc.fillColor('#8b6b43').font('Helvetica').fontSize(9).text('Thank you for choosing Paara.');
     doc.end();

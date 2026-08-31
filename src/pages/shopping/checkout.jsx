@@ -127,13 +127,36 @@ export default function Checkout() {
     () => summaryItems.reduce((sum, line) => sum + (Number(line.line_total) || 0), 0),
     [summaryItems]
   );
-  const customerTotal = order?.total_amount ?? Math.round(productSubtotal * 1.18 * 100) / 100;
+  const totalWeightKg = useMemo(
+    () => items.reduce((sum, item) => {
+      const product = products.find((candidate) => String(candidate.id) === String(item.product_id));
+      return sum + (Number(product?.weight_kg) || 0.1) * item.quantity;
+    }, 0),
+    [items, products]
+  );
+  const customerTotal = order?.total_amount ?? Math.round((productSubtotal * 1.18 + (shipping?.amount || 0)) * 100) / 100;
+
+  useEffect(() => {
+    if (step !== 2 || !selectedAddress || !totalWeightKg) return undefined;
+    let cancelled = false;
+    postShippingQuote({
+      city: selectedAddress.city,
+      state: selectedAddress.state,
+      payment_method: paymentMethod,
+      total_weight_kg: totalWeightKg,
+    }).then((quote) => {
+      if (!cancelled) setShipping(quote);
+    }).catch((err) => {
+      if (!cancelled) setError(err?.message || "Could not calculate delivery charge.");
+    });
+    return () => { cancelled = true; };
+  }, [paymentMethod, selectedAddress, step, totalWeightKg]);
 
   const openInvoicePreview = async () => {
     setPreviewingInvoice(true);
     setError("");
     try {
-      setPreviewUrl(await previewInvoice(items.map(({ product_id, quantity }) => ({ product_id, quantity })), selectedAddressId));
+      setPreviewUrl(await previewInvoice(items.map(({ product_id, quantity }) => ({ product_id, quantity })), selectedAddressId, paymentMethod));
     } catch (err) {
       setError(err?.message || "Could not preview invoice");
     } finally {
@@ -149,7 +172,7 @@ export default function Checkout() {
     }
     setError("");
     try {
-      const quote = await postShippingQuote({ city: selectedAddress.city });
+      const quote = await postShippingQuote({ city: selectedAddress.city, state: selectedAddress.state, payment_method: paymentMethod, total_weight_kg: totalWeightKg || 0.1 });
       setShipping(quote);
       setStep(1);
     } catch (err) {
@@ -516,7 +539,7 @@ export default function Checkout() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={payNow}
-                  disabled={paying || (paymentMethod === "razorpay" && (!razorpayReady || Boolean(paymentMethodsError)))}
+                  disabled={paying || !shipping || (paymentMethod === "razorpay" && (!razorpayReady || Boolean(paymentMethodsError)))}
                   className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
                 >
                   {paying ? paymentMethod === "cod" ? "Placing COD order…" : "Opening payment…" : paymentMethod === "cod" ? "Place COD order" : "Pay online"}
@@ -545,15 +568,15 @@ export default function Checkout() {
             {order ? (
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-cocoa/70">Subtotal</span>
+                  <span className="text-cocoa/70">Item Total</span>
                   <span className="font-numeric">{formatPrice(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-cocoa/70">Delivery</span>
-                  <span className="font-numeric">₹0</span>
+                  <span className="text-cocoa/70">Delivery Charge</span>
+                  <span className="font-numeric">{formatPrice(order.shipping_amount)}</span>
                 </div>
                 <div className="flex justify-between border-t border-cocoa/15 pt-2 mt-2 font-medium">
-                  <span>Total</span>
+                  <span>Total Payable</span>
                   <span className="font-numeric">{formatPrice(customerTotal)}</span>
                 </div>
                 <p className="text-[11px] text-cocoa/50">Inclusive of all taxes</p>
@@ -568,14 +591,18 @@ export default function Checkout() {
             ) : (
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-cocoa/70">Delivery</span>
-                  <span className="font-numeric">₹0</span>
+                  <span className="text-cocoa/70">Item Total</span>
+                  <span className="font-numeric">{formatPrice(productSubtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-cocoa/70">Delivery Charge</span>
+                  <span className="font-numeric">{formatPrice(shipping?.amount || 0)}</span>
                 </div>
                 <div className="flex justify-between border-t border-cocoa/15 pt-2 font-medium">
-                  <span>Total</span>
+                  <span>Total Payable</span>
                   <span className="font-numeric">{formatPrice(customerTotal)}</span>
                 </div>
-                <p className="text-[11px] text-cocoa/50">Inclusive of all taxes. Shipping is currently free.</p>
+                <p className="text-[11px] text-cocoa/50">Item total plus delivery charge, inclusive of all taxes.</p>
               </div>
             )}
           </aside>

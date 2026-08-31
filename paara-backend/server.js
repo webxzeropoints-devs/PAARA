@@ -76,6 +76,9 @@ if (productColumns.length && !productColumns.includes('is_vault')) {
 if (productColumns.length && !productColumns.includes('is_bestseller')) {
   db.exec('ALTER TABLE products ADD COLUMN is_bestseller INTEGER NOT NULL DEFAULT 0');
 }
+if (productColumns.length && !productColumns.includes('weight_kg')) {
+  db.exec('ALTER TABLE products ADD COLUMN weight_kg REAL NOT NULL DEFAULT 0.1');
+}
 if (productColumns.length && !productColumns.includes('vault_sort_order')) {
   db.exec('ALTER TABLE products ADD COLUMN vault_sort_order INTEGER NOT NULL DEFAULT 0');
 }

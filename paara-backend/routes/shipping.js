@@ -11,12 +11,12 @@ router.get('/cities', (req, res) => {
 
 // POST /api/shipping/quote  { city } or { lat, lng }
 router.post('/quote', (req, res) => {
-  const { city, lat, lng } = req.body;
-  if (!city && (lat == null || lng == null)) {
-    return res.status(400).json({ error: 'Provide either a city name or lat/lng.' });
+  const { city, state, payment_method = 'razorpay', total_weight_kg = 0.1 } = req.body;
+  try {
+    return res.json(calculateShipping({ city, state, paymentMethod: payment_method, totalWeightKg: total_weight_kg }));
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
-  const quote = calculateShipping({ city, lat, lng });
-  res.json(quote);
 });
 
 module.exports = router;

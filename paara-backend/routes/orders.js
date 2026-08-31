@@ -7,8 +7,6 @@ const { createInvoicePdf } = require('../utils/invoice');
 const { formatOrderNumber } = require('../utils/orderNumber');
 
 const router = express.Router();
-// Keep shipping calculation active, but temporarily exclude its charge from customer totals.
-const INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL = process.env.INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL === 'true';
 
 const ORDER_TRACKING_STATUSES = ['Order Confirmed', 'Packed', 'Shipped', 'Delivered'];
 
@@ -35,7 +33,9 @@ function buildLineItems(items) {
     if (product.stock < item.quantity) throw new Error(`"${product.name}" only has ${product.stock} in stock.`);
     const lineTotal = round2(product.price * item.quantity);
     subtotal = round2(subtotal + lineTotal);
-    lineItems.push({ product_id: product.id, product_name: product.name, unit_price: product.price, quantity: item.quantity, line_total: lineTotal });
+    const weightKg = Number(product.weight_kg);
+    if (!Number.isFinite(weightKg) || weightKg <= 0) throw new Error(`Product "${product.name}" is missing a valid weight.`);
+    lineItems.push({ product_id: product.id, product_name: product.name, unit_price: product.price, quantity: item.quantity, line_total: lineTotal, weight_kg: weightKg });
   }
   return { lineItems, subtotal };
 }
@@ -44,9 +44,8 @@ function buildLineItems(items) {
  * POST /api/orders
  * body: { items: [{ product_id, quantity }], address_id }
  *
- * Prices are always re-fetched from the DB here — never trust a price or
- * total sent from the client. This is what stops someone from editing the
- * page and checking out a ₹50,000 necklace for ₹5.
+ * Prices and weights are always re-fetched from the DB here — never trust
+ * totals sent from the client.
  */
 router.post('/', requireAuth, (req, res) => {
   const { items, address_id, payment_method: requestedPaymentMethod = 'razorpay' } = req.body;
@@ -72,8 +71,9 @@ router.post('/', requireAuth, (req, res) => {
   }
 
   const { gstAmount } = calculateGST(subtotal);
-  const shipping = calculateShipping({ city: address.city, lat: address.lat, lng: address.lng });
-  const totalAmount = round2(subtotal + gstAmount + (INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL ? shipping.amount : 0));
+  const totalWeightKg = lineItems.reduce((sum, item) => sum + item.weight_kg * item.quantity, 0);
+  const shipping = calculateShipping({ city: address.city, state: address.state, paymentMethod, totalWeightKg });
+  const totalAmount = round2(subtotal + gstAmount + shipping.amount);
 
   const insertOrder = db.prepare(`
     INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount, status, payment_method, payment_status)
@@ -120,7 +120,9 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 router.post('/proforma', requireAuth, async (req, res) => {
-  const { items, address_id } = req.body;
+  const { items, address_id, payment_method: requestedPaymentMethod = 'razorpay' } = req.body;
+  const paymentMethod = String(requestedPaymentMethod).trim().toLowerCase();
+  if (!['razorpay', 'cod'].includes(paymentMethod)) return res.status(400).json({ error: 'Invalid payment method.' });
   if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Cart items are required.' });
   let lineItems;
   let subtotal;
@@ -136,7 +138,10 @@ router.post('/proforma', requireAuth, async (req, res) => {
     const address = address_id
       ? db.prepare('SELECT * FROM addresses WHERE id = ? AND customer_id = ?').get(address_id, req.customer.id)
       : null;
-    const pdf = await createInvoicePdf({ id: 'PROFORMA', created_at: new Date().toISOString(), status: 'proforma', payment_status: 'unpaid', customer_name: customer?.name, subtotal, gst_amount: gstAmount, discount_amount: 0, shipping_amount: 0, total_amount: round2(subtotal + gstAmount) }, lineItems, address);
+    if (!address) return res.status(400).json({ error: 'A valid delivery address is required for the proforma invoice.' });
+    const totalWeightKg = lineItems.reduce((sum, item) => sum + item.weight_kg * item.quantity, 0);
+    const shipping = calculateShipping({ city: address.city, state: address.state, paymentMethod, totalWeightKg });
+    const pdf = await createInvoicePdf({ id: 'PROFORMA', created_at: new Date().toISOString(), status: 'proforma', payment_status: 'unpaid', payment_method: paymentMethod, customer_name: customer?.name, subtotal, gst_amount: gstAmount, discount_amount: 0, shipping_amount: shipping.amount, total_amount: round2(subtotal + gstAmount + shipping.amount) }, lineItems, address);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', pdf.length);
     res.setHeader('Content-Disposition', 'inline; filename="paara-proforma-invoice.pdf"');

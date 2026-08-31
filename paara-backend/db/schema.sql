@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS products (
   slug              TEXT NOT NULL UNIQUE,
   description       TEXT,
   price             REAL NOT NULL,          -- base price, GST added at checkout
+  weight_kg         REAL NOT NULL DEFAULT 0.1,
   material          TEXT,
   subcategory       TEXT,
   stock             INTEGER NOT NULL DEFAULT 0,

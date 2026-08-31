@@ -14,6 +14,7 @@ addProductColumn('subcategory', 'subcategory TEXT');
 addProductColumn('is_vault', 'is_vault INTEGER NOT NULL DEFAULT 0');
 addProductColumn('is_bestseller', 'is_bestseller INTEGER NOT NULL DEFAULT 0');
 addProductColumn('images_json', "images_json TEXT NOT NULL DEFAULT '[]'");
+addProductColumn('weight_kg', 'weight_kg REAL NOT NULL DEFAULT 0.1');
 const couponColumns = db.prepare("PRAGMA table_info(coupons)").all().map((column) => column.name);
 if (!couponColumns.includes('redeemed_at')) db.exec('ALTER TABLE coupons ADD COLUMN redeemed_at TEXT');
 const customerColumns = db.prepare("PRAGMA table_info(customers)").all().map((column) => column.name);
