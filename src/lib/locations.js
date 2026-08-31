@@ -1,19 +1,17 @@
-export const INDIAN_STATES = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
-];
+import { City, State } from "country-state-city";
 
-export const STATE_CITIES = {
-  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Salem", "Thiruvallur", "Tiruchirappalli", "Tirunelveli"],
-  Karnataka: ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi"],
-  Kerala: ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur"],
-  Maharashtra: ["Mumbai", "Pune", "Nagpur", "Nashik"],
-  Telangana: ["Hyderabad", "Warangal", "Nizamabad"],
-  Delhi: ["New Delhi"],
-  Gujarat: ["Ahmedabad", "Surat", "Vadodara", "Rajkot"],
-  Rajasthan: ["Jaipur", "Jodhpur", "Udaipur", "Kota"],
-  "West Bengal": ["Kolkata", "Siliguri", "Durgapur"],
-  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Tirupati"],
-  Punjab: ["Amritsar", "Ludhiana", "Jalandhar"],
-  Haryana: ["Gurugram", "Faridabad", "Panipat"],
-  Odisha: ["Bhubaneswar", "Cuttack", "Rourkela"],
-};
+const INDIA_COUNTRY_CODE = "IN";
+const INDIA_STATES = State.getStatesOfCountry(INDIA_COUNTRY_CODE);
+
+// The previous local map covered only 14 of India's 36 states and union
+// territories. Generate both lists from one complete dataset so the state
+// selector and city lookup always use the same canonical names.
+export const INDIAN_STATES = INDIA_STATES.map((state) => state.name);
+
+export const STATE_CITIES = Object.fromEntries(
+  INDIA_STATES.map((state) => [
+    state.name,
+    [...new Set(City.getCitiesOfState(INDIA_COUNTRY_CODE, state.isoCode).map((city) => city.name))]
+      .sort((first, second) => first.localeCompare(second)),
+  ])
+);
