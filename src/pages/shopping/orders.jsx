@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-import { downloadInvoice, getOrders, getToken } from "../../lib/api";
+import { downloadInvoice, getAddresses, getOrders, getToken } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
@@ -14,6 +14,7 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloadingInvoice, setDownloadingInvoice] = useState(null);
+  const [savedAddress, setSavedAddress] = useState(null);
 
   const customerName = useMemo(() => {
     const stateName = location.state?.customerName;
@@ -24,14 +25,14 @@ export default function Orders() {
   }, [location.state]);
 
   const selectedAddress = useMemo(() => {
-    const address = location.state?.selectedAddress;
+    const address = location.state?.selectedAddress || savedAddress;
     if (!address) return null;
     return [
       address.line1,
       address.line2,
       [address.city, address.state, address.pincode].filter(Boolean).join(" "),
     ].filter(Boolean).join(", ");
-  }, [location.state]);
+  }, [location.state, savedAddress]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -41,6 +42,15 @@ export default function Orders() {
     let cancelled = false;
     setLoading(true);
     setError("");
+    getAddresses()
+      .then((data) => {
+        if (cancelled) return;
+        const addresses = Array.isArray(data) ? data : data?.addresses || [];
+        setSavedAddress(addresses.find((address) => address.is_default) || addresses[0] || null);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedAddress(null);
+      });
     getOrders()
       .then((data) => {
         if (cancelled) return;

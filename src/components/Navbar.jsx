@@ -118,6 +118,8 @@ export default function Navbar() {
     window.location.assign("/");
   };
 
+  const displayName = customerName.trim() || "Customer";
+
   return (
     <>
     <header
@@ -205,7 +207,7 @@ export default function Navbar() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <span className="font-display text-xl">Menu</span>
-              {authed && customerName && <p className="mt-1 text-xs text-cocoa/60">Hi, {customerName}</p>}
+              {authed && <p className="mt-2 text-sm text-cocoa/60">Hi, {displayName}</p>}
             </div>
             <button
               type="button"
@@ -269,7 +271,7 @@ export default function Navbar() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <span className="font-display text-2xl">My Account</span>
-              {authed && customerName && <p className="mt-1 text-xs text-cocoa/60">Hi, {customerName}</p>}
+              {authed && <p className="mt-2 text-sm text-cocoa/60">Hi, {displayName}</p>}
             </div>
             <button
               type="button"
