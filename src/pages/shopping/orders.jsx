@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-import { getOrders, getToken } from "../../lib/api";
+import { downloadInvoice, getOrders, getToken } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
@@ -13,6 +13,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [downloadingInvoice, setDownloadingInvoice] = useState(null);
 
   const customerName = useMemo(() => {
     const stateName = location.state?.customerName;
@@ -57,6 +58,18 @@ export default function Orders() {
       cancelled = true;
     };
   }, [navigate]);
+
+  const handleDownloadInvoice = async (orderId) => {
+    setDownloadingInvoice(orderId);
+    setError("");
+    try {
+      await downloadInvoice(orderId);
+    } catch (err) {
+      setError(err?.message || "Could not download invoice");
+    } finally {
+      setDownloadingInvoice(null);
+    }
+  };
 
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
@@ -144,10 +157,18 @@ export default function Orders() {
                     : "—"}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs uppercase tracking-widest text-cocoa/60">
                   {order.status || "confirmed"}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadInvoice(orderId)}
+                  disabled={downloadingInvoice === orderId}
+                  className="text-xs uppercase tracking-widest text-gold hover:text-cocoa transition-colors disabled:opacity-60"
+                >
+                  {downloadingInvoice === orderId ? "Preparing…" : "Invoice ↓"}
+                </button>
                 <Link
                   to={`/order-confirmation?order_id=${orderId}`}
                   className="text-xs uppercase tracking-widest text-gold hover:text-cocoa transition-colors"

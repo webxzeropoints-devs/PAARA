@@ -196,7 +196,7 @@ router.get('/:id/invoice', requireAuth, (req, res) => {
   }
 
   const order = db
-    .prepare('SELECT * FROM orders WHERE id = ? AND customer_id = ?')
+    .prepare('SELECT o.*, c.name AS customer_name FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.id = ? AND o.customer_id = ?')
     .get(orderId, req.customer.id);
   if (!order) {
     console.warn('[INVOICE_NOT_FOUND]', { orderId, customerId: req.customer.id });

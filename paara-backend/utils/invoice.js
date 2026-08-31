@@ -25,10 +25,11 @@ function createInvoicePdf(order, items, address) {
     doc.fillColor('#8b6b43').font('Helvetica').fontSize(11).text('JEWELLERY INVOICE');
     doc.moveDown(0.5);
     rule('#d7b06b');
-    doc.fillColor('#3d2b24').fontSize(10).text(`Order #${order.id}`);
+    doc.fillColor('#3d2b24').font('Helvetica-Bold').fontSize(13).text(`Invoice for Order #${order.id}`);
     doc.text(`Date: ${invoiceDate}`);
     doc.text(`Status: ${(order.payment_status === 'paid' ? 'PAID' : order.status).toUpperCase()}`);
     if (order.razorpay_payment_id) doc.text(`Payment ID: ${order.razorpay_payment_id}`);
+    if (order.customer_name || order.name) doc.text(`Customer: ${order.customer_name || order.name}`);
     doc.moveDown(1.2);
     if (address) {
       doc.fillColor('#8b6b43').font('Helvetica-Bold').fontSize(10).text('SHIPPING ADDRESS');
@@ -58,8 +59,9 @@ function createInvoicePdf(order, items, address) {
     doc.moveDown(0.3);
     doc.font('Helvetica').fontSize(10).fillColor('#3d2b24');
     doc.text(`Subtotal: ${money(order.subtotal)}`, left + 300, doc.y, { width: 185, align: 'right' });
+    doc.text(`Discount: ${money(order.discount_amount || 0)}`, left + 300, doc.y, { width: 185, align: 'right' });
     if (!order.hideTaxBreakdown) doc.text('Taxes: Included in product prices', left + 300, doc.y, { width: 185, align: 'right' });
-    if (!order.hideTaxBreakdown) doc.text(`Shipping: ${money(order.shipping_amount)}`, left + 300, doc.y, { width: 185, align: 'right' });
+    doc.text(`Shipping: ${money(order.shipping_amount)}`, left + 300, doc.y, { width: 185, align: 'right' });
     doc.moveDown(0.4);
     const totalTop = doc.y;
     doc.rect(left + 280, totalTop, 205, 29).fill('#3d2b24');
