@@ -137,7 +137,13 @@ router.post('/proforma', requireAuth, async (req, res) => {
     res.setHeader('Content-Disposition', 'inline; filename="paara-proforma-invoice.pdf"');
     return res.end(pdf);
   } catch (error) {
-    console.error('[PROFORMA_GENERATION_FAILED]', { message: error.message, name: error.name, customerId: req.customer?.id });
+    console.error('[PROFORMA_GENERATION_FAILED]', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      customerId: req.customer?.id,
+      itemCount: Array.isArray(items) ? items.length : 0,
+    });
     return res.status(500).json({ error: 'Could not generate proforma invoice.' });
   }
 });
