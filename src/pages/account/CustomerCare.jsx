@@ -24,7 +24,7 @@ export default function CustomerCare() {
   return (
     <AccountPageLayout title="Customer Care" subtitle="We're here to help with orders, returns, and everything in between.">
       <div className="grid md:grid-cols-3 gap-4 mb-12">
-        <ContactCard icon={<Mail size={18} strokeWidth={1.4} />} label="Email us" value="care@paara.com" />
+        <ContactCard icon={<Mail size={18} strokeWidth={1.4} />} label="Email us" value="support@paarajewellery.in" />
         <ContactCard icon={<Phone size={18} strokeWidth={1.4} />} label="Call us" value="+91 98765 43210" />
         <ContactCard icon={<MessageCircle size={18} strokeWidth={1.4} />} label="Live chat" value="Mon–Sat, 10am–7pm" />
       </div>
@@ -90,7 +90,9 @@ function ContactCard({ icon, label, value }) {
       <span className="text-gold shrink-0">{icon}</span>
       <div>
         <p className="text-xs uppercase tracking-widest text-cocoa/60">{label}</p>
-        <p className="text-sm mt-0.5">{value}</p>
+        <p className="text-sm mt-0.5">
+          {label === "Email us" ? <a href={`mailto:${value}`} className="hover:text-gold transition-colors">{value}</a> : value}
+        </p>
       </div>
     </div>
   );
