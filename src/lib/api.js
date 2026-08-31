@@ -2,7 +2,7 @@
 // Defaults to the colocated backend in development; production can override it
 // with VITE_API_URL (for example, https://api.example.com/api).
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://paara-ivory.vercel.app/api";
+const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:4000/api").replace(/\/$/, "");
 const TOKEN_KEY = "paara_token";
 
 const ADMIN_TOKEN_KEY = "paara_admin_token";
