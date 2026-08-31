@@ -58,7 +58,7 @@ export default function ForgotPassword() {
         code,
         password,
       });
-      navigate("/login", { state: { message: "Password reset successful. Please sign in." } });
+      navigate("/", { replace: true, state: { message: "Password reset successful. Please sign in." } });
     } catch (err) {
       setError(err.message || "Unable to reset password.");
     } finally {

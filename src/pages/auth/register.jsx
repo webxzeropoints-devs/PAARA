@@ -12,7 +12,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = location.state?.redirectTo || "/account/orders";
+  const redirectTo = location.state?.redirectTo || "/";
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);

@@ -51,6 +51,7 @@ export default function Navbar() {
   const location = useLocation();
   const { count, clear: clearCart } = useCart();
   const [authed, setAuthed] = useState(() => Boolean(getToken()));
+  const [customerName, setCustomerName] = useState(() => window.localStorage.getItem("paara_customer_name") || "");
 
   // Hide navbar on scroll-down, reveal on scroll-up
   useEffect(() => {
@@ -77,7 +78,10 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const sync = () => setAuthed(Boolean(getToken()));
+    const sync = () => {
+      setAuthed(Boolean(getToken()));
+      setCustomerName(window.localStorage.getItem("paara_customer_name") || "");
+    };
     window.addEventListener("storage", sync);
     window.addEventListener("paara-auth-change", sync);
     return () => {
@@ -105,6 +109,7 @@ export default function Navbar() {
 
   const logout = () => {
     clearToken();
+    window.localStorage.removeItem("paara_customer_name");
     clearCart();
     setAuthed(false);
     setIsMobileMenuOpen(false);
@@ -198,7 +203,10 @@ export default function Navbar() {
           style={{ backgroundColor: "#F7F1E6" }}
         >
           <div className="flex items-center justify-between mb-4">
-            <span className="font-display text-xl">Menu</span>
+            <div>
+              <span className="font-display text-xl">Menu</span>
+              {authed && customerName && <p className="mt-1 text-xs text-cocoa/60">Hi, {customerName}</p>}
+            </div>
             <button
               type="button"
               aria-label="Close menu"
@@ -259,7 +267,10 @@ export default function Navbar() {
           style={{ backgroundColor: "#F7F1E6" }}
         >
           <div className="flex items-center justify-between mb-8">
-            <span className="font-display text-2xl">My Account</span>
+            <div>
+              <span className="font-display text-2xl">My Account</span>
+              {authed && customerName && <p className="mt-1 text-xs text-cocoa/60">Hi, {customerName}</p>}
+            </div>
             <button
               type="button"
               aria-label="Close account menu"

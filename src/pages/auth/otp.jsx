@@ -22,7 +22,7 @@ export default function OTP() {
 
   const onVerified = async (code) => {
     await apiPost("/auth/email/verify-otp", { email: state.email, code });
-    navigate("/login", { replace: true, state: { redirectTo: state.redirectTo || "/account/orders" } });
+    navigate("/login", { replace: true, state: { redirectTo: state.redirectTo || "/" } });
   };
 
   const onResend = () => apiPost("/auth/email/request-otp", { email: state.email });
