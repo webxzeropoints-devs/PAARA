@@ -30,6 +30,36 @@ const couponsRouter = require('./routes/coupons');
 const homepageRouter = require('./routes/homepage');
 
 const app = express();
+
+const allowedOrigins = [
+  'https://paarajewellery.in',
+  'https://www.paarajewellery.in',
+  'http://localhost:5173',
+  'http://localhost:4000'
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
+}));
+
+app.options('*', cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
+}));
+
 // Both Vercel and Render sit behind a reverse proxy that sets X-Forwarded-For.
 // Without this, express-rate-limit can't safely derive client IPs and throws
 // ERR_ERL_FORWARDED_HEADER on every rate-limited route.
@@ -138,25 +168,6 @@ if (phoneOtpColumns.length && !phoneOtpColumns.includes('attempts')) {
   db.exec('ALTER TABLE phone_otps ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
 }
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  process.env.FRONTEND_URL, // e.g. https://paara-jewellery.vercel.app
-].filter(Boolean);
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // allow no-origin requests (curl, server-to-server, Razorpay webhook)
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    // allow any Vercel preview deployment of the frontend
-    if (/\.vercel\.app$/.test(new URL(origin).hostname)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key'],
-}));
-
-// On Vercel, make sure the (possibly blob-restored) DB file has finished
 // loading before handling any request, and persist writes back to Blob
 // storage before successful write responses are sent.
 if (db.isServerless) {
