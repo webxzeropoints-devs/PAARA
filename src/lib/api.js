@@ -155,11 +155,11 @@ export const getAddresses = () => apiGet("/addresses");
 export const postAddress = (payload) => apiPost("/addresses", payload);
 
 export const postOrder = (payload) => apiPost("/orders", payload);
-export const previewInvoice = async (items) => {
+export const previewInvoice = async (items, addressId) => {
   const res = await fetch(`${BASE_URL}/orders/proforma`, {
     method: "POST",
     headers: buildHeaders(),
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, address_id: addressId }),
   });
   if (!res.ok) {
     const text = await res.text();

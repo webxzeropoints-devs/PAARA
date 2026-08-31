@@ -103,7 +103,7 @@ export default function Checkout() {
     setPreviewingInvoice(true);
     setError("");
     try {
-      setPreviewUrl(await previewInvoice(items.map(({ product_id, quantity }) => ({ product_id, quantity }))));
+      setPreviewUrl(await previewInvoice(items.map(({ product_id, quantity }) => ({ product_id, quantity })), selectedAddressId));
     } catch (err) {
       setError(err?.message || "Could not preview invoice");
     } finally {
@@ -454,9 +454,10 @@ export default function Checkout() {
 
           <aside className="bg-sand/60 border border-cocoa/10 rounded-sm p-6 h-fit md:sticky md:top-24">
             <h2 className="font-display text-xl mb-4">Order Summary</h2>
-            <button type="button" onClick={openInvoicePreview} disabled={previewingInvoice} className="mb-3 text-xs uppercase tracking-widest text-gold hover:text-cocoa transition-colors disabled:opacity-60">
-              {previewingInvoice ? "Preparing preview…" : "Preview invoice"}
+            <button type="button" onClick={openInvoicePreview} disabled={previewingInvoice} className="mb-4 rounded-sm bg-gold px-6 py-3 text-xs uppercase tracking-widest text-white transition-colors hover:bg-cocoa disabled:cursor-wait disabled:opacity-60">
+              {previewingInvoice ? "Generating invoice…" : "Preview invoice"}
             </button>
+            {error && <p className="mb-4 text-xs text-red-700">{error}</p>}
             <ul className="text-sm divide-y divide-cocoa/10 mb-4">
               {summaryItems.map((line) => (
                 <li key={line.product_id} className="py-2 flex justify-between">

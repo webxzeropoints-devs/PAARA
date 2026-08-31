@@ -111,14 +111,19 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 router.post('/proforma', requireAuth, (req, res) => {
-  const { items } = req.body;
+  const { items, address_id } = req.body;
   if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Cart items are required.' });
   try {
     const { lineItems, subtotal } = buildLineItems(items);
     const { gstAmount } = calculateGST(subtotal);
-    createInvoicePdf({ id: 'PROFORMA', created_at: new Date().toISOString(), status: 'proforma', payment_status: 'unpaid', subtotal, gst_amount: gstAmount, shipping_amount: 0, total_amount: round2(subtotal + gstAmount) }, lineItems, null)
+    const customer = db.prepare('SELECT name FROM customers WHERE id = ?').get(req.customer.id);
+    const address = address_id
+      ? db.prepare('SELECT * FROM addresses WHERE id = ? AND customer_id = ?').get(address_id, req.customer.id)
+      : null;
+    createInvoicePdf({ id: 'PROFORMA', created_at: new Date().toISOString(), status: 'proforma', payment_status: 'unpaid', customer_name: customer?.name, subtotal, gst_amount: gstAmount, discount_amount: 0, shipping_amount: 0, total_amount: round2(subtotal + gstAmount) }, lineItems, address)
       .then((pdf) => {
         res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Length', pdf.length);
         res.setHeader('Content-Disposition', 'inline; filename="paara-proforma-invoice.pdf"');
         res.end(pdf);
       })
@@ -212,6 +217,7 @@ router.get('/:id/invoice', requireAuth, (req, res) => {
 
   createInvoicePdf(order, items, address).then((pdf) => {
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', pdf.length);
     res.setHeader('Content-Disposition', `attachment; filename="${invoiceName}"`);
     res.end(pdf);
   }).catch((error) => {

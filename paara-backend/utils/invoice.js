@@ -1,18 +1,30 @@
 const PDFDocument = require('pdfkit');
 
+const pdfText = (value) => String(value ?? '')
+  .replace(/₹/g, 'INR ')
+  .replace(/[–—]/g, '-')
+  .replace(/[“”]/g, '"')
+  .replace(/[‘’]/g, "'")
+  .replace(/[^\x20-\x7E]/g, '');
+
 function money(value) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(value || 0);
+  const amount = Number(value) || 0;
+  return `INR ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function createInvoicePdf(order, items, address) {
   return new Promise((resolve, reject) => {
+    if (!order || !Array.isArray(items)) {
+      reject(new Error('Invoice requires an order and item list.'));
+      return;
+    }
     const chunks = [];
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const invoiceDate = new Date(order.created_at).toLocaleDateString('en-IN', {
+    const invoiceDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', {
       day: '2-digit', month: 'short', year: 'numeric'
     });
     const left = doc.page.margins.left;
@@ -25,17 +37,17 @@ function createInvoicePdf(order, items, address) {
     doc.fillColor('#8b6b43').font('Helvetica').fontSize(11).text('JEWELLERY INVOICE');
     doc.moveDown(0.5);
     rule('#d7b06b');
-    doc.fillColor('#3d2b24').font('Helvetica-Bold').fontSize(13).text(`Invoice for Order #${order.id}`);
-    doc.text(`Date: ${invoiceDate}`);
-    doc.text(`Status: ${(order.payment_status === 'paid' ? 'PAID' : order.status).toUpperCase()}`);
-    if (order.razorpay_payment_id) doc.text(`Payment ID: ${order.razorpay_payment_id}`);
-    if (order.customer_name || order.name) doc.text(`Customer: ${order.customer_name || order.name}`);
+    doc.fillColor('#3d2b24').font('Helvetica-Bold').fontSize(13).text(pdfText(`Invoice for Order #${order.id}`));
+    doc.text(pdfText(`Date: ${invoiceDate}`));
+    doc.text(pdfText(`Status: ${(order.payment_status === 'paid' ? 'PAID' : order.status || 'PROCESSING').toUpperCase()}`));
+    if (order.razorpay_payment_id) doc.text(pdfText(`Payment ID: ${order.razorpay_payment_id}`));
+    if (order.customer_name || order.name) doc.text(pdfText(`Customer: ${order.customer_name || order.name}`));
     doc.moveDown(1.2);
     if (address) {
       doc.fillColor('#8b6b43').font('Helvetica-Bold').fontSize(10).text('SHIPPING ADDRESS');
       doc.fillColor('#3d2b24').font('Helvetica').fontSize(10);
-      doc.text(`${address.line1}${address.line2 ? `, ${address.line2}` : ''}`);
-      doc.text(`${address.city}, ${address.state} - ${address.pincode}`);
+      doc.text(pdfText(`${address.line1}${address.line2 ? `, ${address.line2}` : ''}`));
+      doc.text(pdfText(`${address.city}, ${address.state} - ${address.pincode}`));
     }
     doc.moveDown(1.2);
     doc.moveDown(1);
@@ -49,23 +61,23 @@ function createInvoicePdf(order, items, address) {
     doc.y = tableTop + 27;
     items.forEach((item) => {
       const rowTop = doc.y;
-      doc.font('Helvetica').fontSize(10).fillColor('#3d2b24').text(item.product_name, left + 8, rowTop, { width: 300 });
+      doc.font('Helvetica').fontSize(10).fillColor('#3d2b24').text(pdfText(item.product_name), left + 8, rowTop, { width: 300 });
       doc.fontSize(9).fillColor('#8b6b43').text(`Unit price ${money(item.unit_price)}`, left + 8, rowTop + 13, { width: 300 });
       doc.fillColor('#3d2b24').text(String(item.quantity), left + 335, rowTop + 4, { width: 40, align: 'right' });
-      doc.text(money(item.line_total), left + 390, rowTop + 4, { width: 95, align: 'right' });
+      doc.text(pdfText(money(item.line_total)), left + 390, rowTop + 4, { width: 95, align: 'right' });
       doc.y = rowTop + 34;
       rule();
     });
     doc.moveDown(0.3);
     doc.font('Helvetica').fontSize(10).fillColor('#3d2b24');
-    doc.text(`Subtotal: ${money(order.subtotal)}`, left + 300, doc.y, { width: 185, align: 'right' });
-    doc.text(`Discount: ${money(order.discount_amount || 0)}`, left + 300, doc.y, { width: 185, align: 'right' });
+    doc.text(pdfText(`Subtotal: ${money(order.subtotal)}`), left + 300, doc.y, { width: 185, align: 'right' });
+    doc.text(pdfText(`Discount: ${money(order.discount_amount || 0)}`), left + 300, doc.y, { width: 185, align: 'right' });
     if (!order.hideTaxBreakdown) doc.text('Taxes: Included in product prices', left + 300, doc.y, { width: 185, align: 'right' });
-    doc.text(`Shipping: ${money(order.shipping_amount)}`, left + 300, doc.y, { width: 185, align: 'right' });
+    doc.text(pdfText(`Shipping: ${money(order.shipping_amount)}`), left + 300, doc.y, { width: 185, align: 'right' });
     doc.moveDown(0.4);
     const totalTop = doc.y;
     doc.rect(left + 280, totalTop, 205, 29).fill('#3d2b24');
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(12).text(`TOTAL: ${money(order.total_amount)}`, left + 290, totalTop + 8, { width: 185, align: 'right' });
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(12).text(pdfText(`TOTAL: ${money(order.total_amount)}`), left + 290, totalTop + 8, { width: 185, align: 'right' });
     doc.y = totalTop + 42;
     doc.fillColor('#8b6b43').font('Helvetica').fontSize(9).text('Thank you for choosing Paara.');
     doc.end();
