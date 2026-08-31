@@ -47,6 +47,7 @@ export default function Register() {
         phone: normalizePhone(form.phone),
         password: form.password,
       });
+      localStorage.setItem("paara_customer_name", form.name.trim());
       if (!res?.requires_otp || !res.email) throw new Error("No OTP challenge returned");
       navigate("/otp", { state: { email: res.email, redirectTo, mode: "register" } });
     } catch (err) {
