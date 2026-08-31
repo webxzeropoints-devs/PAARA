@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { authRegister } from "../../lib/api";
@@ -11,6 +11,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = location.state?.redirectTo || "/account/orders";
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -46,7 +48,7 @@ export default function Register() {
         password: form.password,
       });
       if (!res?.requires_otp || !res.email) throw new Error("No OTP challenge returned");
-      navigate("/otp", { state: { email: res.email, redirectTo: "/account/orders", mode: "register" } });
+      navigate("/otp", { state: { email: res.email, redirectTo, mode: "register" } });
     } catch (err) {
       setError(err?.message || "Registration failed");
     } finally {

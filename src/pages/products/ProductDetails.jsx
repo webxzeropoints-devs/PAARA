@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
-import { getProductBySlug } from "../../lib/api";
+import { getProductBySlug, getToken } from "../../lib/api";
 import { useCart } from "../../lib/cart.jsx";
 import { fadeUp } from "../../lib/motion";
 
@@ -63,6 +63,16 @@ export default function ProductDetails() {
     addItem(product.id, quantity, product);
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
+  };
+
+  const handleBuyNow = () => {
+    if (!product) return;
+    addItem(product.id, quantity, product);
+    if (!getToken()) {
+      navigate("/login", { state: { redirectTo: "/checkout" } });
+      return;
+    }
+    navigate("/checkout");
   };
 
   if (loading) {
@@ -195,10 +205,7 @@ export default function ProductDetails() {
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  handleAddToCart();
-                  navigate("/cart");
-                }}
+                onClick={handleBuyNow}
                 className="border border-cocoa/30 px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa hover:text-white hover:border-cocoa transition-colors"
               >
                 Buy now

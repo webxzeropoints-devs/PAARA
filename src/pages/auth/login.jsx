@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { authLogin, setToken } from "../../lib/api";
@@ -7,6 +7,8 @@ import { fadeUp } from "../../lib/motion";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = location.state?.redirectTo || "/account/orders";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,7 +23,7 @@ export default function Login() {
       if (!res?.token) throw new Error("No login token returned");
       setToken(res.token);
       window.dispatchEvent(new Event("paara-auth-change"));
-      navigate("/account/orders", { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err?.message || "Login failed");
     } finally {

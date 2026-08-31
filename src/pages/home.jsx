@@ -39,7 +39,6 @@ function useHomeZoomStack(containerRef) {
       zIndex: section.style.zIndex,
       transform: section.style.transform,
       opacity: section.style.opacity,
-      filter: section.style.filter,
       willChange: section.style.willChange,
       transition: section.style.transition,
     }]));
@@ -56,7 +55,6 @@ function useHomeZoomStack(containerRef) {
       section.style.position = original.position || "relative";
       section.style.transform = original.transform;
       section.style.opacity = original.opacity;
-      section.style.filter = original.filter;
       section.style.willChange = original.willChange;
       section.style.transition = original.transition;
       section.style.top = "";
@@ -85,9 +83,7 @@ function useHomeZoomStack(containerRef) {
         section.style.top = "0";
         section.style.transform = `translateZ(0) scale(${1 - progress * 0.07})`;
         section.style.opacity = String(1 - progress * 0.4);
-        const blurProgress = Math.min(progress / 0.7, 1);
-        section.style.filter = `blur(${(1 - blurProgress) * 0.75}px)`;
-        section.style.willChange = "transform, opacity, filter";
+        section.style.willChange = "transform, opacity";
         section.style.transition = "none";
       });
     };
@@ -110,7 +106,6 @@ function useHomeZoomStack(containerRef) {
         section.style.zIndex = original.zIndex;
         section.style.transform = original.transform;
         section.style.opacity = original.opacity;
-        section.style.filter = original.filter;
         section.style.willChange = original.willChange;
         section.style.transition = original.transition;
         section.style.top = "";
