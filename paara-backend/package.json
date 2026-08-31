@@ -4,6 +4,7 @@
   "description": "Backend for Paara jewellery e-commerce site — SQLite + Express + Razorpay",
   "main": "server.js",
   "scripts": {
+    "build": "node --check api/index.js && node --check server.js",
     "init-db": "node db/init.js",
     "start": "node server.js",
     "dev": "node --watch server.js"
