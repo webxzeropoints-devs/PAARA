@@ -266,6 +266,33 @@ router.delete('/gift-card-rules/:id', (q, s) => {
 
 router.get('/orders', (q, s) => s.json(db.prepare(`SELECT o.*,c.name customer_name,c.email customer_email FROM orders o JOIN customers c ON c.id=o.customer_id ORDER BY o.created_at DESC`).all()));
 
+const ORDER_STAGES = ['Order Confirmed', 'Packed', 'Shipped', 'Delivered'];
+
+router.patch('/orders/:id/status', (q, s) => {
+  const orderId = Number.parseInt(q.params.id, 10);
+  const requestedStatus = String(q.body?.status || '').trim();
+
+  if (!Number.isInteger(orderId) || orderId < 1) {
+    return s.status(400).json({ error: 'A valid order ID is required.' });
+  }
+  if (!ORDER_STAGES.includes(requestedStatus)) {
+    return s.status(400).json({ error: 'Invalid order status.' });
+  }
+
+  const existing = db.prepare('SELECT id, status FROM orders WHERE id = ?').get(orderId);
+  if (!existing) return s.status(404).json({ error: 'Order not found.' });
+
+  const currentIndex = ORDER_STAGES.indexOf(String(existing.status || '').trim() || 'Order Confirmed');
+  const nextIndex = ORDER_STAGES.indexOf(requestedStatus);
+
+  if (nextIndex < currentIndex) {
+    return s.status(400).json({ error: 'Order statuses can only move forward.' });
+  }
+
+  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(requestedStatus, orderId);
+  s.json({ success: true, order_id: orderId, status: requestedStatus });
+});
+
 router.post('/orders/:id/grant-gift-card', (q, s) => {
   const result = db.transaction(() => {
     const order = db.prepare('SELECT id,customer_id,gift_card_eligible_amount,gift_card_granted_at FROM orders WHERE id=?').get(q.params.id);

@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
-import { adminRequest } from "../lib/api";
+import { adminRequest, updateOrderStatus } from "../lib/api";
+
+const ORDER_STAGES = ["Order Confirmed", "Packed", "Shipped", "Delivered"];
+
+const normalizeStatus = (status) => {
+  const value = String(status || "").trim();
+  if (ORDER_STAGES.includes(value)) return value;
+  if (["pending", "paid", "failed", "cancelled"].includes(value)) return "Order Confirmed";
+  if (value === "shipped") return "Shipped";
+  if (value === "delivered") return "Delivered";
+  return "Order Confirmed";
+};
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
   const [granting, setGranting] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(null);
 
   const load = useCallback(async () => {
     try { setOrders(await adminRequest("/admin/orders")); }
@@ -20,21 +32,63 @@ export default function AdminOrders() {
     finally { setGranting(null); }
   };
 
+  const handleStatusChange = async (orderId, nextStatus) => {
+    setUpdatingStatus(orderId);
+    setError("");
+    try {
+      await updateOrderStatus(orderId, nextStatus);
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not update order status.");
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
   return (
     <div className="max-w-7xl">
       <div className="mb-8"><p className="text-[10px] uppercase tracking-[.28em] text-gold">Fulfilment</p><h1 className="mt-2 font-display text-4xl text-cocoa">Orders</h1><p className="mt-2 text-sm text-cocoa/60">Review purchases and approve qualifying gift card grants.</p></div>
       {error && <p className="mb-5 border border-gold/40 bg-shell px-4 py-3 text-sm text-cocoa">{error}</p>}
       <div className="overflow-x-auto border border-cocoa/10 bg-shell">
         <table className="w-full text-sm">
-          <thead className="border-b border-gold/30 text-left font-display text-xs uppercase tracking-[.18em] text-cocoa"><tr><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Order</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Payment</th><th className="px-4 py-3">Total</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Gift card</th></tr></thead>
+          <thead className="border-b border-gold/30 text-left font-display text-xs uppercase tracking-[.18em] text-cocoa"><tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Payment</th><th className="px-4 py-3">Total</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Gift card</th></tr></thead>
           <tbody>
             {orders.map((order) => {
+              const currentStatus = normalizeStatus(order.status);
+              const currentIndex = ORDER_STAGES.indexOf(currentStatus);
               const eligible = order.gift_card_eligible_amount !== null && order.gift_card_eligible_amount !== undefined;
               const granted = Boolean(order.gift_card_granted_at);
               return <tr key={order.id} className="border-b border-cocoa/10 align-top odd:bg-sand/35">
+                <td className="px-4 py-3 text-cocoa"><p className="font-semibold">#{order.id}</p><p className="mt-1 text-[10px] uppercase tracking-widest text-cocoa/50">Customer ID #{order.customer_id}</p></td>
                 <td className="px-4 py-3"><p className="text-cocoa">{order.customer_name}</p><p className="text-xs text-cocoa/50">{order.customer_email}</p></td>
-                <td className="px-4 py-3 text-cocoa">#{order.id}</td>
-                <td className="px-4 py-3 capitalize text-cocoa/75">{order.status}</td>
+                <td className="px-4 py-3 text-cocoa/75">
+                  <div className="flex flex-col gap-2">
+                    {ORDER_STAGES.map((stage, index) => {
+                      const isCurrent = currentStatus === stage;
+                      const isDone = index < currentIndex;
+                      const isAllowed = index === currentIndex + 1;
+                      const isDisabled = isDone || !isAllowed;
+
+                      return (
+                        <button
+                          key={stage}
+                          type="button"
+                          disabled={isDisabled || updatingStatus === order.id}
+                          onClick={() => handleStatusChange(order.id, stage)}
+                          className={`rounded-full border px-2 py-1.5 text-[10px] uppercase tracking-[0.2em] transition-colors ${
+                            isCurrent
+                              ? "border-gold bg-gold/15 text-cocoa"
+                              : isDone
+                                ? "border-gold/40 bg-gold/10 text-cocoa"
+                                : "border-cocoa/20 bg-transparent text-cocoa/40"
+                          } ${!isDisabled ? "hover:border-gold hover:text-cocoa" : "cursor-default"}`}
+                        >
+                          {stage}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </td>
                 <td className="px-4 py-3 capitalize text-cocoa/75">{order.payment_status}</td>
                 <td className="px-4 py-3 text-cocoa font-numeric">₹{Number(order.total_amount).toLocaleString("en-IN")}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-cocoa/70">{new Date(order.created_at.replace(" ", "T") + "Z").toLocaleString()}</td>

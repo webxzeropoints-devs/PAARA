@@ -45,7 +45,7 @@ app.use(cors({
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
 }));
 
@@ -56,7 +56,7 @@ app.options('*', cors({
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
 }));
 
@@ -108,6 +108,23 @@ if (orderColumns.length && !orderColumns.includes('gift_card_granted_at')) {
 if (orderColumns.length && !orderColumns.includes('gift_card_granted_by')) {
   db.exec('ALTER TABLE orders ADD COLUMN gift_card_granted_by INTEGER REFERENCES admins(id)');
 }
+if (orderColumns.length && !orderColumns.includes('status')) {
+  db.exec('ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT "Order Confirmed"');
+}
+db.exec(`
+  UPDATE orders
+  SET status = CASE
+    WHEN status IS NULL OR status = '' THEN 'Order Confirmed'
+    WHEN status = 'pending' THEN 'Order Confirmed'
+    WHEN status = 'paid' THEN 'Order Confirmed'
+    WHEN status = 'failed' THEN 'Order Confirmed'
+    WHEN status = 'cancelled' THEN 'Order Confirmed'
+    WHEN status = 'shipped' THEN 'Shipped'
+    WHEN status = 'delivered' THEN 'Delivered'
+    ELSE status
+  END
+  WHERE status IS NOT NULL
+`);
 db.exec(`CREATE TABLE IF NOT EXISTS gift_card_rules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   product_id INTEGER NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE,

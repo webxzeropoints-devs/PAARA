@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS orders (
   gst_amount         REAL NOT NULL,
   shipping_amount    REAL NOT NULL,
   total_amount       REAL NOT NULL,
-  status             TEXT NOT NULL DEFAULT 'pending',   -- pending | paid | failed | cancelled | shipped | delivered
+  status             TEXT NOT NULL DEFAULT 'Order Confirmed', -- Order Confirmed | Packed | Shipped | Delivered
   payment_status     TEXT NOT NULL DEFAULT 'unpaid',    -- unpaid | paid | refunded
   razorpay_order_id  TEXT,
   razorpay_payment_id TEXT,

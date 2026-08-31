@@ -172,6 +172,8 @@ export const previewInvoice = async (items) => {
 };
 export const getOrders = () => apiGet("/orders");
 export const getOrderById = (id) => apiGet(`/orders/${id}`);
+export const getOrderStatus = (orderId, email) => apiGet(`/orders/${orderId}/status?email=${encodeURIComponent(email)}`);
+export const updateOrderStatus = (orderId, status) => adminRequest(`/admin/orders/${orderId}/status`, { method: "PATCH", body: { status } });
 
 export const postCreateRazorpay = (order_id) =>
   apiPost("/payment/create-razorpay-order", { order_id });

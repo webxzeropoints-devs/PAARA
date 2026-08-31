@@ -9,6 +9,19 @@ const router = express.Router();
 // Keep shipping calculation active, but temporarily exclude its charge from customer totals.
 const INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL = process.env.INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL === 'true';
 
+const ORDER_TRACKING_STATUSES = ['Order Confirmed', 'Packed', 'Shipped', 'Delivered'];
+
+const normalizeOrderStatus = (status) => {
+  const normalized = String(status || '').trim();
+  if (ORDER_TRACKING_STATUSES.includes(normalized)) return normalized;
+  if (['pending', 'paid', 'failed', 'cancelled'].includes(normalized)) return 'Order Confirmed';
+  if (normalized === 'shipped') return 'Shipped';
+  if (normalized === 'delivered') return 'Delivered';
+  return 'Order Confirmed';
+};
+
+const getOrderStatusIndex = (status) => ORDER_TRACKING_STATUSES.indexOf(normalizeOrderStatus(status));
+
 function buildLineItems(items) {
   const lineItems = [];
   let subtotal = 0;
@@ -59,11 +72,11 @@ router.post('/', requireAuth, (req, res) => {
   const totalAmount = round2(subtotal + gstAmount + (INCLUDE_SHIPPING_IN_CUSTOMER_TOTAL ? shipping.amount : 0));
 
   const insertOrder = db.prepare(`
-    INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const orderInfo = insertOrder.run(
-    req.customer.id, address_id, subtotal, gstAmount, shipping.amount, totalAmount
+    req.customer.id, address_id, subtotal, gstAmount, shipping.amount, totalAmount, 'Order Confirmed'
   );
   const orderId = orderInfo.lastInsertRowid;
 
@@ -140,6 +153,40 @@ router.get('/:id', requireAuth, (req, res) => {
 
   order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
   res.json(order);
+});
+
+router.get('/:id/status', (req, res) => {
+  const orderId = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(orderId) || orderId < 1) {
+    return res.status(404).json({ error: 'Order not found.' });
+  }
+
+  const order = db.prepare('SELECT id, customer_id, status FROM orders WHERE id = ?').get(orderId);
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+
+  const submittedEmail = String(req.query.email || '').trim().toLowerCase();
+  if (!submittedEmail) {
+    return res.status(400).json({ error: 'Order ID and email are required.' });
+  }
+
+  const customer = db.prepare('SELECT email FROM customers WHERE id = ?').get(order.customer_id);
+  if (!customer || !customer.email || customer.email.toLowerCase() !== submittedEmail) {
+    return res.status(404).json({ error: 'Order not found.' });
+  }
+
+  const status = normalizeOrderStatus(order.status);
+  const payload = {
+    order_id: order.id,
+    status,
+    stage_index: getOrderStatusIndex(status),
+    stages: ORDER_TRACKING_STATUSES,
+  };
+
+  if (status === 'Shipped') {
+    payload.message = 'Your order will be delivered in 7 working days.';
+  }
+
+  res.json(payload);
 });
 
 router.get('/:id/invoice', requireAuth, (req, res) => {

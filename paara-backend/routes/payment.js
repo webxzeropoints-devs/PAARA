@@ -12,7 +12,7 @@ const router = express.Router();
 const markOrderPaid = db.transaction((orderId, paymentId) => {
   const updated = db.prepare(`
     UPDATE orders
-    SET status = 'paid', payment_status = 'paid', razorpay_payment_id = ?,
+    SET status = 'Order Confirmed', payment_status = 'paid', razorpay_payment_id = ?,
         gift_card_eligible_amount = COALESCE(
           gift_card_eligible_amount,
           (SELECT r.gift_card_value FROM gift_card_rules r
@@ -109,7 +109,7 @@ router.post('/verify', requireAuth, (req, res) => {
 
   if (!isValid) {
     db.prepare('UPDATE orders SET status = ?, payment_status = ? WHERE id = ?')
-      .run('failed', 'unpaid', order.id);
+      .run('Order Confirmed', 'unpaid', order.id);
     return res.status(400).json({ error: 'Payment verification failed.' });
   }
 
