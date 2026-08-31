@@ -11,6 +11,8 @@ import {
   getShippingCities,
   getToken,
   postAddress,
+  postCreateRazorpay,
+  postVerifyPayment,
   previewInvoice,
   postOrder,
   postShippingQuote,
@@ -21,6 +23,30 @@ import { INDIAN_STATES, STATE_CITIES } from "../../lib/locations";
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
 const STEPS = ["Address", "Delivery", "Payment"];
+const PAYMENT_METHODS = [
+  { id: "upi", label: "UPI", description: "Pay with any UPI app" },
+  { id: "card", label: "Card", description: "Credit or debit card" },
+  { id: "netbanking", label: "Net banking", description: "Choose your bank" },
+  { id: "wallet", label: "Wallet", description: "Supported digital wallets" },
+];
+
+function loadRazorpay() {
+  if (window.Razorpay) return Promise.resolve(window.Razorpay);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.Razorpay), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Payment methods could not be loaded. Please try again.")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => window.Razorpay ? resolve(window.Razorpay) : reject(new Error("Payment methods could not be loaded. Please try again."));
+    script.onerror = () => reject(new Error("Payment methods could not be loaded. Check your connection and try again."));
+    document.body.appendChild(script);
+  });
+}
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -51,6 +77,9 @@ export default function Checkout() {
   const [order, setOrder] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("upi");
+  const [razorpayReady, setRazorpayReady] = useState(false);
+  const [paymentMethodsError, setPaymentMethodsError] = useState("");
   const [previewingInvoice, setPreviewingInvoice] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [error, setError] = useState("");
@@ -74,6 +103,9 @@ export default function Checkout() {
       .catch(() => setAddresses([]));
     getShippingCities().catch(() => setCities([]));
     getProducts().then((data) => setProducts(Array.isArray(data) ? data : [])).catch(() => setProducts([]));
+    loadRazorpay()
+      .then(() => setRazorpayReady(true))
+      .catch((err) => setPaymentMethodsError(err.message));
   }, [navigate, items.length]);
 
   const selectedAddress = useMemo(
@@ -188,25 +220,59 @@ export default function Checkout() {
     }
   };
 
-  // Step 3: complete the purchase and show the customer account summary.
+  // Step 3: open the payment gateway. The cart is intentionally untouched until
+  // the server verifies the gateway signature in the success callback.
   const payNow = async () => {
-    if (!order) return;
+    if (!order || !paymentMethod) return;
     setPaying(true);
     setError("");
     try {
-      const customerName = localStorage.getItem("paara_customer_name") || "Customer";
-      clear();
-      navigate("/account/orders", {
-        replace: true,
-        state: {
-          recentOrder: order,
-          selectedAddress,
-          customerName,
+      const Razorpay = await loadRazorpay();
+      const razorpayOrder = await postCreateRazorpay(order.order_id);
+      const razorpayCheckout = new Razorpay({
+        key: razorpayOrder.key_id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: "Paara.",
+        description: `Order #${order.order_number || order.order_id}`,
+        order_id: razorpayOrder.razorpay_order_id,
+        config: {
+          display: {
+            blocks: {
+              selected: {
+                name: PAYMENT_METHODS.find((method) => method.id === paymentMethod)?.label || "Payment",
+                instruments: [{ method: paymentMethod }],
+              },
+            },
+            sequence: ["block.selected"],
+            preferences: { show_default_blocks: false },
+          },
         },
+        theme: { color: "#B98F4E" },
+        handler: async (response) => {
+          try {
+            await postVerifyPayment({
+              paara_order_id: order.order_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            clear();
+            navigate(`/order-confirmation?order_id=${order.order_id}&payment=success`, {
+              replace: true,
+              state: { recentOrder: order, selectedAddress },
+            });
+          } catch (err) {
+            setError(err?.message || "Payment could not be verified. Please contact support if you were charged.");
+          } finally {
+            setPaying(false);
+          }
+        },
+        modal: { ondismiss: () => setPaying(false) },
       });
+      razorpayCheckout.open();
     } catch (err) {
-      setError(err?.message || "Could not complete purchase");
-    } finally {
+      setError(err?.message || "Could not start payment. Please try again.");
       setPaying(false);
     }
   };
@@ -433,6 +499,20 @@ export default function Checkout() {
             {step === 2 && order && (
               <div>
                 <h2 className="font-display text-2xl mb-4">Payment</h2>
+                <div className="mb-6">
+                  <p className="mb-3 text-xs uppercase tracking-widest text-cocoa/60">Choose payment method</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {PAYMENT_METHODS.map((method) => (
+                      <label key={method.id} className={`cursor-pointer border rounded-sm p-4 transition-colors ${paymentMethod === method.id ? "border-gold bg-gold/10" : "border-cocoa/15 hover:border-cocoa/30"}`}>
+                        <input type="radio" name="payment-method" value={method.id} checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="sr-only" />
+                        <span className="block text-sm font-medium">{method.label}</span>
+                        <span className="mt-1 block text-xs text-cocoa/60">{method.description}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {!razorpayReady && !paymentMethodsError && <p className="mt-3 text-xs text-cocoa/60">Loading payment methods...</p>}
+                  {paymentMethodsError && <p className="mt-3 text-xs text-red-700">{paymentMethodsError}</p>}
+                </div>
                 <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-5 mb-6">
                   <p className="text-xs uppercase tracking-widest text-cocoa/60">
                     Order #{order.order_id}
@@ -443,10 +523,10 @@ export default function Checkout() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={payNow}
-                  disabled={paying}
+                  disabled={paying || !razorpayReady || Boolean(paymentMethodsError)}
                   className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
                 >
-                  {paying ? "Buying…" : "Buy now"}
+                  {paying ? "Opening payment…" : "Pay now"}
                 </motion.button>
               </div>
             )}
