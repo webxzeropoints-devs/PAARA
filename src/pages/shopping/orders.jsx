@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { getOrders, getToken } from "../../lib/api";
@@ -9,9 +9,28 @@ const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
 export default function Orders() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const customerName = useMemo(() => {
+    const stateName = location.state?.customerName;
+    if (stateName) return stateName;
+    const storedName = window.localStorage.getItem("paara_customer_name");
+    if (storedName) return storedName;
+    return "Customer";
+  }, [location.state]);
+
+  const selectedAddress = useMemo(() => {
+    const address = location.state?.selectedAddress;
+    if (!address) return null;
+    return [
+      address.line1,
+      address.line2,
+      [address.city, address.state, address.pincode].filter(Boolean).join(" "),
+    ].filter(Boolean).join(", ");
+  }, [location.state]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -50,6 +69,22 @@ export default function Orders() {
           Your Orders
         </motion.h1>
         <p className="text-sm text-cocoa/60 mb-10">History of every Paara piece you've taken home.</p>
+
+        {(customerName || selectedAddress) && (
+          <div className="mb-8 rounded-sm border border-cocoa/10 bg-sand/60 p-5">
+            <p className="text-[10px] uppercase tracking-[.28em] text-gold">Account</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-[10px] uppercase tracking-[.24em] text-cocoa/50">Name</p>
+                <p className="mt-2 font-medium text-lg">{customerName}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[.24em] text-cocoa/50">Address</p>
+                <p className="mt-2 text-sm text-cocoa/80">{selectedAddress || "Address not available"}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="text-xs text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-sm mb-6">

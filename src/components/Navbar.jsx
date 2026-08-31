@@ -21,7 +21,7 @@ import { clearToken } from "../lib/api";
 
 /**
  * Navbar
- * - Main nav: Home | Shopping | Our Story | Journal
+ * - Main nav: Home | Shopping | Our Story
  * - "Shopping" opens the existing Collections page at /collections
  * - Cart icon shows live item count
  * - Account icon routes to /login or /account/orders
@@ -33,7 +33,6 @@ const NAV_ITEMS = [
   { label: "Home", to: "/" },
   { label: "Shopping", to: "/collections" },
   { label: "Our Story", to: "/our-story" },
-  { label: "Journal", to: "/journal" },
 ];
 
 const ACCOUNT_ITEMS = [

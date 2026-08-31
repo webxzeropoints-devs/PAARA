@@ -12,10 +12,8 @@ import {
   getToken,
   postAddress,
   previewInvoice,
-  postCreateRazorpay,
   postOrder,
   postShippingQuote,
-  postVerifyPayment,
 } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import { INDIAN_STATES, STATE_CITIES } from "../../lib/locations";
@@ -190,65 +188,25 @@ export default function Checkout() {
     }
   };
 
-  // Step 3: open Razorpay, then verify.
+  // Step 3: complete the purchase and show the customer account summary.
   const payNow = async () => {
     if (!order) return;
     setPaying(true);
     setError("");
     try {
-      const rzp = await postCreateRazorpay(order.order_id);
-      const options = {
-        key: rzp.key_id,
-        amount: rzp.amount,
-        currency: rzp.currency,
-        name: "Paara",
-        description: `Order #${order.order_id}`,
-        order_id: rzp.razorpay_order_id,
-        handler: async (response) => {
-          try {
-            const verified = await postVerifyPayment({
-              paara_order_id: order.order_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            clear();
-            navigate(`/order-confirmation?order_id=${order.order_id}&payment=success`, { replace: true });
-            void verified;
-          } catch (err) {
-            setError(err?.message || "Payment verification failed");
-            setPaying(false);
-          }
+      const customerName = localStorage.getItem("paara_customer_name") || "Customer";
+      clear();
+      navigate("/account/orders", {
+        replace: true,
+        state: {
+          recentOrder: order,
+          selectedAddress,
+          customerName,
         },
-        modal: {
-          ondismiss: () => {
-            setPaying(false);
-            setError("Payment was cancelled. You can retry without losing your cart.");
-          },
-        },
-        theme: { color: "#B8874A" },
-      };
-
-      const ensureRzp = () =>
-        new Promise((resolve, reject) => {
-          if (window.Razorpay) return resolve();
-          const script = document.createElement("script");
-          script.src = "https://checkout.razorpay.com/v1/checkout.js";
-          script.async = true;
-          script.onload = resolve;
-          script.onerror = () => reject(new Error("Could not load Razorpay"));
-          document.body.appendChild(script);
-        });
-
-      await ensureRzp();
-      const rzpInstance = new window.Razorpay(options);
-      rzpInstance.on("payment.failed", () => {
-        setPaying(false);
-        setError("Payment failed. Please check your details and try again.");
       });
-      rzpInstance.open();
     } catch (err) {
-      setError(err?.message || "Could not start payment");
+      setError(err?.message || "Could not complete purchase");
+    } finally {
       setPaying(false);
     }
   };
@@ -442,16 +400,7 @@ export default function Checkout() {
                   <p className="text-xs uppercase tracking-widest text-cocoa/60">
                     Shipping to {selectedAddress?.city}
                   </p>
-                  {shipping ? (
-                    <div className="mt-3 text-sm">
-                      <p>
-                        Method:{" "}
-                        <span className="font-medium">
-                          {shipping.method || "Standard"}
-                        </span>
-                      </p>
-                    </div>
-                  ) : (
+                  {!shipping && (
                     <p className="text-sm text-cocoa/60 mt-2">Calculating shipping…</p>
                   )}
                 </div>
@@ -490,9 +439,6 @@ export default function Checkout() {
                   </p>
                   <p className="font-numeric text-2xl mt-1">{formatPrice(customerTotal)}</p>
                   <p className="text-xs text-cocoa/60 mt-1">Inclusive of all taxes</p>
-                  <p className="text-xs text-cocoa/60 mt-1">
-                    Pay securely via Razorpay — UPI, cards, wallets, and netbanking supported.
-                  </p>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.97 }}
@@ -500,7 +446,7 @@ export default function Checkout() {
                   disabled={paying}
                   className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
                 >
-                  {paying ? "Opening payment…" : "Pay with Razorpay"}
+                  {paying ? "Buying…" : "Buy now"}
                 </motion.button>
               </div>
             )}

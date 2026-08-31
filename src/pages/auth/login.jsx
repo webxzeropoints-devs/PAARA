@@ -19,6 +19,8 @@ export default function Login() {
     try {
       const res = await authLogin(email.trim(), password);
       if (!res?.token) throw new Error("No login token returned");
+      const customerName = res?.user?.name || res?.name || email.trim().split("@")[0].replace(/[._-]+/g, " ");
+      localStorage.setItem("paara_customer_name", customerName);
       setToken(res.token);
       window.dispatchEvent(new Event("paara-auth-change"));
       navigate("/account/orders", { replace: true });
