@@ -163,10 +163,16 @@ export const previewInvoice = async (items, addressId) => {
   });
   if (!res.ok) {
     const text = await res.text();
-    const payload = text ? JSON.parse(text) : {};
-    throw new Error(payload?.error || "Could not preview invoice.");
+    let payload = {};
+    try { payload = text ? JSON.parse(text) : {}; } catch { payload = {}; }
+    throw new Error(payload?.error || `Could not preview invoice (HTTP ${res.status}).`);
+  }
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/pdf")) {
+    throw new Error("Invoice preview returned an invalid file.");
   }
   const blob = await res.blob();
+  if (!blob.size) throw new Error("Invoice preview was empty.");
   const url = URL.createObjectURL(blob);
   return url;
 };

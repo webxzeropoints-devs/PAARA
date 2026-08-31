@@ -18,6 +18,12 @@ function createInvoicePdf(order, items, address) {
       reject(new Error('Invoice requires an order and item list.'));
       return;
     }
+    const invoiceItems = items.map((item) => ({
+      product_name: item.product_name || item.name || `Product #${item.product_id || ''}`,
+      unit_price: Number(item.unit_price ?? item.price) || 0,
+      quantity: Number(item.quantity) || 0,
+      line_total: Number(item.line_total) || 0,
+    }));
     const chunks = [];
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     doc.on('data', (chunk) => chunks.push(chunk));
@@ -59,7 +65,7 @@ function createInvoicePdf(order, items, address) {
     doc.text('QTY', left + 335, tableTop + 4, { width: 40, align: 'right' });
     doc.text('AMOUNT', left + 390, tableTop + 4, { width: 95, align: 'right' });
     doc.y = tableTop + 27;
-    items.forEach((item) => {
+    invoiceItems.forEach((item) => {
       const rowTop = doc.y;
       doc.font('Helvetica').fontSize(10).fillColor('#3d2b24').text(pdfText(item.product_name), left + 8, rowTop, { width: 300 });
       doc.fontSize(9).fillColor('#8b6b43').text(`Unit price ${money(item.unit_price)}`, left + 8, rowTop + 13, { width: 300 });
