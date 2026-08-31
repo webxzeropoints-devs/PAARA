@@ -143,7 +143,7 @@ export default function Orders() {
             >
               <div>
                 <p className="text-xs uppercase tracking-widest text-cocoa/60">
-                  Order #{orderId?.toString().slice(0, 8)}
+                  Order {order.order_number || `ORD-${orderId}`}
                 </p>
                 {Array.isArray(order.items) && order.items.length > 0 && (
                   <div className="mt-2 space-y-1 text-sm">

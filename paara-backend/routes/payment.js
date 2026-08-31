@@ -130,10 +130,10 @@ async function sendPaidInvoice(orderId, customerId) {
   const addressText = address ? `${address.line1}, ${address.city}, ${address.state} - ${address.pincode}` : 'Not available';
   await trySendEmail({
     to: order.email,
-    subject: `Paara invoice for order #${order.id}`,
-    text: `Order ID: ${order.id}\nPayment ID: ${order.razorpay_payment_id}\n\nItems:\n${itemLines}\n\nTaxes: Included in product prices\nShipping: INR ${order.shipping_amount}\nTotal: INR ${order.total_amount}\nShipping address: ${addressText}`,
-    attachments: [{ filename: `paara-invoice-${order.id}.pdf`, content: pdf, contentType: 'application/pdf' }],
-  }, `invoice for order #${order.id}`);
+    subject: `Paara invoice for order ${order.order_number}`,
+    text: `Order ID: ${order.order_number}\nPayment ID: ${order.razorpay_payment_id}\n\nItems:\n${itemLines}\n\nTaxes: Included in product prices\nShipping: INR ${order.shipping_amount}\nTotal: INR ${order.total_amount}\nShipping address: ${addressText}`,
+    attachments: [{ filename: `paara-invoice-${order.order_number}.pdf`, content: pdf, contentType: 'application/pdf' }],
+  }, `invoice for order ${order.order_number}`);
 }
 
 /**

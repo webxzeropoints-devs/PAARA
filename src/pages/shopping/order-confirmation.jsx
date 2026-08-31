@@ -104,7 +104,7 @@ export default function OrderConfirmation() {
             {paymentSuccess ? "Payment successful" : "Your order is confirmed"}
           </h1>
           <p className="text-sm text-cocoa/60 mb-8">
-            Order #{orderId}
+            Order {order?.order_number || orderId}
           </p>
 
           {paymentSuccess && (

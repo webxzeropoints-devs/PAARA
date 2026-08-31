@@ -47,11 +47,12 @@ export default function AdminOrders() {
 
   return (
     <div className="max-w-7xl">
-      <div className="mb-8"><p className="text-[10px] uppercase tracking-[.28em] text-gold">Fulfilment</p><h1 className="mt-2 font-display text-4xl text-cocoa">Orders</h1><p className="mt-2 text-sm text-cocoa/60">Review purchases and approve qualifying gift card grants.</p></div>
+      <div className="mb-7"><p className="text-[10px] uppercase tracking-[.28em] text-gold">Fulfilment</p><h1 className="mt-2 font-display text-4xl text-cocoa">Orders</h1><p className="mt-2 text-sm text-cocoa/60">Review purchases and approve qualifying gift card grants.</p></div>
       {error && <p className="mb-5 border border-gold/40 bg-shell px-4 py-3 text-sm text-cocoa">{error}</p>}
       <div className="overflow-x-auto border border-cocoa/10 bg-shell">
-        <table className="w-full text-sm">
-          <thead className="border-b border-gold/30 text-left font-display text-xs uppercase tracking-[.18em] text-cocoa"><tr><th className="px-4 py-3">Order ID</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Payment</th><th className="px-4 py-3">Total</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Gift card</th></tr></thead>
+        <table className="w-full min-w-[1050px] table-fixed text-sm">
+          <colgroup><col className="w-[15%]" /><col className="w-[18%]" /><col className="w-[22%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[13%]" /><col className="w-[13%]" /></colgroup>
+          <thead className="border-b border-gold/30 text-left font-display text-[10px] uppercase tracking-[.18em] text-cocoa"><tr><th className="px-4 py-3.5">Order ID</th><th className="px-4 py-3.5">Customer</th><th className="px-4 py-3.5">Status</th><th className="px-4 py-3.5">Payment</th><th className="px-4 py-3.5 text-right">Amount</th><th className="px-4 py-3.5">Date</th><th className="px-4 py-3.5">Gift card</th></tr></thead>
           <tbody>
             {orders.map((order) => {
               const currentStatus = normalizeStatus(order.status);
@@ -59,9 +60,9 @@ export default function AdminOrders() {
               const eligible = order.gift_card_eligible_amount !== null && order.gift_card_eligible_amount !== undefined;
               const granted = Boolean(order.gift_card_granted_at);
               return <tr key={order.id} className="border-b border-cocoa/10 align-top odd:bg-sand/35">
-                <td className="px-4 py-3 text-cocoa"><p className="font-semibold">#{order.id}</p><p className="mt-1 text-[10px] uppercase tracking-widest text-cocoa/50">Customer ID #{order.customer_id}</p></td>
-                <td className="px-4 py-3"><p className="text-cocoa">{order.customer_name}</p><p className="text-xs text-cocoa/50">{order.customer_email}</p></td>
-                <td className="px-4 py-3 text-cocoa/75">
+                <td className="px-4 py-4 text-cocoa"><p className="whitespace-nowrap font-semibold">{order.order_number || `ORD-${order.id}`}</p><p className="mt-1 text-[10px] uppercase tracking-widest text-cocoa/50">Customer #{order.customer_id}</p></td>
+                <td className="px-4 py-4"><p className="truncate text-cocoa" title={order.customer_name}>{order.customer_name}</p><p className="truncate text-xs text-cocoa/50" title={order.customer_email}>{order.customer_email}</p></td>
+                <td className="px-4 py-4 text-cocoa/75">
                   <div className="flex flex-col gap-2">
                     {ORDER_STAGES.map((stage, index) => {
                       const isCurrent = currentStatus === stage;
@@ -75,7 +76,7 @@ export default function AdminOrders() {
                           type="button"
                           disabled={isDisabled || updatingStatus === order.id}
                           onClick={() => handleStatusChange(order.id, stage)}
-                          className={`rounded-full border px-2 py-1.5 text-[10px] uppercase tracking-[0.2em] transition-colors ${
+                          className={`rounded-full border px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] transition-colors ${
                             isCurrent
                               ? "border-gold bg-gold/15 text-cocoa"
                               : isDone
@@ -89,10 +90,10 @@ export default function AdminOrders() {
                     })}
                   </div>
                 </td>
-                <td className="px-4 py-3 capitalize text-cocoa/75">{order.payment_status}</td>
-                <td className="px-4 py-3 text-cocoa font-numeric">₹{Number(order.total_amount).toLocaleString("en-IN")}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-cocoa/70">{new Date(order.created_at.replace(" ", "T") + "Z").toLocaleString()}</td>
-                <td className="min-w-[220px] px-4 py-3">{eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Gift card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for gift card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant gift card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
+                <td className="px-4 py-4 capitalize text-cocoa/75">{order.payment_status}</td>
+                <td className="px-4 py-4 text-right text-cocoa font-numeric">₹{Number(order.total_amount).toLocaleString("en-IN")}</td>
+                <td className="px-4 py-4 text-cocoa/70">{new Date(order.created_at.replace(" ", "T") + "Z").toLocaleDateString()}</td>
+                <td className="px-4 py-4">{eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Gift card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block max-w-full break-words bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for gift card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant gift card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
               </tr>;
             })}
             {orders.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-cocoa/60">No orders yet.</td></tr>}

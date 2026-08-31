@@ -13,6 +13,7 @@ const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const db = require('./db/database');
 const { maskSensitiveText } = require('./utils/validate');
+const { formatOrderNumber } = require('./utils/orderNumber');
 
 const productsRouter = require('./routes/products');
 const vaultRouter = require('./routes/vault');
@@ -99,6 +100,9 @@ if (customerColumns.length && !customerColumns.includes('gift_card_balance')) {
   db.exec('ALTER TABLE customers ADD COLUMN gift_card_balance REAL NOT NULL DEFAULT 1500');
 }
 const orderColumns = db.prepare("PRAGMA table_info(orders)").all().map((column) => column.name);
+if (orderColumns.length && !orderColumns.includes('order_number')) {
+  db.exec('ALTER TABLE orders ADD COLUMN order_number TEXT');
+}
 if (orderColumns.length && !orderColumns.includes('gift_card_eligible_amount')) {
   db.exec('ALTER TABLE orders ADD COLUMN gift_card_eligible_amount REAL');
 }
@@ -111,6 +115,8 @@ if (orderColumns.length && !orderColumns.includes('gift_card_granted_by')) {
 if (orderColumns.length && !orderColumns.includes('status')) {
   db.exec('ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT "Order Confirmed"');
 }
+db.prepare("SELECT id, created_at FROM orders WHERE order_number IS NULL OR order_number = ''").all()
+  .forEach((order) => db.prepare('UPDATE orders SET order_number = ? WHERE id = ?').run(formatOrderNumber(order.created_at, order.id), order.id));
 db.exec(`
   UPDATE orders
   SET status = CASE

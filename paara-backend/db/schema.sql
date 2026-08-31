@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS addresses (
 
 CREATE TABLE IF NOT EXISTS orders (
   id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_number       TEXT UNIQUE,
   customer_id        INTEGER NOT NULL REFERENCES customers(id),
   address_id         INTEGER NOT NULL REFERENCES addresses(id),
   subtotal           REAL NOT NULL,

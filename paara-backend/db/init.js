@@ -19,9 +19,14 @@ if (!couponColumns.includes('redeemed_at')) db.exec('ALTER TABLE coupons ADD COL
 const customerColumns = db.prepare("PRAGMA table_info(customers)").all().map((column) => column.name);
 if (!customerColumns.includes('gift_card_balance')) db.exec('ALTER TABLE customers ADD COLUMN gift_card_balance REAL NOT NULL DEFAULT 1500');
 const orderColumns = db.prepare("PRAGMA table_info(orders)").all().map((column) => column.name);
+if (!orderColumns.includes('order_number')) db.exec('ALTER TABLE orders ADD COLUMN order_number TEXT');
 if (!orderColumns.includes('gift_card_eligible_amount')) db.exec('ALTER TABLE orders ADD COLUMN gift_card_eligible_amount REAL');
 if (!orderColumns.includes('gift_card_granted_at')) db.exec('ALTER TABLE orders ADD COLUMN gift_card_granted_at TEXT');
 if (!orderColumns.includes('gift_card_granted_by')) db.exec('ALTER TABLE orders ADD COLUMN gift_card_granted_by INTEGER REFERENCES admins(id)');
+const { formatOrderNumber } = require('../utils/orderNumber');
+const missingOrderNumbers = db.prepare("SELECT id, created_at FROM orders WHERE order_number IS NULL OR order_number = ''").all();
+const setOrderNumber = db.prepare('UPDATE orders SET order_number = ? WHERE id = ?');
+missingOrderNumbers.forEach((order) => setOrderNumber.run(formatOrderNumber(order.created_at, order.id), order.id));
 console.log('✔ Schema created.');
 
 // SQLite's datetime comparisons expect its standard space-separated format.

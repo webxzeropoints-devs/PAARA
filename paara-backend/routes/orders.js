@@ -4,6 +4,7 @@ const { requireAuth } = require('../middleware/auth');
 const { calculateGST, round2 } = require('../utils/pricing');
 const { calculateShipping } = require('../utils/shipping');
 const { createInvoicePdf } = require('../utils/invoice');
+const { formatOrderNumber } = require('../utils/orderNumber');
 
 const router = express.Router();
 // Keep shipping calculation active, but temporarily exclude its charge from customer totals.
@@ -79,6 +80,8 @@ router.post('/', requireAuth, (req, res) => {
     req.customer.id, address_id, subtotal, gstAmount, shipping.amount, totalAmount, 'Order Confirmed'
   );
   const orderId = orderInfo.lastInsertRowid;
+  const orderNumber = formatOrderNumber(new Date().toISOString(), orderId);
+  db.prepare('UPDATE orders SET order_number = ? WHERE id = ?').run(orderNumber, orderId);
 
   const insertItem = db.prepare(`
     INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
@@ -101,6 +104,7 @@ router.post('/', requireAuth, (req, res) => {
 
   res.status(201).json({
     order_id: orderId,
+    order_number: orderNumber,
     subtotal,
     gst_amount: gstAmount,
     shipping_amount: shipping.amount,
@@ -146,6 +150,7 @@ router.get('/', requireAuth, (req, res) => {
   const itemsForOrder = db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC');
   orders.forEach((order) => {
     order.order_id = order.id;
+    order.order_number = order.order_number || formatOrderNumber(order.created_at, order.id);
     order.items = itemsForOrder.all(order.id);
   });
   res.json(orders);
@@ -159,16 +164,21 @@ router.get('/:id', requireAuth, (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found.' });
 
   order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+  order.order_number = order.order_number || formatOrderNumber(order.created_at, order.id);
   res.json(order);
 });
 
 router.get('/:id/status', (req, res) => {
   const orderId = Number.parseInt(req.params.id, 10);
-  if (!Number.isInteger(orderId) || orderId < 1) {
+  const requestedOrderNumber = String(req.params.id || '').trim();
+  const isNumericOrderId = /^\d+$/.test(requestedOrderNumber) && orderId > 0;
+  if (!isNumericOrderId && !/^ORD-\d{8}-\d+$/.test(requestedOrderNumber)) {
     return res.status(404).json({ error: 'Order not found.' });
   }
 
-  const order = db.prepare('SELECT id, customer_id, status FROM orders WHERE id = ?').get(orderId);
+  const order = isNumericOrderId
+      ? db.prepare('SELECT id, order_number, created_at, customer_id, status FROM orders WHERE id = ?').get(orderId)
+      : db.prepare('SELECT id, order_number, created_at, customer_id, status FROM orders WHERE order_number = ?').get(requestedOrderNumber);
   if (!order) return res.status(404).json({ error: 'Order not found.' });
 
   const submittedEmail = String(req.query.email || '').trim().toLowerCase();
@@ -184,6 +194,7 @@ router.get('/:id/status', (req, res) => {
   const status = normalizeOrderStatus(order.status);
   const payload = {
     order_id: order.id,
+    order_number: order.order_number || formatOrderNumber(order.created_at, order.id),
     status,
     stage_index: getOrderStatusIndex(status),
     stages: ORDER_TRACKING_STATUSES,
@@ -215,7 +226,7 @@ router.get('/:id/invoice', requireAuth, (req, res) => {
     .prepare('SELECT * FROM addresses WHERE id = ? AND customer_id = ?')
     .get(order.address_id, req.customer.id);
 
-  const invoiceName = `paara-invoice-${order.id}.pdf`;
+  const invoiceName = `paara-invoice-${order.order_number || formatOrderNumber(order.created_at, order.id)}.pdf`;
 
   createInvoicePdf(order, items, address).then((pdf) => {
     res.setHeader('Content-Type', 'application/pdf');

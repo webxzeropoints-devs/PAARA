@@ -83,7 +83,7 @@ router.get('/customers/:id', (q, s) => {
   customer.orders = db.prepare('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC').all(customer.id);
   customer.addresses = db.prepare('SELECT * FROM addresses WHERE customer_id = ? ORDER BY is_default DESC, id DESC').all(customer.id);
   customer.submissions = db.prepare(`
-    SELECT d.*, o.status, o.payment_status FROM customer_order_details d
+    SELECT d.*, o.order_number, o.status, o.payment_status FROM customer_order_details d
     JOIN orders o ON o.id = d.order_id WHERE d.customer_id = ? ORDER BY d.created_at DESC
   `).all(customer.id).map((detail) => ({ ...detail, submitted_fields: JSON.parse(detail.submitted_fields || '{}') }));
   s.json(customer);

@@ -26,7 +26,8 @@ function createInvoicePdf(order, items, address) {
     }));
     const chunks = [];
     const doc = new PDFDocument({ margin: 50, size: 'A4', compress: true });
-    doc.info.Title = `Paara invoice for order ${order.id}`;
+    const displayOrderNumber = order.order_number || `ORD-${order.id}`;
+    doc.info.Title = `Paara invoice for order ${displayOrderNumber}`;
     doc.info.Author = 'Paara Jewellery';
     doc.info.Subject = 'Order invoice';
     doc.on('data', (chunk) => chunks.push(chunk));
@@ -46,7 +47,7 @@ function createInvoicePdf(order, items, address) {
     doc.fillColor('#8b6b43').font('Helvetica').fontSize(11).text('JEWELLERY INVOICE');
     doc.moveDown(0.5);
     rule('#d7b06b');
-    doc.fillColor('#3d2b24').font('Helvetica-Bold').fontSize(13).text(pdfText(`Invoice for Order #${order.id}`));
+    doc.fillColor('#3d2b24').font('Helvetica-Bold').fontSize(13).text(pdfText(`Invoice for Order ${displayOrderNumber}`));
     doc.text(pdfText(`Date: ${invoiceDate}`));
     doc.text(pdfText(`Status: ${(order.payment_status === 'paid' ? 'PAID' : order.status || 'PROCESSING').toUpperCase()}`));
     if (order.razorpay_payment_id) doc.text(pdfText(`Payment ID: ${order.razorpay_payment_id}`));
