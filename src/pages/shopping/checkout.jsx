@@ -200,7 +200,10 @@ export default function Checkout() {
   // The payment screen creates the order. COD stops here; Razorpay continues
   // with the existing gateway and server-side signature verification flow.
   const payNow = async () => {
-    if (!paymentMethod || !selectedAddressId) return;
+    if (!paymentMethod || !selectedAddressId || items.length === 0) {
+      setError("Please select an address and add an item before paying.");
+      return;
+    }
     setPaying(true);
     setError("");
     try {
@@ -209,6 +212,7 @@ export default function Checkout() {
         address_id: selectedAddressId,
         payment_method: paymentMethod,
       });
+      if (!createdOrder?.order_id) throw new Error("The order could not be created. Please try again.");
       setOrder(createdOrder);
       if (paymentMethod === "cod") {
         // COD is complete once the database confirms order creation.
@@ -504,7 +508,7 @@ export default function Checkout() {
                 </div>
                 <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-5 mb-6">
                   <p className="text-xs uppercase tracking-widest text-cocoa/60">
-                    Order #{order.order_id}
+                    {order ? `Order #${order.order_number || order.order_id}` : "Order details will appear after submission"}
                   </p>
                   <p className="font-numeric text-2xl mt-1">{formatPrice(customerTotal)}</p>
                   <p className="text-xs text-cocoa/60 mt-1">Inclusive of all taxes</p>
