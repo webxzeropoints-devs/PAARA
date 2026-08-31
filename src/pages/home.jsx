@@ -314,8 +314,32 @@ function Vault({ products }) {
 }
 
 function CustomerLove() {
-  const notes = ["“The most beautiful little package to open.”", "“I wear my pearl hoops with everything.”", "“Delicate, special and so beautifully made.”", "“My new everyday favourite.”"];
-  return <section className="customer-love-section relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat px-0 py-5 md:py-6"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">Customer Love</h2><HeadingWave className="mt-2" /></span></div><div className="relative z-10 love-marquee mt-5"><div className="love-track">{[...notes, ...notes].map((note, index) => <article key={index} className="relative w-[540px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-contain" /><div className="relative z-10 flex h-full w-[60%] mx-auto flex-col items-center justify-start pt-[30%] text-center"><p className="text-[1rem] md:text-[1.15rem] font-semibold leading-snug text-cocoa">{note}</p><p className="mt-4 text-[9px] tracking-[.2em] uppercase text-cocoa/60">Paara. customer</p></div></article>)}</div></div></section>;
+  const baseNotes = [
+    "“The most beautiful little package to open.”",
+    "“I wear my pearl hoops with everything.”",
+    "“Delicate, special and so beautifully made.”",
+    "“My new everyday favourite.”",
+    "“It feels like a little treasure I reach for daily.”",
+    "“The finish is so refined and quietly luxurious.”",
+    "“A gift that feels personal, thoughtful and lasting.”",
+    "“Wearing it makes even simple days feel special.”",
+    "“The detail is beautiful, and the quality feels exceptional.”",
+    "“Perfectly understated, with so much charm.”",
+    "“Every piece feels like it was made to be treasured.”",
+    "“The shell shape is so lovely and the feel is beautiful.”",
+    "“I keep reaching for it because it goes with everything.”",
+    "“An everyday piece that still feels special.”",
+    "“The design is timeless and the finish is beautiful.”",
+    "“I loved how it arrived and how effortlessly it fits in.”",
+    "“It looks even more beautiful in person.”",
+    "“A little piece of calm, elegance and joy.”",
+    "“The quality and styling feel effortlessly elevated.”",
+    "“It feels thoughtfully made and truly keepsake-worthy.”",
+  ];
+  const notes = Array.from({ length: 20 }, (_, index) => baseNotes[index % baseNotes.length]);
+  const marqueeNotes = [...notes, ...notes];
+
+  return <section className="customer-love-section relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat px-0 py-5 md:py-6"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">Customer Love</h2><HeadingWave className="mt-2" /></span></div><div className="relative z-10 love-marquee mt-5"><div className="love-track">{marqueeNotes.map((note, index) => <article key={`${note}-${index}`} className="relative w-[540px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-contain" /><div className="relative z-10 flex h-full w-[62%] mx-auto flex-col items-center justify-start overflow-hidden px-5 py-8 text-center md:px-6 md:py-10"><p className="w-full overflow-hidden text-[0.9rem] md:text-[1rem] font-semibold leading-snug text-cocoa">{note}</p><p className="mt-4 text-[9px] tracking-[.2em] uppercase text-cocoa/90">Paara. customer</p></div></article>)}</div></div></section>;
 }
 
 function Collections() {

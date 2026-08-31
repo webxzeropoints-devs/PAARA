@@ -57,11 +57,11 @@ import { CartProvider } from "./lib/cart.jsx";
 import { WishlistProvider } from "./lib/wishlist.jsx";
 import { AdminProvider } from "./lib/adminAuth.jsx";
 
-// Optimize page transitions for faster perceived load
+// Clean cross-fade only: no blur, no translate offset, no scale.
 const pageTransition = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.15, ease: "easeIn" } },
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, transition: { duration: 0.2, ease: "easeIn" } },
 };
 
 function AnimatedRoutes() {

@@ -123,7 +123,7 @@ h3 {
 
 @keyframes paara-love-marquee {
   from { transform: translateX(0); }
-  to { transform: translateX(calc(-50% - 28px)); }
+  to { transform: translateX(-50%); }
 }
 
 @keyframes paara-collection-marquee {
@@ -145,9 +145,10 @@ h3 {
   display: flex;
   align-items: center;
   width: max-content;
-  margin-left: calc((100vw - 540px) / 2);
-  gap: 3.5rem;
-  animation: paara-love-marquee 34s linear infinite;
+  gap: 1.5rem;
+  animation: paara-love-marquee 36s linear infinite;
+  animation-timing-function: linear;
+  will-change: transform;
 }
 
 /* Preserve the existing marquee card treatment while preventing flex sizing
