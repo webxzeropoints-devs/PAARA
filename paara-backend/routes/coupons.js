@@ -1,8 +1,24 @@
 const express = require('express');
 const db = require('../db/database');
 const { requireAuth } = require('../middleware/auth');
+const { round2 } = require('../utils/pricing');
 
 const router = express.Router();
+
+const isCouponExpired = (deadline) => {
+  if (!deadline) return true;
+  const normalized = String(deadline).replace(' ', 'T');
+  const candidate = normalized.includes('Z') ? normalized : `${normalized}Z`;
+  return new Date(candidate) <= new Date();
+};
+
+const getCouponValidation = (code) => {
+  const coupon = db.prepare('SELECT * FROM coupons WHERE code = ?').get(code);
+  if (!coupon) return { error: 'Invalid coupon code.', status: 404 };
+  if (!Number(coupon.is_active)) return { error: 'This coupon is inactive.', status: 400 };
+  if (isCouponExpired(coupon.deadline)) return { error: 'This coupon has expired.', status: 400 };
+  return { coupon };
+};
 
 // GET /api/coupons/active — currently valid, non-expired offers for the popup
 router.get('/active', (req, res) => {
@@ -14,6 +30,36 @@ router.get('/active', (req, res) => {
     ORDER BY deadline ASC
   `).all();
   res.json(coupons);
+});
+
+router.post('/validate', (req, res) => {
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  const subtotal = Number(req.body?.subtotal ?? 0);
+  if (!code) return res.status(400).json({ error: 'A coupon code is required.' });
+
+  const validation = getCouponValidation(code);
+  if (validation.error) return res.status(validation.status).json({ error: validation.error });
+
+  const { coupon } = validation;
+  const discountAmount = coupon.discount_type === 'percent'
+    ? round2(subtotal * (Number(coupon.discount_value) / 100))
+    : round2(Number(coupon.discount_value));
+  const totalAfterDiscount = round2(Math.max(0, subtotal - discountAmount));
+
+  return res.json({
+    valid: true,
+    coupon: {
+      id: coupon.id,
+      code: coupon.code,
+      description: coupon.description,
+      discount_type: coupon.discount_type,
+      discount_value: Number(coupon.discount_value),
+      deadline: coupon.deadline,
+    },
+    discount_amount: discountAmount,
+    subtotal,
+    total_after_discount: totalAfterDiscount,
+  });
 });
 
 // POST /api/coupons/redeem-gift-card — atomically consume a flat coupon once

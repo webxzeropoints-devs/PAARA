@@ -184,6 +184,7 @@ export const updateOrderStatus = (orderId, status) => adminRequest(`/admin/order
 export const postCreateRazorpay = (order_id) =>
   apiPost("/payment/create-razorpay-order", { order_id });
 export const postVerifyPayment = (payload) => apiPost("/payment/verify", payload);
+export const validateCoupon = (code, subtotal) => apiPost("/coupons/validate", { code, subtotal });
 export const downloadInvoice = async (orderId) => {
   const res = await fetch(`${BASE_URL}/orders/${orderId}/invoice`, {
     headers: buildHeaders(),

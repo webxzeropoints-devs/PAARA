@@ -155,6 +155,24 @@ db.exec(`CREATE TABLE IF NOT EXISTS email_otps (
   created_at TEXT NOT NULL DEFAULT (datetime('now')), expires_at TEXT NOT NULL,
   verified INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0
 )`);
+
+const ensureHomepageDefaults = () => {
+  db.prepare(`
+    INSERT OR IGNORE INTO paara_irl (id, image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
+    VALUES (1, '', NULL, NULL, 0, 1, datetime('now'), datetime('now'))
+  `).run();
+
+  [1, 2, 3].forEach((slotId) => {
+    db.prepare(`
+      INSERT OR IGNORE INTO instagram_reviews (
+        id, product_id, instagram_post_url, image_url, caption, likes, cached_at
+      ) VALUES (?, NULL, '', '', '', 0, datetime('now'))
+    `).run(slotId);
+  });
+};
+
+ensureHomepageDefaults();
+
 const emailOtpColumns = db.prepare("PRAGMA table_info(email_otps)").all().map((column) => column.name);
 if (emailOtpColumns.length && !emailOtpColumns.includes('attempts')) {
   db.exec('ALTER TABLE email_otps ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');

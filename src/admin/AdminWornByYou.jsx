@@ -71,7 +71,7 @@ export default function AdminWornByYou() {
           ))}
         </div>
         <div className="mt-6 flex items-center gap-3 border-t border-cocoa/10 pt-5">
-          <button type="submit" disabled={saving || slots.some((slot) => !slot.id || !slot.image_url)} className="bg-gold px-5 py-2.5 text-xs uppercase tracking-widest text-sand hover:bg-cocoa disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Saving all images..." : "Save all three images"}</button>
+          <button type="submit" disabled={saving || slots.some((slot) => !slot.image_url)} className="bg-gold px-5 py-2.5 text-xs uppercase tracking-widest text-sand hover:bg-cocoa disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Saving all images..." : "Save all three images"}</button>
           {saved && <span className="text-sm text-cocoa">{saved}</span>}
         </div>
       </form>

@@ -203,10 +203,17 @@ router.delete('/tile-products/:id', (q, s) => {
 router.get('/paara-irl', (q, s) => s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').all()));
 
 router.put('/paara-irl', (q, s) => {
-  const { image_url, owner_image_url, caption } = q.body;
-  const existing = db.prepare('SELECT image_url FROM paara_irl WHERE id=1').get();
-  const nextImageUrl = image_url || existing?.image_url || '';
-  db.prepare("UPDATE paara_irl SET image_url=?,owner_image_url=?,caption=?,updated_at=datetime('now') WHERE id=1").run(nextImageUrl, owner_image_url || null, caption || null);
+  const { image_url, owner_image_url, caption } = q.body || {};
+  const nextImageUrl = String(image_url ?? '').trim();
+  db.prepare(`
+    INSERT INTO paara_irl (id, image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
+    VALUES (1, ?, ?, ?, 0, 1, datetime('now'), datetime('now'))
+    ON CONFLICT(id) DO UPDATE SET
+      image_url = excluded.image_url,
+      owner_image_url = excluded.owner_image_url,
+      caption = excluded.caption,
+      updated_at = datetime('now')
+  `).run(nextImageUrl || '', owner_image_url || null, caption || null);
   s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get());
 });
 
@@ -215,14 +222,31 @@ router.get('/worn-by-you', (q, s) => s.json(db.prepare('SELECT * FROM instagram_
 router.put('/worn-by-you', (q, s) => {
   const slots = q.body?.slots;
   if (!Array.isArray(slots) || slots.length !== 3) return s.status(400).json({ error: 'Exactly 3 Worn By You slots are required.' });
-  const update = db.prepare("UPDATE instagram_reviews SET image_url=?,caption=?,instagram_post_url=?,likes=?,cached_at=datetime('now') WHERE id=? AND product_id IS NULL");
   try {
     const saved = db.transaction(() => slots.map((slot) => {
-      const id = Number(slot?.id);
-      if (!Number.isInteger(id) || !slot?.image_url) throw new Error('Each Worn By You slot requires a valid ID and image_url.');
-      const result = update.run(slot.image_url, slot.caption || null, slot.instagram_post_url || '', Number(slot.likes) || 0, id);
-      if (result.changes !== 1) throw new Error(`Worn By You slot ${id} could not be updated.`);
-      return db.prepare('SELECT * FROM instagram_reviews WHERE id = ?').get(id);
+      const imageUrl = String(slot?.image_url || '').trim();
+      const caption = slot?.caption || null;
+      const instagramPostUrl = slot?.instagram_post_url || '';
+      const likes = Number(slot?.likes) || 0;
+
+      if (!imageUrl) throw new Error('Each Worn By You slot requires an image_url.');
+
+      const targetId = Number(slot?.id);
+      if (Number.isInteger(targetId) && targetId > 0) {
+        const result = db.prepare(`
+          UPDATE instagram_reviews
+          SET image_url = ?, caption = ?, instagram_post_url = ?, likes = ?, cached_at = datetime('now')
+          WHERE id = ? AND product_id IS NULL
+        `).run(imageUrl, caption, instagramPostUrl, likes, targetId);
+        if (result.changes !== 1) throw new Error(`Worn By You slot ${targetId} could not be updated.`);
+        return db.prepare('SELECT * FROM instagram_reviews WHERE id = ?').get(targetId);
+      }
+
+      const result = db.prepare(`
+        INSERT INTO instagram_reviews (product_id, instagram_post_url, image_url, caption, likes, cached_at)
+        VALUES (NULL, ?, ?, ?, ?, datetime('now'))
+      `).run(instagramPostUrl, imageUrl, caption, likes);
+      return db.prepare('SELECT * FROM instagram_reviews WHERE id = ?').get(result.lastInsertRowid);
     }))();
     s.json({ success: true, slots: saved });
   } catch (error) {
