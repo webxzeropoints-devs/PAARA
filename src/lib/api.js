@@ -1,8 +1,23 @@
 // API client for the Paara backend (AI_BUILD_BRIEF §3).
-// Defaults to the colocated backend in development; production can override it
-// with VITE_API_URL (for example, https://api.example.com/api).
+// Prefer an explicit override with VITE_API_URL; otherwise use the deployed
+// backend for production hosts and localhost for local development.
+const resolveBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return String(import.meta.env.VITE_API_URL).replace(/\/$/, "");
 
-const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:4000/api").replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:4000/api";
+    }
+    if (host.includes("paarajewellery.in") || host.includes("paara.vercel.app") || host.includes("www.paarajewellery.in")) {
+      return "https://paara-backend.vercel.app/api";
+    }
+  }
+
+  return "http://localhost:4000/api";
+};
+
+const BASE_URL = resolveBaseUrl();
 const TOKEN_KEY = "paara_token";
 
 const ADMIN_TOKEN_KEY = "paara_admin_token";
