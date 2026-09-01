@@ -2,18 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "redirects": [
-    {
-      "source": "https://paarajewellery.in",
-      "destination": "https://www.paarajewellery.in",
-      "permanent": true
-    },
-    {
-      "source": "https://paarajewellery.in/:path*",
-      "destination": "https://www.paarajewellery.in/:path*",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
