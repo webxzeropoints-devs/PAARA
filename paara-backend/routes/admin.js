@@ -17,6 +17,11 @@ if (!db.isServerless && !fs.existsSync(uploadsDir)) {
 const imageRows = db.prepare('SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order ASC,id ASC');
 const decorate = (rows) => rows.map(p => ({ ...p, images: imageRows.all(p.id).map(r => r.image_url) }));
 
+const normalizeBlobAccess = () => {
+  const configured = String(process.env.VERCEL_BLOB_ACCESS || process.env.BLOB_ACCESS || 'private').trim().toLowerCase();
+  return configured === 'public' ? 'public' : 'private';
+};
+
 const cleanImages = (images) => {
   if (!Array.isArray(images)) return null;
   if (images.length > 3) throw new Error('A product can have at most 3 images.');
@@ -43,7 +48,7 @@ const saveUploadedImages = async (files) => {
       const random = Math.random().toString(36).substring(2, 8);
       const filename = `product-${timestamp}-${random}${path.extname(file.originalname)}`;
       const blob = await put(`products/${filename}`, file.buffer, {
-        access: 'public',
+        access: normalizeBlobAccess(),
         addRandomSuffix: false,
         contentType: file.mimetype,
       });
@@ -65,6 +70,64 @@ const saveUploadedImages = async (files) => {
 router.get('/products', (q, s) => s.json(decorate(db.prepare('SELECT p.*,c.name category_name FROM products p JOIN categories c ON c.id=p.category_id ORDER BY p.created_at DESC').all())));
 
 router.get('/categories', (q, s) => s.json(db.prepare('SELECT id,name,slug,gender FROM categories ORDER BY gender,name').all()));
+
+router.post('/categories', (q, s) => {
+  const { name, slug, gender, vibe = null, material = null } = q.body || {};
+  const cleanName = String(name || '').trim();
+  const cleanSlug = String(slug || '').trim();
+  const cleanGender = String(gender || '').trim().toLowerCase();
+
+  if (!cleanName || !cleanSlug || !['men', 'women', 'unisex'].includes(cleanGender)) {
+    return s.status(400).json({ error: 'Category name, slug, and gender are required.' });
+  }
+
+  const normalizedSlug = cleanSlug.replace(/\s+/g, '-').toLowerCase();
+  try {
+    const result = db.prepare(`
+      INSERT INTO categories (name, slug, gender, vibe, material)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(cleanName, normalizedSlug, cleanGender, vibe || null, material || null);
+    s.status(201).json(db.prepare('SELECT * FROM categories WHERE id = ?').get(result.lastInsertRowid));
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE constraint failed')) {
+      return s.status(409).json({ error: 'A category with this slug already exists.' });
+    }
+    s.status(400).json({ error: 'Could not create the category.' });
+  }
+});
+
+router.put('/categories/:id', (q, s) => {
+  const { name, slug, gender, vibe = null, material = null } = q.body || {};
+  const cleanName = String(name || '').trim();
+  const cleanSlug = String(slug || '').trim();
+  const cleanGender = String(gender || '').trim().toLowerCase();
+
+  if (!cleanName || !cleanSlug || !['men', 'women', 'unisex'].includes(cleanGender)) {
+    return s.status(400).json({ error: 'Category name, slug, and gender are required.' });
+  }
+
+  const normalizedSlug = cleanSlug.replace(/\s+/g, '-').toLowerCase();
+  try {
+    const result = db.prepare(`
+      UPDATE categories
+      SET name = ?, slug = ?, gender = ?, vibe = ?, material = ?
+      WHERE id = ?
+    `).run(cleanName, normalizedSlug, cleanGender, vibe || null, material || null, q.params.id);
+    if (!result.changes) return s.status(404).json({ error: 'Category not found.' });
+    s.json(db.prepare('SELECT * FROM categories WHERE id = ?').get(q.params.id));
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE constraint failed')) {
+      return s.status(409).json({ error: 'A category with this slug already exists.' });
+    }
+    s.status(400).json({ error: 'Could not update the category.' });
+  }
+});
+
+router.delete('/categories/:id', (q, s) => {
+  const result = db.prepare('DELETE FROM categories WHERE id = ?').run(q.params.id);
+  if (!result.changes) return s.status(404).json({ error: 'Category not found.' });
+  s.json({ success: true });
+});
 
 router.get('/customers', (q, s) => {
   const customers = db.prepare(`

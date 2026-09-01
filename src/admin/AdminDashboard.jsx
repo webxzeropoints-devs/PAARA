@@ -6,11 +6,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Edit, Save, Search, Trash2, Upload } from "lucide-react";
 
 import {
+  adminCreateCategory,
   adminCreateProduct,
+  adminDeleteCategory,
   adminDeleteProduct,
   adminListCategories,
   adminListProducts,
   adminSetVault,
+  adminUpdateCategory,
   adminUpdateProduct,
 } from "../lib/api";
 
@@ -36,6 +39,8 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(null); // product being edited in modal
   const [creating, setCreating] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryCreating, setCategoryCreating] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -83,6 +88,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCategoryDelete = async (category) => {
+    if (!window.confirm(`Delete "${category.name}"? This will remove the category from the catalog.`)) return;
+    try {
+      await adminDeleteCategory(category.id);
+      reload();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const vaultIds = useMemo(
     () => products.filter((p) => Number(p.is_vault) === 1).sort(
       (a, b) => (a.vault_sort_order ?? 0) - (b.vault_sort_order ?? 0)
@@ -114,6 +129,59 @@ export default function AdminDashboard() {
         subtitle="Pin exactly three products that show in the homepage Vault strip."
       >
         <VaultSelector products={products} initialSelection={vaultSelection} onSaved={reload} />
+      </Section>
+
+      <Section
+        title="Categories"
+        subtitle="Create and manage product categories for the storefront."
+        action={
+          <button
+            type="button"
+            onClick={() => setCategoryCreating(true)}
+            className="px-4 py-2 text-xs uppercase tracking-widest border border-gold/40 text-cocoa hover:bg-sand transition-colors"
+          >
+            + New category
+          </button>
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="font-display text-left text-xs uppercase tracking-[.18em] text-cocoa border-b border-gold/30">
+              <tr>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Slug</th>
+                <th className="px-4 py-3">Gender</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <tr key={category.id} className="border-b border-cocoa/10 odd:bg-sand/35 hover:bg-sand">
+                  <td className="px-4 py-3 font-product-name text-cocoa">{category.name}</td>
+                  <td className="px-4 py-3 text-cocoa/70">{category.slug}</td>
+                  <td className="px-4 py-3 uppercase text-cocoa/70">{category.gender}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="inline-flex gap-2">
+                      <button type="button" onClick={() => setEditingCategory(category)} className="p-2 text-gold hover:bg-sand" aria-label="Edit category">
+                        <Edit size={15} />
+                      </button>
+                      <button type="button" onClick={() => handleCategoryDelete(category)} className="p-2 text-cocoa hover:bg-sand" aria-label="Delete category">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {categories.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-sm text-cocoa/60">
+                    No categories yet. Create one to assign products.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </Section>
 
       <Section
@@ -229,8 +297,112 @@ export default function AdminDashboard() {
             onSaved={() => { setEditing(null); setCreating(false); reload(); }}
           />
         )}
+        {(editingCategory || categoryCreating) && (
+          <CategoryEditor
+            category={editingCategory}
+            onClose={() => { setEditingCategory(null); setCategoryCreating(false); }}
+            onSaved={() => { setEditingCategory(null); setCategoryCreating(false); reload(); }}
+          />
+        )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function CategoryEditor({ category, onClose, onSaved }) {
+  const isEdit = Boolean(category);
+  const [form, setForm] = useState(() => ({
+    name: category?.name || "",
+    slug: category?.slug || "",
+    gender: category?.gender || "women",
+    vibe: category?.vibe || "",
+    material: category?.material || "",
+  }));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      const payload = {
+        name: form.name.trim(),
+        slug: form.slug.trim(),
+        gender: form.gender,
+        vibe: form.vibe.trim(),
+        material: form.material.trim(),
+      };
+
+      if (!payload.name || !payload.slug || !["men", "women", "unisex"].includes(payload.gender)) {
+        throw new Error("Name, slug, and gender are required.");
+      }
+
+      if (isEdit) await adminUpdateCategory(category.id, payload);
+      else await adminCreateCategory(payload);
+      onSaved();
+    } catch (err) {
+      setError(err.message || "Could not save category.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-cocoa/30 flex items-center justify-center p-5"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 12, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 12, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-shell border border-gold/40 rounded-sm w-full max-w-lg"
+      >
+        <div className="px-6 py-4 border-b border-gold/25 flex items-center justify-between">
+          <h3 className="font-display text-lg tracking-[.16em] text-cocoa">
+            {isEdit ? "Edit category" : "New category"}
+          </h3>
+          <button type="button" onClick={onClose} className="text-cocoa/60 hover:text-cocoa text-xs uppercase tracking-widest">Close</button>
+        </div>
+        <form onSubmit={submit} className="p-6 space-y-4">
+          <Row>
+            <Input label="Name" value={form.name} onChange={(value) => update("name", value)} required />
+            <Input label="Slug" value={form.slug} onChange={(value) => update("slug", value)} required />
+          </Row>
+          <label className="block">
+            <span className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">Gender</span>
+            <select
+              value={form.gender}
+              onChange={(e) => update("gender", e.target.value)}
+              className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
+            >
+              <option value="women">Women</option>
+              <option value="men">Men</option>
+              <option value="unisex">Unisex</option>
+            </select>
+          </label>
+          <Row>
+            <Input label="Vibe" value={form.vibe} onChange={(value) => update("vibe", value)} />
+            <Input label="Material" value={form.material} onChange={(value) => update("material", value)} />
+          </Row>
+          {error && <p className="text-sm text-cocoa">{error}</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest text-cocoa/60 hover:text-cocoa">Cancel</button>
+            <button type="submit" disabled={saving} className="px-5 py-2 text-xs uppercase tracking-widest bg-gold text-sand hover:bg-cocoa disabled:opacity-60">
+              {saving ? "Saving…" : isEdit ? "Save category" : "Create category"}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
   );
 }
 

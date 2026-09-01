@@ -126,6 +126,9 @@ export const adminRequest = wrapFetch((path, options = {}) => {
 // Admin helpers
 export const adminListProducts = () => adminRequest("/admin/products");
 export const adminListCategories = () => adminRequest("/admin/categories");
+export const adminCreateCategory = (payload) => adminRequest("/admin/categories", { method: "POST", body: payload });
+export const adminUpdateCategory = (id, payload) => adminRequest(`/admin/categories/${id}`, { method: "PUT", body: payload });
+export const adminDeleteCategory = (id) => adminRequest(`/admin/categories/${id}`, { method: "DELETE" });
 export const adminCreateProduct = (payload) => adminRequest("/admin/products", { method: "POST", body: payload });
 export const adminUpdateProduct = (id, payload) => adminRequest(`/admin/products/${id}`, { method: "PUT", body: payload });
 export const adminDeleteProduct = (id) => adminRequest(`/admin/products/${id}`, { method: "DELETE" });
@@ -218,6 +221,9 @@ export default {
   adminRequest,
   adminListProducts,
   adminListCategories,
+  adminCreateCategory,
+  adminUpdateCategory,
+  adminDeleteCategory,
   adminCreateProduct,
   adminUpdateProduct,
   adminDeleteProduct,
