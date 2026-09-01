@@ -55,9 +55,9 @@ router.post('/create', requireAuth, async (req, res) => {
     baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in',
   });
 
-  if (payment_method === 'manual_upi' && payload.order_status) {
-    db.prepare('UPDATE orders SET status = ?, payment_status = ?, payment_method = ? WHERE id = ?')
-      .run(payload.order_status, MANUAL_UPI_PENDING_STATUS, 'manual_upi', order.id);
+  if (payment_method === 'manual_upi') {
+    db.prepare('UPDATE orders SET payment_method = ? WHERE id = ?')
+      .run('manual_upi', order.id);
   }
 
   return res.json(payload);
