@@ -24,8 +24,7 @@ const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
 const STEPS = ["Address", "Delivery", "Payment"];
 const PAYMENT_METHODS = [
-  { id: "manual_upi", label: "Pay via UPI", description: "Temporary manual UPI option — scan the QR or use the link, then submit your UTR for verification" },
-  { id: "razorpay", label: "Pay online", description: "UPI, card, net banking or wallet via Razorpay" },
+  { id: "manual_upi", label: "Pay via UPI", description: "Scan QR or pay via UPI ID, then confirm with your reference number." },
   { id: "cod", label: "Cash on Delivery", description: "Pay in cash when your order arrives" },
 ];
 const isCodEnabled = false;
@@ -77,7 +76,7 @@ export default function Checkout() {
   const [order, setOrder] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [paymentMethod, setPaymentMethod] = useState("manual_upi");
   const [manualUpi, setManualUpi] = useState({ ready: false, qr_code_url: "", deep_link: "", payee_name: "", upi_id: "", amount: 0, instructions: "" });
   const [manualUpiUtr, setManualUpiUtr] = useState("");
   const [razorpayReady, setRazorpayReady] = useState(false);
@@ -105,9 +104,9 @@ export default function Checkout() {
       .catch(() => setAddresses([]));
     getShippingCities().catch(() => setCities([]));
     getProducts().then((data) => setProducts(Array.isArray(data) ? data : [])).catch(() => setProducts([]));
-    loadRazorpay()
-      .then(() => setRazorpayReady(true))
-      .catch((err) => setPaymentMethodsError(err.message));
+    setPaymentMethod("manual_upi");
+    setRazorpayReady(false);
+    setPaymentMethodsError("");
   }, [navigate, items.length]);
 
   const selectedAddress = useMemo(
@@ -566,7 +565,6 @@ export default function Checkout() {
                       );
                     })}
                   </div>
-                  {paymentMethod === "razorpay" && !razorpayReady && !paymentMethodsError && <p className="mt-3 text-xs text-cocoa/60">Loading online payment...</p>}
                   {paymentMethodsError && <p className="mt-3 text-xs text-red-700">{paymentMethodsError}</p>}
                   {paymentMethod === "manual_upi" && (
                     <div className="mt-4 border border-gold/30 bg-gold/5 p-4 rounded-sm">
@@ -649,10 +647,10 @@ export default function Checkout() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={payNow}
-                  disabled={paying || !shipping || (paymentMethod === "razorpay" && (!razorpayReady || Boolean(paymentMethodsError)))}
+                  disabled={paying || !shipping}
                   className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
                 >
-                  {paying ? paymentMethod === "cod" ? "Placing COD order…" : "Opening payment…" : paymentMethod === "cod" ? "Place COD order" : "Pay online"}
+                  {paying ? paymentMethod === "cod" ? "Placing COD order…" : "Submitting UPI…" : paymentMethod === "cod" ? "Place COD order" : "Pay via UPI"}
                 </motion.button>
               </div>
             )}
