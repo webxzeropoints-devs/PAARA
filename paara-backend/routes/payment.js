@@ -51,6 +51,10 @@ router.post('/create-razorpay-order', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'This order has already been paid.' });
   }
 
+  if (!razorpay || !razorpay.orders || typeof razorpay.orders.create !== 'function') {
+    return res.status(503).json({ error: 'Razorpay is not configured. Please use the manual UPI payment option.' });
+  }
+
   try {
     const rzpOrder = await razorpay.orders.create({
       amount: Math.round(order.total_amount * 100), // paise
