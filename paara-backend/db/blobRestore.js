@@ -44,51 +44,81 @@ async function restoreBlobThenInit() {
     return;
   }
 
-  const { get } = require('@vercel/blob');
-  console.log('[DB_RESTORE] Looking for private database Blob.', blobDiagnostics());
-  const blob = await get(BLOB_PATHNAME, {
-    access: 'private',
-    useCache: false,
-    ...blobAuthOptions,
-  });
-  if (blob) {
-    console.log('[DB_RESTORE] Private Blob found.', {
-      ...blobDiagnostics(),
-      effectiveStoreId: storeIdFromUrl(blob.blob.url),
-      size: blob.blob.size,
-      uploadedAt: blob.blob.uploadedAt?.toISOString?.() || blob.blob.uploadedAt,
-      etag: blob.blob.etag,
-    });
-    const reader = blob.stream.getReader();
-    const chunks = [];
-    let totalLength = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = Buffer.from(value);
-      chunks.push(chunk);
-      totalLength += chunk.length;
-    }
-    fs.writeFileSync(dbPath, Buffer.concat(chunks, totalLength));
-    console.log('[DB_RESTORE] Blob restored to /tmp/paara.db.', {
-      ...blobDiagnostics(),
-      effectiveStoreId: storeIdFromUrl(blob.blob.url),
-      size: totalLength,
-      uploadedAt: blob.blob.uploadedAt?.toISOString?.() || blob.blob.uploadedAt,
-      etag: blob.blob.etag,
-    });
-    return;
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
   }
 
-  // A null result means the private store is reachable but this is the first boot.
-  console.log('[DB_RESTORE] Private Blob does not contain the database yet.', blobDiagnostics());
+  const hasBlobConfig = Boolean(blobReadWriteToken || blobStoreId);
+  if (!hasBlobConfig) {
+    console.warn('[DB_RESTORE] Vercel Blob is not configured for this deployment. Setting up from the embedded seed database; persistence will be disabled until BLOB_READ_WRITE_TOKEN (or BLOB_STORE_ID) is set in Vercel Production env.', blobDiagnostics());
+    try {
+      const seedBuffer = require('./seed-data.js');
+      fs.writeFileSync(dbPath, seedBuffer);
+      console.log('[DB_RESTORE] Seed database created because no Blob credentials were configured.');
+      return;
+    } catch (err) {
+      console.error('[DB_RESTORE] Could not create the seed DB on Vercel:', err.message);
+      throw err;
+    }
+  }
+
   try {
-    const seedBuffer = require('./seed-data.js');
-    fs.writeFileSync(dbPath, seedBuffer);
-    console.log('[DB_RESTORE] No database Blob found; seeded /tmp/paara.db.');
+    const { get } = require('@vercel/blob');
+    console.log('[DB_RESTORE] Looking for private database Blob.', blobDiagnostics());
+    const blob = await get(BLOB_PATHNAME, {
+      access: 'private',
+      useCache: false,
+      ...blobAuthOptions,
+    });
+    if (blob) {
+      console.log('[DB_RESTORE] Private Blob found.', {
+        ...blobDiagnostics(),
+        effectiveStoreId: storeIdFromUrl(blob.blob.url),
+        size: blob.blob.size,
+        uploadedAt: blob.blob.uploadedAt?.toISOString?.() || blob.blob.uploadedAt,
+        etag: blob.blob.etag,
+      });
+      const reader = blob.stream.getReader();
+      const chunks = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = Buffer.from(value);
+        chunks.push(chunk);
+        totalLength += chunk.length;
+      }
+      fs.writeFileSync(dbPath, Buffer.concat(chunks, totalLength));
+      console.log('[DB_RESTORE] Blob restored to /tmp/paara.db.', {
+        ...blobDiagnostics(),
+        effectiveStoreId: storeIdFromUrl(blob.blob.url),
+        size: totalLength,
+        uploadedAt: blob.blob.uploadedAt?.toISOString?.() || blob.blob.uploadedAt,
+        etag: blob.blob.etag,
+      });
+      return;
+    }
+
+    // A null result means the private store is reachable but this is the first boot.
+    console.log('[DB_RESTORE] Private Blob does not contain the database yet.', blobDiagnostics());
+    try {
+      const seedBuffer = require('./seed-data.js');
+      fs.writeFileSync(dbPath, seedBuffer);
+      console.log('[DB_RESTORE] No database Blob found; seeded /tmp/paara.db.');
+    } catch (err) {
+      console.error('[DB_RESTORE] Could not load embedded seed DB:', err.message);
+      throw err;
+    }
   } catch (err) {
-    console.error('[DB_RESTORE] Could not load embedded seed DB:', err.message);
-    // leave it missing; database.js's schema.sql fallback below will create it fresh
+    console.error('[DB_RESTORE] Blob restore attempt failed.', {
+      ...blobDiagnostics(),
+      error: err.message,
+      errorName: err.name,
+      errorCode: err.code,
+      stack: err.stack,
+    });
+    throw err;
   }
 }
 
