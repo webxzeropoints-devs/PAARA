@@ -97,7 +97,8 @@ if (paaraIrlColumns.length && !paaraIrlColumns.includes('owner_image_url')) {
   db.exec('ALTER TABLE paara_irl ADD COLUMN owner_image_url TEXT');
 }
 if (paaraIrlColumns.length && !paaraIrlColumns.includes('updated_at')) {
-  db.exec("ALTER TABLE paara_irl ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))");
+  db.exec('ALTER TABLE paara_irl ADD COLUMN updated_at TEXT');
+  db.exec("UPDATE paara_irl SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''");
 }
 const couponColumns = db.prepare("PRAGMA table_info(coupons)").all().map((column) => column.name);
 if (couponColumns.length && !couponColumns.includes('redeemed_at')) {
@@ -105,7 +106,8 @@ if (couponColumns.length && !couponColumns.includes('redeemed_at')) {
 }
 const instagramReviewColumns = db.prepare("PRAGMA table_info(instagram_reviews)").all().map((column) => column.name);
 if (instagramReviewColumns.length && !instagramReviewColumns.includes('updated_at')) {
-  db.exec("ALTER TABLE instagram_reviews ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))");
+  db.exec('ALTER TABLE instagram_reviews ADD COLUMN updated_at TEXT');
+  db.exec("UPDATE instagram_reviews SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''");
 }
 const customerColumns = db.prepare("PRAGMA table_info(customers)").all().map((column) => column.name);
 if (customerColumns.length && !customerColumns.includes('gift_card_balance')) {
