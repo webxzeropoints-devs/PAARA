@@ -22,5 +22,7 @@ if (keyId && keySecret) {
   console.warn('[paara] Razorpay initialization notice: Razorpay keys are not configured.');
 }
 
-module.exports = razorpay;
-module.exports.isConfigured = () => Boolean(razorpay && razorpay.orders && typeof razorpay.orders.create === 'function');
+const safeExport = razorpay || {};
+safeExport.isConfigured = () => Boolean(razorpay && razorpay.orders && typeof razorpay.orders.create === 'function');
+
+module.exports = safeExport;
