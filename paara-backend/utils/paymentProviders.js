@@ -1,5 +1,8 @@
 const PAYMENT_METHODS = ['razorpay', 'manual_upi', 'cod'];
-const MANUAL_UPI_HOLD_STATUS = 'On Hold - Awaiting Payment Confirmation';
+const MANUAL_UPI_PENDING_STATUS = 'Auto-confirmed - Unverified';
+const MANUAL_UPI_VERIFIED_STATUS = 'verified';
+const MANUAL_UPI_REJECTED_STATUS = 'rejected';
+const MANUAL_UPI_CONFIRMED_STATUS = 'Order Confirmed';
 
 const buildManualUpiRequest = ({ order, customer, baseUrl = process.env.APP_URL || 'https://www.paarajewellery.in' }) => {
   const payeeName = process.env.UPI_PAYEE_NAME || 'Paara Jewellery';
@@ -32,7 +35,8 @@ const buildManualUpiRequest = ({ order, customer, baseUrl = process.env.APP_URL 
     qr_code_url: qrCodeUrl,
     instructions: `Pay ${payeeName} on ${upiId} for ${orderLabel}. After payment, share the transaction UTR below.`,
     confirmation_url: `${baseUrl.replace(/\/$/, '')}/order-confirmation?order_id=${encodeURIComponent(order.id)}&payment=success`,
-    hold_status: MANUAL_UPI_HOLD_STATUS,
+    order_status: MANUAL_UPI_CONFIRMED_STATUS,
+    payment_status: MANUAL_UPI_PENDING_STATUS,
   };
 };
 
@@ -65,9 +69,9 @@ const paymentProviders = {
         valid: true,
         payment_method: 'manual_upi',
         payment_reference: reference,
-        payment_status: 'pending_verification',
-        status: MANUAL_UPI_HOLD_STATUS,
-        message: 'Your order is on hold until we confirm your payment. This usually takes a few hours. You will receive a confirmation email/SMS once verified.',
+        payment_status: MANUAL_UPI_PENDING_STATUS,
+        status: MANUAL_UPI_CONFIRMED_STATUS,
+        message: 'Order Confirmed! We\'ll notify you once it ships.',
       };
     },
   },
@@ -100,7 +104,10 @@ const getPaymentProvider = (value) => {
 
 module.exports = {
   PAYMENT_METHODS,
-  MANUAL_UPI_HOLD_STATUS,
+  MANUAL_UPI_PENDING_STATUS,
+  MANUAL_UPI_VERIFIED_STATUS,
+  MANUAL_UPI_REJECTED_STATUS,
+  MANUAL_UPI_CONFIRMED_STATUS,
   normalizePaymentMethod,
   paymentProviders,
   getPaymentProvider,

@@ -43,15 +43,25 @@ const normalizeOrigin = (origin) => {
   }
 };
 
-const allowedOrigins = new Set([
-  'https://paarajewellery.in',
-  'https://www.paarajewellery.in',
-  'http://localhost:3000',
-  'http://localhost:4000',
-  'http://localhost:5173',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:5173'
-]);
+const buildAllowedOrigins = () => {
+  const configuredOrigins = (process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const defaultOrigins = [
+    'https://paara.vercel.app',
+    'https://paarajewellery.in',
+    'https://www.paarajewellery.in',
+    'http://localhost:3000',
+    'http://localhost:4000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173'
+  ];
+
+  return [...new Set([...configuredOrigins, ...defaultOrigins])];
+};
 
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
@@ -59,7 +69,8 @@ const isAllowedOrigin = (origin) => {
   const normalizedOrigin = normalizeOrigin(origin);
   if (!normalizedOrigin) return false;
 
-  if (allowedOrigins.has(normalizedOrigin)) return true;
+  const allowedOrigins = buildAllowedOrigins();
+  if (allowedOrigins.includes(normalizedOrigin)) return true;
 
   const hostname = new URL(normalizedOrigin).hostname.toLowerCase();
   const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(hostname) || hostname.endsWith('.localhost');

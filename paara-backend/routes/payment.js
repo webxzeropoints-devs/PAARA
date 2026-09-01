@@ -2,7 +2,13 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('../db/database');
 const razorpay = require('../utils/razorpay');
-const { getPaymentProvider, MANUAL_UPI_HOLD_STATUS } = require('../utils/paymentProviders');
+const {
+  getPaymentProvider,
+  MANUAL_UPI_PENDING_STATUS,
+  MANUAL_UPI_VERIFIED_STATUS,
+  MANUAL_UPI_REJECTED_STATUS,
+  MANUAL_UPI_CONFIRMED_STATUS,
+} = require('../utils/paymentProviders');
 const { requireAuth } = require('../middleware/auth');
 const { trySendEmail } = require('../utils/email');
 const { createInvoicePdf } = require('../utils/invoice');
@@ -49,9 +55,9 @@ router.post('/create', requireAuth, async (req, res) => {
     baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in',
   });
 
-  if (payment_method === 'manual_upi' && payload.hold_status) {
+  if (payment_method === 'manual_upi' && payload.order_status) {
     db.prepare('UPDATE orders SET status = ?, payment_status = ?, payment_method = ? WHERE id = ?')
-      .run(payload.hold_status, 'pending_verification', 'manual_upi', order.id);
+      .run(payload.order_status, MANUAL_UPI_PENDING_STATUS, 'manual_upi', order.id);
   }
 
   return res.json(payload);
@@ -123,14 +129,14 @@ router.post('/verify', requireAuth, (req, res) => {
 
     const updated = db.prepare(`
       UPDATE orders
-      SET payment_status = 'pending_verification',
+      SET payment_status = ?,
           payment_method = 'manual_upi',
           payment_reference = ?,
           payment_verified_at = NULL,
           payment_rejected_at = NULL,
           status = ?
       WHERE id = ? AND customer_id = ?
-    `).run(reference, MANUAL_UPI_HOLD_STATUS, order.id, req.customer.id);
+    `).run(MANUAL_UPI_PENDING_STATUS, reference, MANUAL_UPI_CONFIRMED_STATUS, order.id, req.customer.id);
 
     if (!updated.changes) {
       return res.status(400).json({ error: 'Unable to record UPI payment attempt.' });
@@ -139,10 +145,10 @@ router.post('/verify', requireAuth, (req, res) => {
     return res.json({
       success: true,
       order_id: order.id,
-      payment_status: 'pending_verification',
+      payment_status: MANUAL_UPI_PENDING_STATUS,
       payment_method: 'manual_upi',
-      status: MANUAL_UPI_HOLD_STATUS,
-      message: 'Your order is on hold until we confirm your payment. This usually takes a few hours. You will get a confirmation email/SMS once verified.'
+      status: MANUAL_UPI_CONFIRMED_STATUS,
+      message: 'Order Confirmed! We\'ll notify you once it ships.'
     });
   }
 

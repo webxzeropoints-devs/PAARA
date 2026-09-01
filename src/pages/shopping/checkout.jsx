@@ -24,8 +24,8 @@ const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
 const STEPS = ["Address", "Delivery", "Payment"];
 const PAYMENT_METHODS = [
+  { id: "manual_upi", label: "Pay via UPI", description: "Temporary manual UPI option — scan the QR or use the link, then submit your UTR for verification" },
   { id: "razorpay", label: "Pay online", description: "UPI, card, net banking or wallet via Razorpay" },
-  { id: "manual_upi", label: "Pay Now (Online)", description: "Use UPI QR or link, then submit your UTR for manual confirmation" },
   { id: "cod", label: "Cash on Delivery", description: "Pay in cash when your order arrives" },
 ];
 const isCodEnabled = false;
@@ -570,7 +570,10 @@ export default function Checkout() {
                   {paymentMethodsError && <p className="mt-3 text-xs text-red-700">{paymentMethodsError}</p>}
                   {paymentMethod === "manual_upi" && (
                     <div className="mt-4 border border-gold/30 bg-gold/5 p-4 rounded-sm">
-                      <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-cocoa/60">Manual UPI payment</p>
+                      <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-cocoa/60">Temporary UPI payment</p>
+                      <p className="mb-3 text-xs text-cocoa/70">
+                        Pay the UPI ID below, then share the UTR after payment. We will verify it manually before dispatching your order.
+                      </p>
                       <div className="flex items-center gap-4">
                         {manualUpi.qr_code_url && (
                           <img src={manualUpi.qr_code_url} alt="UPI QR code" className="h-28 w-28 rounded-md border border-cocoa/10 bg-white p-2" />
@@ -630,7 +633,7 @@ export default function Checkout() {
                           {paying ? "Submitting..." : "Submit UTR"}
                         </button>
                         <p className="text-[11px] text-cocoa/60 leading-relaxed">
-                          Your order stays on hold until we confirm the payment. This usually takes a few hours. You will receive a confirmation email/SMS once verified.
+                          Order Confirmed! We&apos;ll notify you once it ships.
                         </p>
                       </div>
                     </div>

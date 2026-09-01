@@ -324,8 +324,8 @@ router.patch('/orders/:id/status', (q, s) => {
     return s.status(400).json({ error: 'Order statuses can only move forward.' });
   }
 
-  if (requestedStatus === 'Packed' && existing.payment_method === 'manual_upi' && existing.payment_status !== 'paid') {
-    return s.status(400).json({ error: 'Manual UPI orders must be verified before they can be packed.' });
+  if (requestedStatus === 'Packed' && existing.payment_method === 'manual_upi' && existing.payment_status !== 'verified') {
+    return s.status(400).json({ error: 'Payment must be verified before this order can be packed.' });
   }
 
   db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(requestedStatus, orderId);
@@ -346,23 +346,23 @@ router.post('/orders/:id/verify-manual-payment', (q, s) => {
 
   db.prepare(`
     UPDATE orders
-    SET payment_status = 'paid',
+    SET payment_status = 'verified',
         payment_verified_at = datetime('now'),
         payment_rejected_at = NULL,
         status = CASE WHEN status = 'Order Confirmed' THEN 'Order Confirmed' ELSE status END
     WHERE id = ?
   `).run(orderId);
 
-  s.json({ success: true, order_id: orderId, payment_status: 'paid', message: 'Manual UPI payment verified.' });
+  s.json({ success: true, order_id: orderId, payment_status: 'verified', message: 'Manual UPI payment verified.' });
 });
 
-router.post('/orders/:id/reject-manual-payment', (q, s) => {
+router.post('/orders/:id/reject-manual-payment', async (q, s) => {
   const orderId = Number.parseInt(q.params.id, 10);
   if (!Number.isInteger(orderId) || orderId < 1) {
     return s.status(400).json({ error: 'A valid order ID is required.' });
   }
 
-  const order = db.prepare('SELECT id, payment_method FROM orders WHERE id = ?').get(orderId);
+  const order = db.prepare('SELECT o.id, o.payment_method, o.payment_reference, o.total_amount, c.email, c.name FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.id = ?').get(orderId);
   if (!order) return s.status(404).json({ error: 'Order not found.' });
   if (order.payment_method !== 'manual_upi') {
     return s.status(400).json({ error: 'This order is not a manual UPI order.' });
@@ -376,6 +376,15 @@ router.post('/orders/:id/reject-manual-payment', (q, s) => {
         status = 'Order Confirmed'
     WHERE id = ?
   `).run(orderId);
+
+  if (order.email) {
+    const { trySendEmail } = require('../utils/email');
+    await trySendEmail({
+      to: order.email,
+      subject: `Payment verification update for order ${order.id}`,
+      text: `Hi ${order.name || 'Customer'},\n\nWe could not verify the UPI payment reference for your order.\nOrder amount: ₹${Number(order.total_amount || 0).toLocaleString('en-IN')}\nUTR submitted: ${order.payment_reference || 'Not provided'}\n\nPlease contact customer support so we can resolve this quickly and confirm your order.`,
+    }, `manual UPI rejection email for order ${order.id}`);
+  }
 
   s.json({ success: true, order_id: orderId, payment_status: 'rejected', message: 'Manual UPI payment rejected for follow-up.' });
 });
