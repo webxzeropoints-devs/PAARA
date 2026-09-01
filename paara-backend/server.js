@@ -35,31 +35,36 @@ const app = express();
 const allowedOrigins = [
   'https://paarajewellery.in',
   'https://www.paarajewellery.in',
-  'http://localhost:5173',
-  'http://localhost:4000'
+  'http://localhost:3000',
+  'http://localhost:4000',
+  'http://localhost:5173'
 ];
 
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
-}));
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
 
-app.options('*', cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+  if (allowedOrigins.includes(origin)) return true;
+
+  const isVercelPreview = /^https?:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(origin);
+  return isVercelPreview;
+};
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
+    }
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Both Vercel and Render sit behind a reverse proxy that sets X-Forwarded-For.
 // Without this, express-rate-limit can't safely derive client IPs and throws

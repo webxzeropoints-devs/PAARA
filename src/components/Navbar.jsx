@@ -26,7 +26,7 @@ import { clearToken } from "../lib/api";
  * - Cart icon shows live item count
  * - Account icon routes to /login or /account/orders
  * - Hamburger icon opens a solid/opaque account drawer (Orders, Saved
- *   Addresses, Gift Cards, Notifications, Customer Care, Track Order)
+ *   Addresses, Loyalty Card, Notifications, Customer Care, Track Order)
  */
 
 const NAV_ITEMS = [

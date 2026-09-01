@@ -21,7 +21,7 @@ export default function AdminGiftCardRules() {
       setProducts(productList || []);
       setRules(ruleList || []);
     } catch (err) {
-      setError(err.message || "Could not load gift card rules.");
+      setError(err.message || "Could not load loyalty card rules.");
     }
   }, []);
 
@@ -74,7 +74,7 @@ export default function AdminGiftCardRules() {
     <div className="max-w-5xl">
       <div className="mb-8">
         <p className="text-[10px] uppercase tracking-[.28em] text-gold">Customer rewards</p>
-        <h1 className="mt-2 font-display text-4xl text-cocoa">Gift Card Rules</h1>
+        <h1 className="mt-2 font-display text-4xl text-cocoa">Loyalty Card Rules</h1>
         <p className="mt-2 text-sm text-cocoa/60">Configure rewards for qualifying products. Grants are approved per order.</p>
       </div>
       {error && <p className="mb-5 border border-gold/40 bg-shell px-4 py-3 text-sm text-cocoa">{error}</p>}
@@ -93,7 +93,7 @@ export default function AdminGiftCardRules() {
             </select>
           </label>
           <label className="text-xs uppercase tracking-widest text-cocoa/60">
-            Gift card value
+            Loyalty value
             <input required min="1" step="0.01" type="number" value={form.gift_card_value} onChange={(e) => setForm({ ...form, gift_card_value: e.target.value })} placeholder="₹ value" className="mt-2 w-full border border-cocoa/20 bg-sand px-3 py-2 text-sm text-cocoa outline-none focus:border-gold" />
           </label>
           <div className="flex gap-2">
@@ -113,7 +113,7 @@ export default function AdminGiftCardRules() {
               <td className="px-4 py-3 text-xs uppercase tracking-widest text-cocoa/60">{Number(rule.is_active) ? "Active" : "Inactive"}</td>
               <td className="px-4 py-3 text-right"><div className="inline-flex gap-2"><button type="button" onClick={() => toggle(rule)} className="px-2 py-1 text-[10px] uppercase tracking-widest text-gold">{Number(rule.is_active) ? "Deactivate" : "Activate"}</button><button type="button" onClick={() => { setEditingId(rule.id); setForm({ product_id: String(rule.product_id), gift_card_value: String(rule.gift_card_value), is_active: Number(rule.is_active) === 1 }); }} className="p-2 text-gold" aria-label="Edit rule"><Edit size={15} /></button><button type="button" onClick={() => remove(rule)} className="p-2 text-cocoa" aria-label="Delete rule"><Trash2 size={15} /></button></div></td>
             </tr>)}
-            {rules.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-sm text-cocoa/60">No gift card rules yet.</td></tr>}
+            {rules.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-sm text-cocoa/60">No loyalty card rules yet.</td></tr>}
           </tbody>
         </table>
       </div>
