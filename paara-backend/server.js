@@ -111,6 +111,33 @@ const customerColumns = db.prepare("PRAGMA table_info(customers)").all().map((co
 if (customerColumns.length && !customerColumns.includes('gift_card_balance')) {
   db.exec('ALTER TABLE customers ADD COLUMN gift_card_balance REAL NOT NULL DEFAULT 1500');
 }
+const hasOrdersTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'orders'").get();
+if (!hasOrdersTable) {
+  db.exec(`
+    CREATE TABLE orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_number TEXT UNIQUE,
+      customer_id INTEGER NOT NULL,
+      address_id INTEGER NOT NULL,
+      subtotal REAL NOT NULL,
+      gst_amount REAL NOT NULL,
+      shipping_amount REAL NOT NULL,
+      total_amount REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Order Confirmed',
+      payment_status TEXT NOT NULL DEFAULT 'unpaid',
+      payment_method TEXT NOT NULL DEFAULT 'razorpay',
+      razorpay_order_id TEXT,
+      razorpay_payment_id TEXT,
+      payment_reference TEXT,
+      payment_verified_at TEXT,
+      payment_rejected_at TEXT,
+      gift_card_eligible_amount REAL,
+      gift_card_granted_at TEXT,
+      gift_card_granted_by INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+}
 const orderColumns = db.prepare("PRAGMA table_info(orders)").all().map((column) => column.name);
 if (orderColumns.length && !orderColumns.includes('order_number')) {
   db.exec('ALTER TABLE orders ADD COLUMN order_number TEXT');
