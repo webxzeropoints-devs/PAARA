@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('../db/database');
 const razorpay = require('../utils/razorpay');
-const { getPaymentProvider } = require('../utils/paymentProviders');
+const { getPaymentProvider, MANUAL_UPI_HOLD_STATUS } = require('../utils/paymentProviders');
 const { requireAuth } = require('../middleware/auth');
 const { trySendEmail } = require('../utils/email');
 const { createInvoicePdf } = require('../utils/invoice');
@@ -39,6 +39,24 @@ const markOrderPaid = db.transaction((orderId, paymentId) => {
  * stored server-side in POST /api/orders — the amount is never taken
  * from the request body.
  */
+router.post('/create', requireAuth, async (req, res) => {
+  const { order_id, payment_method = 'manual_upi' } = req.body || {};
+  const order = db.prepare('SELECT * FROM orders WHERE id = ? AND customer_id = ?').get(order_id, req.customer.id);
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+
+  const provider = getPaymentProvider(payment_method);
+  const payload = provider.create(order, { id: req.customer.id, name: req.customer.name }, {
+    baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in',
+  });
+
+  if (payment_method === 'manual_upi' && payload.hold_status) {
+    db.prepare('UPDATE orders SET status = ?, payment_status = ?, payment_method = ? WHERE id = ?')
+      .run(payload.hold_status, 'pending_verification', 'manual_upi', order.id);
+  }
+
+  return res.json(payload);
+});
+
 router.post('/create-razorpay-order', requireAuth, async (req, res) => {
   const { order_id } = req.body;
 
@@ -110,9 +128,9 @@ router.post('/verify', requireAuth, (req, res) => {
           payment_reference = ?,
           payment_verified_at = NULL,
           payment_rejected_at = NULL,
-          status = 'Order Confirmed'
+          status = ?
       WHERE id = ? AND customer_id = ?
-    `).run(reference, order.id, req.customer.id);
+    `).run(reference, MANUAL_UPI_HOLD_STATUS, order.id, req.customer.id);
 
     if (!updated.changes) {
       return res.status(400).json({ error: 'Unable to record UPI payment attempt.' });
@@ -123,7 +141,8 @@ router.post('/verify', requireAuth, (req, res) => {
       order_id: order.id,
       payment_status: 'pending_verification',
       payment_method: 'manual_upi',
-      message: 'UPI payment submitted for verification. Your order is confirmed and will be checked manually before dispatch.'
+      status: MANUAL_UPI_HOLD_STATUS,
+      message: 'Your order is on hold until we confirm your payment. This usually takes a few hours. You will get a confirmation email/SMS once verified.'
     });
   }
 
@@ -194,11 +213,11 @@ router.get('/provider/:method', requireAuth, (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found.' });
 
   const provider = getPaymentProvider(method);
-  if (!provider || typeof provider.createPaymentRequest !== 'function') {
+  if (!provider || typeof provider.create !== 'function') {
     return res.status(400).json({ error: 'Unsupported payment method.' });
   }
 
-  const payload = provider.createPaymentRequest(order, { id: req.customer.id, name: req.customer.name }, { baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in' });
+  const payload = provider.create(order, { id: req.customer.id, name: req.customer.name }, { baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in' });
   res.json(payload);
 });
 

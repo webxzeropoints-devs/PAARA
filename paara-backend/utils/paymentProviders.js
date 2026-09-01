@@ -1,14 +1,17 @@
 const PAYMENT_METHODS = ['razorpay', 'manual_upi', 'cod'];
+const MANUAL_UPI_HOLD_STATUS = 'On Hold - Awaiting Payment Confirmation';
 
 const buildManualUpiRequest = ({ order, customer, baseUrl = process.env.APP_URL || 'https://www.paarajewellery.in' }) => {
   const payeeName = process.env.UPI_PAYEE_NAME || 'Paara Jewellery';
   const upiId = process.env.UPI_ID || 'paara.jewellery@upi';
   const orderLabel = `Paara Order ${order.order_number || order.id}`;
+  const amount = Number(order.total_amount || 0);
   const params = new URLSearchParams({
     pa: upiId,
     pn: payeeName,
-    am: String(Number(order.total_amount || 0)),
+    am: String(amount),
     cu: 'INR',
+    tr: String(order.id),
     tn: orderLabel,
   });
   const deepLink = `upi://pay?${params.toString()}`;
@@ -17,18 +20,19 @@ const buildManualUpiRequest = ({ order, customer, baseUrl = process.env.APP_URL 
   return {
     method: 'manual_upi',
     name: 'manual_upi',
-    label: 'UPI transfer',
-    description: 'Scan the QR code or use the UPI link below, then submit your UTR for quick verification.',
+    label: 'Pay Now (Online)',
+    description: 'Scan the QR or click the UPI link, then enter your UTR to submit the payment reference.',
     payee_name: payeeName,
     upi_id: upiId,
     order_id: order.id,
     order_number: order.order_number || order.id,
-    amount: Number(order.total_amount || 0),
+    amount,
     currency: 'INR',
     deep_link: deepLink,
     qr_code_url: qrCodeUrl,
     instructions: `Pay ${payeeName} on ${upiId} for ${orderLabel}. After payment, share the transaction UTR below.`,
-    confirmation_url: `${baseUrl.replace(/\/$/, '')}/order-confirmation?order_id=${encodeURIComponent(order.id)}&payment=success`
+    confirmation_url: `${baseUrl.replace(/\/$/, '')}/order-confirmation?order_id=${encodeURIComponent(order.id)}&payment=success`,
+    hold_status: MANUAL_UPI_HOLD_STATUS,
   };
 };
 
@@ -37,7 +41,7 @@ const paymentProviders = {
     name: 'razorpay',
     label: 'Pay online',
     description: 'UPI, card, net banking or wallet via Razorpay',
-    createPaymentRequest: (order, customer) => ({
+    create: (order, customer) => ({
       method: 'razorpay',
       order_id: order.id,
       order_number: order.order_number || order.id,
@@ -45,18 +49,33 @@ const paymentProviders = {
       currency: 'INR',
       customer_id: customer?.id || order.customer_id,
     }),
+    verify: () => ({ success: false, message: 'Razorpay verification is handled by the existing gateway flow.' }),
   },
   manual_upi: {
     name: 'manual_upi',
-    label: 'UPI transfer',
+    label: 'Pay Now (Online)',
     description: 'Pay manually with UPI and submit a UTR for admin verification',
-    createPaymentRequest: (order, customer, options = {}) => buildManualUpiRequest({ order, customer, baseUrl: options.baseUrl }),
+    create: (order, customer, options = {}) => buildManualUpiRequest({ order, customer, baseUrl: options.baseUrl }),
+    verify: (order, payload = {}) => {
+      const reference = String(payload.payment_reference || payload.UTR || '').trim();
+      if (!reference) {
+        return { valid: false, message: 'UTR is required for manual UPI verification.' };
+      }
+      return {
+        valid: true,
+        payment_method: 'manual_upi',
+        payment_reference: reference,
+        payment_status: 'pending_verification',
+        status: MANUAL_UPI_HOLD_STATUS,
+        message: 'Your order is on hold until we confirm your payment. This usually takes a few hours. You will receive a confirmation email/SMS once verified.',
+      };
+    },
   },
   cod: {
     name: 'cod',
     label: 'Cash on Delivery',
     description: 'Pay in cash when your order arrives',
-    createPaymentRequest: (order, customer) => ({
+    create: (order, customer) => ({
       method: 'cod',
       order_id: order.id,
       order_number: order.order_number || order.id,
@@ -64,6 +83,7 @@ const paymentProviders = {
       currency: 'INR',
       customer_id: customer?.id || order.customer_id,
     }),
+    verify: () => ({ success: false, message: 'COD is confirmed when the order is delivered.' }),
   },
 };
 
@@ -80,6 +100,7 @@ const getPaymentProvider = (value) => {
 
 module.exports = {
   PAYMENT_METHODS,
+  MANUAL_UPI_HOLD_STATUS,
   normalizePaymentMethod,
   paymentProviders,
   getPaymentProvider,

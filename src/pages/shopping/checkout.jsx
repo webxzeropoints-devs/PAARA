@@ -25,7 +25,7 @@ const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 const STEPS = ["Address", "Delivery", "Payment"];
 const PAYMENT_METHODS = [
   { id: "razorpay", label: "Pay online", description: "UPI, card, net banking or wallet via Razorpay" },
-  { id: "manual_upi", label: "UPI transfer", description: "Scan QR and submit your UTR for quick verification" },
+  { id: "manual_upi", label: "Pay Now (Online)", description: "Use UPI QR or link, then submit your UTR for manual confirmation" },
   { id: "cod", label: "Cash on Delivery", description: "Pay in cash when your order arrives" },
 ];
 const isCodEnabled = false;
@@ -259,29 +259,24 @@ export default function Checkout() {
       }
 
       if (paymentMethod === "manual_upi") {
-        await loadManualUpiDetails(createdOrder.order_id);
-        setOrder(createdOrder);
-        clear();
-        navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success&payment_method=manual_upi`, { replace: true, state: { recentOrder: createdOrder, selectedAddress } });
-        return;
-      }
-
-      if (paymentMethod === "manual_upi") {
-        const provider = await apiGet(`/payment/provider/manual_upi?order_id=${createdOrder.order_id}`);
-        const ut = (manualUpiUtr || "").trim();
-        if (!ut) {
-          throw new Error("Please enter the UTR from your UPI payment.");
-        }
-        await apiPost("/payment/verify", {
-          paara_order_id: createdOrder.order_id,
+        const provider = await apiPost("/payment/create", {
+          order_id: createdOrder.order_id,
           payment_method: "manual_upi",
-          payment_reference: ut,
         });
-        clear();
-        navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success&payment_method=manual_upi`, {
-          replace: true,
-          state: { recentOrder: createdOrder, selectedAddress },
+
+        setManualUpi({
+          ready: true,
+          qr_code_url: provider.qr_code_url || "",
+          deep_link: provider.deep_link || "",
+          payee_name: provider.payee_name || "Paara Jewellery",
+          upi_id: provider.upi_id || "",
+          amount: provider.amount || 0,
+          instructions: provider.instructions || "",
         });
+
+        setOrder(createdOrder);
+        setPaying(false);
+        setError("");
         return;
       }
 
@@ -575,7 +570,7 @@ export default function Checkout() {
                   {paymentMethodsError && <p className="mt-3 text-xs text-red-700">{paymentMethodsError}</p>}
                   {paymentMethod === "manual_upi" && (
                     <div className="mt-4 border border-gold/30 bg-gold/5 p-4 rounded-sm">
-                      <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-cocoa/60">Manual UPI details</p>
+                      <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-cocoa/60">Manual UPI payment</p>
                       <div className="flex items-center gap-4">
                         {manualUpi.qr_code_url && (
                           <img src={manualUpi.qr_code_url} alt="UPI QR code" className="h-28 w-28 rounded-md border border-cocoa/10 bg-white p-2" />
@@ -587,14 +582,57 @@ export default function Checkout() {
                           <a href={manualUpi.deep_link || "upi://pay"} className="mt-2 inline-block text-xs uppercase tracking-widest text-gold">Open UPI app</a>
                         </div>
                       </div>
-                      <textarea
-                        value={manualUpiUtr}
-                        onChange={(e) => setManualUpiUtr(e.target.value)}
-                        placeholder="Enter UTR / transaction reference"
-                        className="mt-4 w-full border border-cocoa/20 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
-                        rows={2}
-                      />
-                      <p className="mt-2 text-[11px] text-cocoa/60">The order is auto-confirmed for the customer, but it requires manual verification before shipping.</p>
+
+                      <div className="mt-4 space-y-3 border-t border-gold/20 pt-4">
+                        <label className="block text-[11px] uppercase tracking-[0.22em] text-cocoa/60">Enter your UPI transaction reference (UTR)</label>
+                        <textarea
+                          value={manualUpiUtr}
+                          onChange={(e) => setManualUpiUtr(e.target.value)}
+                          placeholder="Enter UTR / transaction reference"
+                          className="w-full border border-cocoa/20 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                          rows={2}
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ut = (manualUpiUtr || "").trim();
+                            if (!ut) {
+                              setError("Please enter the UTR from your UPI payment.");
+                              return;
+                            }
+                            try {
+                              setPaying(true);
+                              const createdOrder = order || (await postOrder({
+                                items: items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
+                                address_id: selectedAddressId,
+                                payment_method: "manual_upi",
+                              }));
+                              const response = await apiPost("/payment/verify", {
+                                paara_order_id: createdOrder.order_id,
+                                payment_method: "manual_upi",
+                                payment_reference: ut,
+                              });
+                              clear();
+                              navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success&payment_method=manual_upi`, {
+                                replace: true,
+                                state: { recentOrder: createdOrder, selectedAddress },
+                              });
+                              return response;
+                            } catch (err) {
+                              setError(err?.message || "Could not submit your UPI reference. Please try again.");
+                            } finally {
+                              setPaying(false);
+                            }
+                          }}
+                          disabled={paying}
+                          className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
+                        >
+                          {paying ? "Submitting..." : "Submit UTR"}
+                        </button>
+                        <p className="text-[11px] text-cocoa/60 leading-relaxed">
+                          Your order stays on hold until we confirm the payment. This usually takes a few hours. You will receive a confirmation email/SMS once verified.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

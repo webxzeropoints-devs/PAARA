@@ -32,27 +32,46 @@ const homepageRouter = require('./routes/homepage');
 
 const app = express();
 
-const allowedOrigins = [
+const normalizeOrigin = (origin) => {
+  if (!origin) return null;
+
+  try {
+    const parsed = new URL(origin);
+    return parsed.origin;
+  } catch (error) {
+    return null;
+  }
+};
+
+const allowedOrigins = new Set([
   'https://paarajewellery.in',
   'https://www.paarajewellery.in',
   'http://localhost:3000',
   'http://localhost:4000',
-  'http://localhost:5173'
-];
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173'
+]);
 
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
 
-  if (allowedOrigins.includes(origin)) return true;
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (!normalizedOrigin) return false;
 
-  const isVercelPreview = /^https?:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(origin);
-  return isVercelPreview;
+  if (allowedOrigins.has(normalizedOrigin)) return true;
+
+  const hostname = new URL(normalizedOrigin).hostname.toLowerCase();
+  const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(hostname) || hostname.endsWith('.localhost');
+  const isVercelPreview = hostname.endsWith('.vercel.app') || hostname === 'vercel.app';
+
+  return isLocalhost || isVercelPreview;
 };
 
 const corsOptions = {
   origin(origin, callback) {
     if (isAllowedOrigin(origin)) {
-      return callback(null, true);
+      return callback(null, origin || true);
     }
     return callback(new Error('Not allowed by CORS'));
   },
