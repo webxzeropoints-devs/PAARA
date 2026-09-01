@@ -27,6 +27,7 @@ const PAYMENT_METHODS = [
   { id: "razorpay", label: "Pay online", description: "UPI, card, net banking or wallet via Razorpay" },
   { id: "cod", label: "Cash on Delivery", description: "Pay in cash when your order arrives" },
 ];
+const isCodEnabled = false;
 
 function loadRazorpay() {
   if (window.Razorpay) return Promise.resolve(window.Razorpay);
@@ -518,13 +519,16 @@ export default function Checkout() {
                 <div className="mb-6">
                   <p className="mb-3 text-xs uppercase tracking-widest text-cocoa/60">Choose payment method</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                      {PAYMENT_METHODS.map((method) => (
-                      <label key={method.id} className={`cursor-pointer border rounded-sm p-4 transition-colors ${paymentMethod === method.id ? "border-gold bg-gold/10" : "border-cocoa/15 hover:border-cocoa/30"}`}>
-                        <input type="radio" name="payment-method" value={method.id} checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="sr-only" />
-                        <span className="block text-sm font-medium">{method.label}</span>
-                        <span className="mt-1 block text-xs text-cocoa/60">{method.description}</span>
-                      </label>
-                    ))}
+                    {PAYMENT_METHODS.map((method) => {
+                      const isDisabled = method.id === "cod" && !isCodEnabled;
+                      return (
+                        <label key={method.id} aria-disabled={isDisabled} className={`border rounded-sm p-4 transition-colors ${isDisabled ? "cursor-not-allowed opacity-45" : "cursor-pointer"} ${paymentMethod === method.id && !isDisabled ? "border-gold bg-gold/10" : "border-cocoa/15 hover:border-cocoa/30"}`}>
+                          <input type="radio" name="payment-method" value={method.id} checked={paymentMethod === method.id && !isDisabled} disabled={isDisabled} onChange={() => { if (!isDisabled) setPaymentMethod(method.id); }} className="sr-only" />
+                          <span className="block text-sm font-medium">{method.label}</span>
+                          <span className="mt-1 block text-xs text-cocoa/60">{isDisabled ? "Currently unavailable" : method.description}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                   {paymentMethod === "razorpay" && !razorpayReady && !paymentMethodsError && <p className="mt-3 text-xs text-cocoa/60">Loading online payment...</p>}
                   {paymentMethodsError && <p className="mt-3 text-xs text-red-700">{paymentMethodsError}</p>}
