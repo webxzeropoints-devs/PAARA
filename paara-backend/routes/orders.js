@@ -50,8 +50,8 @@ function buildLineItems(items) {
 router.post('/', requireAuth, (req, res) => {
   const { items, address_id, payment_method: requestedPaymentMethod = 'razorpay' } = req.body;
   const paymentMethod = String(requestedPaymentMethod).trim().toLowerCase();
-  const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'unpaid';
-  if (!['razorpay', 'cod'].includes(paymentMethod)) return res.status(400).json({ error: 'Invalid payment method.' });
+  const paymentStatus = paymentMethod === 'cod' ? 'pending' : paymentMethod === 'manual_upi' ? 'pending_verification' : 'unpaid';
+  if (!['razorpay', 'manual_upi', 'cod'].includes(paymentMethod)) return res.status(400).json({ error: 'Invalid payment method.' });
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Cart items are required.' });
   }
@@ -122,7 +122,7 @@ router.post('/', requireAuth, (req, res) => {
 router.post('/proforma', requireAuth, async (req, res) => {
   const { items, address_id, payment_method: requestedPaymentMethod = 'razorpay' } = req.body;
   const paymentMethod = String(requestedPaymentMethod).trim().toLowerCase();
-  if (!['razorpay', 'cod'].includes(paymentMethod)) return res.status(400).json({ error: 'Invalid payment method.' });
+  if (!['razorpay', 'manual_upi', 'cod'].includes(paymentMethod)) return res.status(400).json({ error: 'Invalid payment method.' });
   if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Cart items are required.' });
   let lineItems;
   let subtotal;

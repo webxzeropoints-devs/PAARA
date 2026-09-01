@@ -25,6 +25,7 @@ const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 const STEPS = ["Address", "Delivery", "Payment"];
 const PAYMENT_METHODS = [
   { id: "razorpay", label: "Pay online", description: "UPI, card, net banking or wallet via Razorpay" },
+  { id: "manual_upi", label: "UPI transfer", description: "Scan QR and submit your UTR for quick verification" },
   { id: "cod", label: "Cash on Delivery", description: "Pay in cash when your order arrives" },
 ];
 const isCodEnabled = false;
@@ -77,6 +78,8 @@ export default function Checkout() {
   const [placing, setPlacing] = useState(false);
   const [paying, setPaying] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [manualUpi, setManualUpi] = useState({ ready: false, qr_code_url: "", deep_link: "", payee_name: "", upi_id: "", amount: 0, instructions: "" });
+  const [manualUpiUtr, setManualUpiUtr] = useState("");
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
   const [previewingInvoice, setPreviewingInvoice] = useState(false);
@@ -165,6 +168,17 @@ export default function Checkout() {
     }
   };
 
+  const loadManualUpiDetails = async (orderId) => {
+    if (!orderId || paymentMethod !== "manual_upi") return;
+    try {
+      const provider = await apiGet(`/payment/provider/manual_upi?order_id=${orderId}`);
+      setManualUpi({ ready: true, qr_code_url: provider.qr_code_url || "", deep_link: provider.deep_link || "", payee_name: provider.payee_name || "Paara Jewellery", upi_id: provider.upi_id || "", amount: provider.amount || 0, instructions: provider.instructions || "" });
+    } catch (err) {
+      setManualUpi({ ready: false, qr_code_url: "", deep_link: "", payee_name: "", upi_id: "", amount: 0, instructions: "" });
+      setError(err?.message || "Could not prepare UPI details.");
+    }
+  };
+
   // Step 1 → 2: compute shipping quote from the selected address's city.
   const goToDelivery = async () => {
     if (!selectedAddress) {
@@ -239,11 +253,38 @@ export default function Checkout() {
       if (!createdOrder?.order_id) throw new Error("The order could not be created. Please try again.");
       setOrder(createdOrder);
       if (paymentMethod === "cod") {
-        // COD is complete once the database confirms order creation.
         clear();
         navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, { replace: true, state: { recentOrder: createdOrder, selectedAddress } });
         return;
       }
+
+      if (paymentMethod === "manual_upi") {
+        await loadManualUpiDetails(createdOrder.order_id);
+        setOrder(createdOrder);
+        clear();
+        navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success&payment_method=manual_upi`, { replace: true, state: { recentOrder: createdOrder, selectedAddress } });
+        return;
+      }
+
+      if (paymentMethod === "manual_upi") {
+        const provider = await apiGet(`/payment/provider/manual_upi?order_id=${createdOrder.order_id}`);
+        const ut = (manualUpiUtr || "").trim();
+        if (!ut) {
+          throw new Error("Please enter the UTR from your UPI payment.");
+        }
+        await apiPost("/payment/verify", {
+          paara_order_id: createdOrder.order_id,
+          payment_method: "manual_upi",
+          payment_reference: ut,
+        });
+        clear();
+        navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success&payment_method=manual_upi`, {
+          replace: true,
+          state: { recentOrder: createdOrder, selectedAddress },
+        });
+        return;
+      }
+
       const Razorpay = await loadRazorpay();
       const razorpayOrder = await postCreateRazorpay(createdOrder.order_id);
       const razorpayCheckout = new Razorpay({
@@ -523,7 +564,7 @@ export default function Checkout() {
                       const isDisabled = method.id === "cod" && !isCodEnabled;
                       return (
                         <label key={method.id} aria-disabled={isDisabled} className={`border rounded-sm p-4 transition-colors ${isDisabled ? "cursor-not-allowed opacity-45" : "cursor-pointer"} ${paymentMethod === method.id && !isDisabled ? "border-gold bg-gold/10" : "border-cocoa/15 hover:border-cocoa/30"}`}>
-                          <input type="radio" name="payment-method" value={method.id} checked={paymentMethod === method.id && !isDisabled} disabled={isDisabled} onChange={() => { if (!isDisabled) setPaymentMethod(method.id); }} className="sr-only" />
+                          <input type="radio" name="payment-method" value={method.id} checked={paymentMethod === method.id && !isDisabled} disabled={isDisabled} onChange={() => { if (!isDisabled) { setPaymentMethod(method.id); setManualUpiUtr(""); } }} className="sr-only" />
                           <span className="block text-sm font-medium">{method.label}</span>
                           <span className="mt-1 block text-xs text-cocoa/60">{isDisabled ? "Currently unavailable" : method.description}</span>
                         </label>
@@ -532,6 +573,30 @@ export default function Checkout() {
                   </div>
                   {paymentMethod === "razorpay" && !razorpayReady && !paymentMethodsError && <p className="mt-3 text-xs text-cocoa/60">Loading online payment...</p>}
                   {paymentMethodsError && <p className="mt-3 text-xs text-red-700">{paymentMethodsError}</p>}
+                  {paymentMethod === "manual_upi" && (
+                    <div className="mt-4 border border-gold/30 bg-gold/5 p-4 rounded-sm">
+                      <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-cocoa/60">Manual UPI details</p>
+                      <div className="flex items-center gap-4">
+                        {manualUpi.qr_code_url && (
+                          <img src={manualUpi.qr_code_url} alt="UPI QR code" className="h-28 w-28 rounded-md border border-cocoa/10 bg-white p-2" />
+                        )}
+                        <div className="text-sm text-cocoa/80">
+                          <p className="font-medium">Pay to: {manualUpi.payee_name || "Paara Jewellery"}</p>
+                          <p>UPI ID: {manualUpi.upi_id || "paara.jewellery@upi"}</p>
+                          <p>Amount: ₹{Number(manualUpi.amount || customerTotal || 0).toLocaleString("en-IN")}</p>
+                          <a href={manualUpi.deep_link || "upi://pay"} className="mt-2 inline-block text-xs uppercase tracking-widest text-gold">Open UPI app</a>
+                        </div>
+                      </div>
+                      <textarea
+                        value={manualUpiUtr}
+                        onChange={(e) => setManualUpiUtr(e.target.value)}
+                        placeholder="Enter UTR / transaction reference"
+                        className="mt-4 w-full border border-cocoa/20 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                        rows={2}
+                      />
+                      <p className="mt-2 text-[11px] text-cocoa/60">The order is auto-confirmed for the customer, but it requires manual verification before shipping.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-5 mb-6">
                   <p className="text-xs uppercase tracking-widest text-cocoa/60">

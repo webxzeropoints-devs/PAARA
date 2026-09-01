@@ -17,6 +17,7 @@ export default function AdminOrders() {
   const [error, setError] = useState("");
   const [granting, setGranting] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(null);
 
   const load = useCallback(async () => {
     try { setOrders(await adminRequest("/admin/orders")); }
@@ -42,6 +43,32 @@ export default function AdminOrders() {
       setError(err.message || "Could not update order status.");
     } finally {
       setUpdatingStatus(null);
+    }
+  };
+
+  const verifyManualPayment = async (orderId) => {
+    setVerifyingPayment(orderId);
+    setError("");
+    try {
+      await adminRequest(`/admin/orders/${orderId}/verify-manual-payment`, { method: "POST" });
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not verify manual payment.");
+    } finally {
+      setVerifyingPayment(null);
+    }
+  };
+
+  const rejectManualPayment = async (orderId) => {
+    setVerifyingPayment(orderId);
+    setError("");
+    try {
+      await adminRequest(`/admin/orders/${orderId}/reject-manual-payment`, { method: "POST" });
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not reject manual payment.");
+    } finally {
+      setVerifyingPayment(null);
     }
   };
 
@@ -90,10 +117,10 @@ export default function AdminOrders() {
                     })}
                   </div>
                 </td>
-                <td className="px-4 py-4"><span className={`inline-block px-2 py-1 text-[10px] uppercase tracking-[.14em] ${order.payment_method === "cod" ? "bg-gold/20 text-cocoa" : "bg-cocoa/10 text-cocoa/70"}`}>{order.payment_method === "cod" ? "COD - Payment pending" : order.payment_status === "paid" ? "Paid online" : "Online pending"}</span></td>
+                <td className="px-4 py-4"><span className={`inline-block px-2 py-1 text-[10px] uppercase tracking-[.14em] ${order.payment_method === "cod" ? "bg-gold/20 text-cocoa" : order.payment_method === "manual_upi" ? "bg-amber-200 text-cocoa" : "bg-cocoa/10 text-cocoa/70"}`}>{order.payment_method === "cod" ? "COD - Payment pending" : order.payment_method === "manual_upi" ? order.payment_status === "paid" ? "Manual UPI verified" : order.payment_status === "rejected" ? "Manual UPI rejected" : "Manual UPI pending" : order.payment_status === "paid" ? "Paid online" : "Online pending"}</span>{order.payment_method === "manual_upi" && order.payment_reference && <p className="mt-2 text-[10px] uppercase tracking-[.14em] text-cocoa/55">UTR: {order.payment_reference}</p>}</td>
                 <td className="px-4 py-4 text-right text-cocoa font-numeric">₹{Number(order.total_amount).toLocaleString("en-IN")}</td>
                 <td className="px-4 py-4 text-cocoa/70">{new Date(order.created_at.replace(" ", "T") + "Z").toLocaleDateString()}</td>
-                <td className="px-4 py-4">{eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Loyalty card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block max-w-full break-words bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for loyalty card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant loyalty card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
+                <td className="px-4 py-4">{order.payment_method === "manual_upi" && order.payment_status !== "paid" ? <div className="flex flex-col gap-2"><button type="button" onClick={() => verifyManualPayment(order.id)} disabled={verifyingPayment === order.id} className="bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{verifyingPayment === order.id ? "Verifying..." : "Verify UPI"}</button><button type="button" onClick={() => rejectManualPayment(order.id)} disabled={verifyingPayment === order.id} className="border border-cocoa/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cocoa/70 hover:border-cocoa/40 disabled:opacity-50">Reject</button></div> : eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Loyalty card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block max-w-full break-words bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for loyalty card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant loyalty card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
               </tr>;
             })}
             {orders.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-cocoa/60">No orders yet.</td></tr>}

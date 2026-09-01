@@ -130,6 +130,15 @@ if (orderColumns.length && !orderColumns.includes('status')) {
 if (orderColumns.length && !orderColumns.includes('payment_method')) {
   db.exec('ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT "razorpay"');
 }
+if (orderColumns.length && !orderColumns.includes('payment_reference')) {
+  db.exec('ALTER TABLE orders ADD COLUMN payment_reference TEXT');
+}
+if (orderColumns.length && !orderColumns.includes('payment_verified_at')) {
+  db.exec('ALTER TABLE orders ADD COLUMN payment_verified_at TEXT');
+}
+if (orderColumns.length && !orderColumns.includes('payment_rejected_at')) {
+  db.exec('ALTER TABLE orders ADD COLUMN payment_rejected_at TEXT');
+}
 db.prepare("SELECT id, created_at FROM orders WHERE order_number IS NULL OR order_number = ''").all()
   .forEach((order) => db.prepare('UPDATE orders SET order_number = ? WHERE id = ?').run(formatOrderNumber(order.created_at, order.id), order.id));
 db.exec(`

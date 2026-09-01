@@ -314,7 +314,7 @@ router.patch('/orders/:id/status', (q, s) => {
     return s.status(400).json({ error: 'Invalid order status.' });
   }
 
-  const existing = db.prepare('SELECT id, status FROM orders WHERE id = ?').get(orderId);
+  const existing = db.prepare('SELECT id, status, payment_method, payment_status, payment_reference FROM orders WHERE id = ?').get(orderId);
   if (!existing) return s.status(404).json({ error: 'Order not found.' });
 
   const currentIndex = ORDER_STAGES.indexOf(String(existing.status || '').trim() || 'Order Confirmed');
@@ -324,8 +324,60 @@ router.patch('/orders/:id/status', (q, s) => {
     return s.status(400).json({ error: 'Order statuses can only move forward.' });
   }
 
+  if (requestedStatus === 'Packed' && existing.payment_method === 'manual_upi' && existing.payment_status !== 'paid') {
+    return s.status(400).json({ error: 'Manual UPI orders must be verified before they can be packed.' });
+  }
+
   db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(requestedStatus, orderId);
   s.json({ success: true, order_id: orderId, status: requestedStatus });
+});
+
+router.post('/orders/:id/verify-manual-payment', (q, s) => {
+  const orderId = Number.parseInt(q.params.id, 10);
+  if (!Number.isInteger(orderId) || orderId < 1) {
+    return s.status(400).json({ error: 'A valid order ID is required.' });
+  }
+
+  const order = db.prepare('SELECT id, payment_method, payment_status, payment_reference FROM orders WHERE id = ?').get(orderId);
+  if (!order) return s.status(404).json({ error: 'Order not found.' });
+  if (order.payment_method !== 'manual_upi') {
+    return s.status(400).json({ error: 'This order is not a manual UPI order.' });
+  }
+
+  db.prepare(`
+    UPDATE orders
+    SET payment_status = 'paid',
+        payment_verified_at = datetime('now'),
+        payment_rejected_at = NULL,
+        status = CASE WHEN status = 'Order Confirmed' THEN 'Order Confirmed' ELSE status END
+    WHERE id = ?
+  `).run(orderId);
+
+  s.json({ success: true, order_id: orderId, payment_status: 'paid', message: 'Manual UPI payment verified.' });
+});
+
+router.post('/orders/:id/reject-manual-payment', (q, s) => {
+  const orderId = Number.parseInt(q.params.id, 10);
+  if (!Number.isInteger(orderId) || orderId < 1) {
+    return s.status(400).json({ error: 'A valid order ID is required.' });
+  }
+
+  const order = db.prepare('SELECT id, payment_method FROM orders WHERE id = ?').get(orderId);
+  if (!order) return s.status(404).json({ error: 'Order not found.' });
+  if (order.payment_method !== 'manual_upi') {
+    return s.status(400).json({ error: 'This order is not a manual UPI order.' });
+  }
+
+  db.prepare(`
+    UPDATE orders
+    SET payment_status = 'rejected',
+        payment_rejected_at = datetime('now'),
+        payment_verified_at = NULL,
+        status = 'Order Confirmed'
+    WHERE id = ?
+  `).run(orderId);
+
+  s.json({ success: true, order_id: orderId, payment_status: 'rejected', message: 'Manual UPI payment rejected for follow-up.' });
 });
 
 router.post('/orders/:id/grant-gift-card', (q, s) => {

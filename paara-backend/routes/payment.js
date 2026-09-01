@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('../db/database');
 const razorpay = require('../utils/razorpay');
+const { getPaymentProvider } = require('../utils/paymentProviders');
 const { requireAuth } = require('../middleware/auth');
 const { trySendEmail } = require('../utils/email');
 const { createInvoicePdf } = require('../utils/invoice');
@@ -83,16 +84,49 @@ router.post('/create-razorpay-order', requireAuth, async (req, res) => {
  * Never trust a "payment succeeded" message from the frontend alone.
  */
 router.post('/verify', requireAuth, (req, res) => {
-  const { paara_order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-
-  if (!paara_order_id || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-    return res.status(400).json({ error: 'Missing payment verification fields.' });
-  }
+  const { paara_order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, payment_method, payment_reference, UTR } = req.body;
 
   const order = db
     .prepare('SELECT * FROM orders WHERE id = ? AND customer_id = ?')
     .get(paara_order_id, req.customer.id);
   if (!order) return res.status(404).json({ error: 'Order not found.' });
+
+  const paymentMethod = String(payment_method || order.payment_method || 'razorpay').trim().toLowerCase();
+
+  if (paymentMethod === 'manual_upi') {
+    const reference = String(payment_reference || UTR || '').trim();
+    if (!reference) {
+      return res.status(400).json({ error: 'UTR is required for manual UPI verification.' });
+    }
+
+    const updated = db.prepare(`
+      UPDATE orders
+      SET payment_status = 'pending_verification',
+          payment_method = 'manual_upi',
+          payment_reference = ?,
+          payment_verified_at = NULL,
+          payment_rejected_at = NULL,
+          status = 'Order Confirmed'
+      WHERE id = ? AND customer_id = ?
+    `).run(reference, order.id, req.customer.id);
+
+    if (!updated.changes) {
+      return res.status(400).json({ error: 'Unable to record UPI payment attempt.' });
+    }
+
+    return res.json({
+      success: true,
+      order_id: order.id,
+      payment_status: 'pending_verification',
+      payment_method: 'manual_upi',
+      message: 'UPI payment submitted for verification. Your order is confirmed and will be checked manually before dispatch.'
+    });
+  }
+
+  if (!paara_order_id || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ error: 'Missing payment verification fields.' });
+  }
+
   if (order.razorpay_order_id !== razorpay_order_id) {
     return res.status(400).json({ error: 'Order mismatch.' });
   }
@@ -145,6 +179,25 @@ async function sendPaidInvoice(orderId, customerId) {
  *
  * Configure this URL + secret in: Razorpay Dashboard → Settings → Webhooks.
  */
+router.get('/provider/:method', requireAuth, (req, res) => {
+  const method = String(req.params.method || '').trim().toLowerCase();
+  const orderId = Number.parseInt(String(req.query.order_id || ''), 10);
+  if (!Number.isInteger(orderId) || orderId < 1) {
+    return res.status(400).json({ error: 'A valid order_id is required.' });
+  }
+
+  const order = db.prepare('SELECT * FROM orders WHERE id = ? AND customer_id = ?').get(orderId, req.customer.id);
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+
+  const provider = getPaymentProvider(method);
+  if (!provider || typeof provider.createPaymentRequest !== 'function') {
+    return res.status(400).json({ error: 'Unsupported payment method.' });
+  }
+
+  const payload = provider.createPaymentRequest(order, { id: req.customer.id, name: req.customer.name }, { baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in' });
+  res.json(payload);
+});
+
 router.post('/webhook', (req, res) => {
   const signature = req.headers['x-razorpay-signature'];
   if (!Buffer.isBuffer(req.body) || typeof signature !== 'string') {
