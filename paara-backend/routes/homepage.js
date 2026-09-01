@@ -23,8 +23,14 @@ router.get('/paara-irl',(req,res)=>{
 });
 
 router.get('/worn-by-you',(req,res)=>{
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  const rows = db.prepare('SELECT id,instagram_post_url,image_url,caption,likes,cached_at FROM instagram_reviews WHERE product_id IS NULL ORDER BY cached_at DESC, id ASC LIMIT 3').all();
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  const rows = db.prepare(`
+    SELECT id, instagram_post_url, image_url, caption, likes, cached_at, updated_at
+    FROM instagram_reviews
+    WHERE product_id IS NULL
+    ORDER BY COALESCE(updated_at, cached_at, datetime('2000-01-01')) DESC, id ASC
+    LIMIT 3
+  `).all();
   res.json(rows);
 });
 module.exports=router;

@@ -143,7 +143,8 @@ CREATE TABLE IF NOT EXISTS instagram_reviews (
   image_url         TEXT NOT NULL,
   caption           TEXT,
   likes             INTEGER DEFAULT 0,
-  cached_at         TEXT NOT NULL DEFAULT (datetime('now'))
+  cached_at         TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_release ON products(release_date);

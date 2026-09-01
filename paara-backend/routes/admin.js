@@ -217,7 +217,7 @@ router.put('/paara-irl', (q, s) => {
   s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get());
 });
 
-router.get('/worn-by-you', (q, s) => s.json(db.prepare('SELECT * FROM instagram_reviews WHERE product_id IS NULL ORDER BY cached_at,id LIMIT 3').all()));
+router.get('/worn-by-you', (q, s) => s.json(db.prepare('SELECT * FROM instagram_reviews WHERE product_id IS NULL ORDER BY COALESCE(updated_at, cached_at, datetime("2000-01-01")) DESC, id ASC LIMIT 3').all()));
 
 router.put('/worn-by-you', (q, s) => {
   const slots = q.body?.slots;
@@ -235,7 +235,7 @@ router.put('/worn-by-you', (q, s) => {
       if (Number.isInteger(targetId) && targetId > 0) {
         const result = db.prepare(`
           UPDATE instagram_reviews
-          SET image_url = ?, caption = ?, instagram_post_url = ?, likes = ?, cached_at = datetime('now')
+          SET image_url = ?, caption = ?, instagram_post_url = ?, likes = ?, cached_at = datetime('now'), updated_at = datetime('now')
           WHERE id = ? AND product_id IS NULL
         `).run(imageUrl, caption, instagramPostUrl, likes, targetId);
         if (result.changes !== 1) throw new Error(`Worn By You slot ${targetId} could not be updated.`);
@@ -243,8 +243,8 @@ router.put('/worn-by-you', (q, s) => {
       }
 
       const result = db.prepare(`
-        INSERT INTO instagram_reviews (product_id, instagram_post_url, image_url, caption, likes, cached_at)
-        VALUES (NULL, ?, ?, ?, ?, datetime('now'))
+        INSERT INTO instagram_reviews (product_id, instagram_post_url, image_url, caption, likes, cached_at, updated_at)
+        VALUES (NULL, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `).run(instagramPostUrl, imageUrl, caption, likes);
       return db.prepare('SELECT * FROM instagram_reviews WHERE id = ?').get(result.lastInsertRowid);
     }))();

@@ -103,6 +103,10 @@ const couponColumns = db.prepare("PRAGMA table_info(coupons)").all().map((column
 if (couponColumns.length && !couponColumns.includes('redeemed_at')) {
   db.exec('ALTER TABLE coupons ADD COLUMN redeemed_at TEXT');
 }
+const instagramReviewColumns = db.prepare("PRAGMA table_info(instagram_reviews)").all().map((column) => column.name);
+if (instagramReviewColumns.length && !instagramReviewColumns.includes('updated_at')) {
+  db.exec("ALTER TABLE instagram_reviews ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))");
+}
 const customerColumns = db.prepare("PRAGMA table_info(customers)").all().map((column) => column.name);
 if (customerColumns.length && !customerColumns.includes('gift_card_balance')) {
   db.exec('ALTER TABLE customers ADD COLUMN gift_card_balance REAL NOT NULL DEFAULT 1500');

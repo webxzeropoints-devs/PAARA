@@ -75,7 +75,10 @@ const wrapFetch = (fn) => async (...args) => {
 };
 
 export const apiGet = wrapFetch((path) =>
-  fetch(`${BASE_URL}${path}`, { headers: buildHeaders() }).then(handle)
+  fetch(`${BASE_URL}${path}`, {
+    headers: buildHeaders(),
+    cache: "no-store",
+  }).then(handle)
 );
 
 export const apiPost = wrapFetch((path, body) => {
@@ -85,6 +88,7 @@ export const apiPost = wrapFetch((path, body) => {
     method: "POST",
     headers: payload.headers,
     body: payload.body,
+    cache: "no-store",
   }).then(handle);
 });
 
@@ -95,6 +99,7 @@ export const apiPut = wrapFetch((path, body) => {
     method: "PUT",
     headers: payload.headers,
     body: payload.body,
+    cache: "no-store",
   }).then(handle);
 });
 
@@ -102,6 +107,7 @@ export const apiDelete = wrapFetch((path) =>
   fetch(`${BASE_URL}${path}`, {
     method: "DELETE",
     headers: buildHeaders(),
+    cache: "no-store",
   }).then(handle)
 );
 
@@ -113,6 +119,7 @@ export const adminRequest = wrapFetch((path, options = {}) => {
     method,
     headers: payload.headers,
     body: payload.body,
+    cache: "no-store",
   }).then(handle);
 });
 

@@ -193,6 +193,12 @@ function HeadingWave({ className = "" }) {
   return <svg className={`heading-wave ${className}`} viewBox="0 0 42 8" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M1 4c5-4 10-4 15 0s10 4 15 0 7-4 10 0" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" strokeLinecap="round" /></svg>;
 }
 
+const cacheBustUrl = (url, version) => {
+  if (!url || url.startsWith("data:")) return url;
+  const value = version || Date.now();
+  return `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(value)}`;
+};
+
 function MeetOwner() {
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(true);
@@ -211,11 +217,7 @@ function MeetOwner() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
-  const ownerPhotoSrc = ownerPhoto.startsWith("data:")
-    ? ownerPhoto
-    : ownerPhoto
-      ? `${ownerPhoto}${ownerPhoto.includes("?") ? "&" : "?"}v=${encodeURIComponent(ownerPhotoVersion)}`
-      : "/assets/founder-placeholder.svg";
+  const ownerPhotoSrc = cacheBustUrl(ownerPhoto, ownerPhotoVersion) || "/assets/founder-placeholder.svg";
   const togglePlayback = async () => {
     const video = videoRef.current;
     if (!video) return;
@@ -411,7 +413,7 @@ function PaaraIRL() {
   }, []);
 
   const featured = entries[0];
-  const imageSrc = featured?.image_url ? `${featured.image_url}${featured.image_url.startsWith("data:") ? "" : `${featured.image_url.includes("?") ? "&" : "?"}v=${encodeURIComponent(featured.updated_at || Date.now())}`}` : "";
+  const imageSrc = cacheBustUrl(featured?.image_url, featured?.updated_at || Date.now());
   return <section className="bg-cocoa text-sand py-24"><div className="max-w-5xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center"><div><p className="text-xs uppercase tracking-[.3em] text-gold">Paara. IRL</p><h2 className="font-display text-5xl mt-4 leading-tight">For sunlit plans and every plan after.</h2><Link to="/shop" className="inline-block mt-8 text-[10px] uppercase tracking-[.2em] border-b border-sand pb-2">Shop the mood →</Link></div>{featured && imageSrc ? <div className="aspect-square bg-shell/20 p-5"><img src={imageSrc} alt={featured.caption || "Paara jewellery styling"} className="w-full h-full object-cover" /></div> : <div className="aspect-square bg-shell/20 p-5 flex items-center justify-center text-center text-sm text-sand/70">More coming soon.</div>}</div></section>;
 }
 
@@ -432,7 +434,7 @@ function WornByYou() {
   }, []);
 
   const slots = Array.from({ length: 3 }, (_, index) => entries[index] || null);
-  return <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-24"><motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.7 }} className="text-center"><p className="text-xs uppercase tracking-[.3em] text-gold">Your Paara. moments</p><h2 className="font-display text-4xl mt-3">Worn by You</h2></motion.div><div className="grid grid-cols-3 gap-3 md:gap-6 mt-10">{slots.map((entry, index) => { const hasImage = entry?.image_url && !failedImages[entry.id]; const imageSrc = entry?.image_url?.startsWith("data:") ? entry.image_url : entry?.image_url ? `${entry.image_url}${entry.image_url.includes("?") ? "&" : "?"}v=${encodeURIComponent(entry.cached_at || entry.id)}` : ""; return <motion.div key={entry?.id || `empty-${index}`} initial={{ opacity: 0, x: index === 1 ? 0 : index === 0 ? -52 : 52, y: 30 }} whileInView={{ opacity: 1, x: 0, y: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.85, delay: index * 0.12, ease: [0.16, 1, 0.3, 1] }} className="aspect-[3/4] overflow-hidden bg-shell">{hasImage ? <img src={imageSrc} alt={entry.caption || "Customer wearing Paara jewellery"} onError={() => setFailedImages((current) => ({ ...current, [entry.id]: true }))} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" /> : <div className="h-full w-full flex flex-col items-center justify-center gap-3 bg-shell text-cocoa/55"><span aria-hidden="true" className="text-3xl text-gold/70">✦</span><span className="text-xs uppercase tracking-[.18em]">No image yet</span></div>}</motion.div>; })}</div></section>;
+  return <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-24"><motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.7 }} className="text-center"><p className="text-xs uppercase tracking-[.3em] text-gold">Your Paara. moments</p><h2 className="font-display text-4xl mt-3">Worn by You</h2></motion.div><div className="grid grid-cols-3 gap-3 md:gap-6 mt-10">{slots.map((entry, index) => { const hasImage = entry?.image_url && !failedImages[entry.id]; const imageSrc = cacheBustUrl(entry?.image_url, entry?.updated_at || entry?.cached_at || entry?.id); return <motion.div key={entry?.id || `empty-${index}`} initial={{ opacity: 0, x: index === 1 ? 0 : index === 0 ? -52 : 52, y: 30 }} whileInView={{ opacity: 1, x: 0, y: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.85, delay: index * 0.12, ease: [0.16, 1, 0.3, 1] }} className="aspect-[3/4] overflow-hidden bg-shell">{hasImage ? <img src={imageSrc} alt={entry.caption || "Customer wearing Paara jewellery"} onError={() => setFailedImages((current) => ({ ...current, [entry.id]: true }))} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" /> : <div className="h-full w-full flex flex-col items-center justify-center gap-3 bg-shell text-cocoa/55"><span aria-hidden="true" className="text-3xl text-gold/70">✦</span><span className="text-xs uppercase tracking-[.18em]">No image yet</span></div>}</motion.div>; })}</div></section>;
 }
 function FinalStatement() { return <section className="px-6 py-28 md:py-36 text-center bg-[#e6d4b9]"><p className="font-display text-5xl md:text-7xl max-w-4xl mx-auto leading-[1.05]">Made to be found.<br />Made to be loved.<br />Made for you.</p><span className="block mt-8 text-gold text-2xl">✦</span></section>; }
 
