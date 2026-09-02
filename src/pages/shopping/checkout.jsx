@@ -6,6 +6,7 @@ import { useCart } from "../../lib/cart.jsx";
 import {
   apiGet,
   apiPost,
+  createUpiPayment,
   getAddresses,
   getProducts,
   getShippingCities,
@@ -79,6 +80,7 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState("manual_upi");
   const [manualUpi, setManualUpi] = useState({ ready: false, qr_code_url: "", deep_link: "", payee_name: "", upi_id: "", amount: 0, instructions: "" });
   const [manualUpiUtr, setManualUpiUtr] = useState("");
+  const [upiPaid, setUpiPaid] = useState(false);
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
   const [previewingInvoice, setPreviewingInvoice] = useState(false);
@@ -244,18 +246,11 @@ export default function Checkout() {
     setError("");
 
     try {
-      const createdOrder = await postOrder({
+      const provider = await createUpiPayment({
         items: items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
         address_id: selectedAddressId,
-        payment_method: "manual_upi",
       });
-
-      if (!createdOrder?.order_id) throw new Error("The order could not be created. Please try again.");
-
-      const provider = await apiPost("/payment/create", {
-        order_id: createdOrder.order_id,
-        payment_method: "manual_upi",
-      });
+      const createdOrder = provider.order || provider;
 
       setOrder(createdOrder);
       setManualUpi({
@@ -277,36 +272,17 @@ export default function Checkout() {
     }
   };
 
-  const submitManualUpiUtr = async () => {
-    const ut = (manualUpiUtr || "").trim();
-    if (!ut) {
-      setError("Please enter the UTR from your UPI payment.");
+  const confirmUpiPaid = () => {
+    if (!order?.order_id) {
+      setError("Generate the UPI QR code before confirming payment.");
       return;
     }
-
-    setPaying(true);
-    setError("");
-
-    try {
-      const createdOrder = order || (await prepareManualUpi());
-      if (!createdOrder?.order_id) return;
-
-      await apiPost("/payment/verify", {
-        paara_order_id: createdOrder.order_id,
-        payment_method: "manual_upi",
-        payment_reference: ut,
-      });
-
-      clear();
-      navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success&payment_method=manual_upi`, {
-        replace: true,
-        state: { recentOrder: createdOrder, selectedAddress },
-      });
-    } catch (err) {
-      setError(err?.message || "Could not submit your UPI reference. Please try again.");
-    } finally {
-      setPaying(false);
-    }
+    setUpiPaid(true);
+    clear();
+    navigate(`/order-confirmation?order_id=${order.order_id}&payment=success&payment_method=manual_upi`, {
+      replace: true,
+      state: { recentOrder: order, selectedAddress },
+    });
   };
 
   // The payment screen creates the order. COD stops here; Razorpay continues
@@ -318,7 +294,7 @@ export default function Checkout() {
     }
 
     if (paymentMethod === "manual_upi") {
-      await submitManualUpiUtr();
+      await prepareManualUpi();
       return;
     }
 
@@ -338,6 +314,8 @@ export default function Checkout() {
         return;
       }
 
+      // Razorpay disabled — API keys pending approval. Re-enable by restoring this block.
+      /*
       const Razorpay = await loadRazorpay();
       const razorpayOrder = await postCreateRazorpay(createdOrder.order_id);
       const razorpayCheckout = new Razorpay({
@@ -382,6 +360,7 @@ export default function Checkout() {
         modal: { ondismiss: () => setPaying(false) },
       });
       razorpayCheckout.open();
+      */
     } catch (err) {
       setError(err?.message || "Could not start payment. Please try again.");
       setPaying(false);
@@ -622,7 +601,7 @@ export default function Checkout() {
                             if (method.id === "manual_upi") {
                               setPaymentMethod("manual_upi");
                               setManualUpiUtr("");
-                              await prepareManualUpi();
+                              setUpiPaid(false);
                               return;
                             }
                             setPaymentMethod(method.id);
@@ -639,7 +618,7 @@ export default function Checkout() {
                     <div className="mt-4 border border-gold/30 bg-gold/5 p-4 rounded-sm">
                       <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-cocoa/60">UPI payment</p>
                       <p className="mb-3 text-xs text-cocoa/70">
-                        Scan the QR or open the UPI app, pay from your bank app, and then return here to add the UTR reference.
+                        Scan with any UPI app (GPay, PhonePe, Paytm) to pay ₹{Number(manualUpi.amount || customerTotal || 0).toLocaleString("en-IN")}.
                       </p>
                       <div className="flex items-center gap-4">
                         {manualUpi.qr_code_url && (
@@ -647,32 +626,15 @@ export default function Checkout() {
                         )}
                         <div className="text-sm text-cocoa/80">
                           <p className="font-medium">Pay to: {manualUpi.payee_name || "Paara Jewellery"}</p>
-                          <p>UPI ID: {manualUpi.upi_id || "paara.jewellery@upi"}</p>
+                          <p>UPI ID: {manualUpi.upi_id}</p>
                           <p>Amount: ₹{Number(manualUpi.amount || customerTotal || 0).toLocaleString("en-IN")}</p>
                           <a href={manualUpi.deep_link || "upi://pay"} className="mt-2 inline-block text-xs uppercase tracking-widest text-gold">Open UPI app</a>
                         </div>
                       </div>
 
-                      <div className="mt-4 space-y-3 border-t border-gold/20 pt-4">
-                        <label className="block text-[11px] uppercase tracking-[0.22em] text-cocoa/60">Enter your UPI transaction reference (UTR)</label>
-                        <textarea
-                          value={manualUpiUtr}
-                          onChange={(e) => setManualUpiUtr(e.target.value)}
-                          placeholder="Enter UTR / transaction reference"
-                          className="w-full border border-cocoa/20 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
-                          rows={2}
-                        />
-                        <button
-                          type="button"
-                          onClick={submitManualUpiUtr}
-                          disabled={paying}
-                          className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
-                        >
-                          {paying ? "Submitting..." : "Submit UTR"}
-                        </button>
-                        <p className="text-[11px] text-cocoa/60 leading-relaxed">
-                          We only confirm the order after the UTR is successfully submitted and verified.
-                        </p>
+                      <div className="mt-4 border-t border-gold/20 pt-4">
+                        <button type="button" onClick={confirmUpiPaid} disabled={paying || !order} className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60">I&apos;ve Paid</button>
+                        {upiPaid && <p className="mt-3 text-sm text-emerald-700">Payment Successful — Order Confirmed</p>}
                       </div>
                     </div>
                   )}
@@ -686,11 +648,11 @@ export default function Checkout() {
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.97 }}
-                  onClick={paymentMethod === "manual_upi" ? submitManualUpiUtr : payNow}
+                  onClick={payNow}
                   disabled={paying || !shipping}
                   className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
                 >
-                  {paying ? paymentMethod === "cod" ? "Placing COD order…" : "Submitting UPI…" : paymentMethod === "cod" ? "Place COD order" : paymentMethod === "manual_upi" ? "Submit UTR" : "Pay via UPI"}
+                  {paying ? paymentMethod === "cod" ? "Placing COD order…" : "Generating UPI QR…" : paymentMethod === "cod" ? "Place COD order" : "Pay Now"}
                 </motion.button>
               </div>
             )}

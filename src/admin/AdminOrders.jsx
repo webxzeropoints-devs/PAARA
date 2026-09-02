@@ -18,6 +18,7 @@ export default function AdminOrders() {
   const [granting, setGranting] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [verifyingPayment, setVerifyingPayment] = useState(null);
+  const [verifiedChecks, setVerifiedChecks] = useState({});
 
   const load = useCallback(async () => {
     try { setOrders(await adminRequest("/admin/orders")); }
@@ -50,7 +51,7 @@ export default function AdminOrders() {
     setVerifyingPayment(orderId);
     setError("");
     try {
-      await adminRequest(`/admin/orders/${orderId}/verify-manual-payment`, { method: "POST" });
+      await adminRequest(`/admin/orders/${orderId}/verify-manual-payment`, { method: "POST", body: { confirmed: true } });
       await load();
     } catch (err) {
       setError(err.message || "Could not verify manual payment.");
@@ -75,7 +76,7 @@ export default function AdminOrders() {
   const getManualPaymentBadge = (order) => {
     if (order.payment_status === "verified") return "UPI — Verified";
     if (order.payment_status === "rejected") return "UPI — Payment failed";
-    if (order.payment_method === "manual_upi") return "UPI — Verify before shipping";
+    if (order.payment_method === "manual_upi") return "UPI — Awaiting Verification";
     return "UPI - Pending Verification";
   };
 
@@ -138,7 +139,7 @@ export default function AdminOrders() {
                 <td className="px-4 py-4"><span className={`inline-block px-2 py-1 text-[10px] uppercase tracking-[.14em] ${order.payment_method === "cod" ? "bg-gold/20 text-cocoa" : order.payment_method === "manual_upi" ? "bg-amber-200 text-cocoa" : "bg-cocoa/10 text-cocoa/70"}`}>{order.payment_method === "cod" ? "COD - Payment pending" : order.payment_method === "manual_upi" ? getManualPaymentBadge(order) : order.payment_status === "paid" ? "Paid online" : "Online pending"}</span>{order.payment_method === "manual_upi" && order.payment_reference && <div className="mt-2 space-y-1"><div className="flex items-center gap-2"><p className="text-[10px] uppercase tracking-[.14em] text-cocoa/55">UTR: {order.payment_reference}</p><button type="button" onClick={() => copyUtr(order.payment_reference)} className="text-[9px] uppercase tracking-[.14em] text-gold hover:text-cocoa">Copy</button></div><p className="text-[10px] uppercase tracking-[.14em] text-cocoa/55">Amount: ₹{Number(order.total_amount).toLocaleString("en-IN")}</p></div>}</td>
                 <td className="px-4 py-4 text-right text-cocoa font-numeric">₹{Number(order.total_amount).toLocaleString("en-IN")}</td>
                 <td className="px-4 py-4 text-cocoa/70">{new Date(order.created_at.replace(" ", "T") + "Z").toLocaleDateString()}</td>
-                <td className="px-4 py-4">{order.payment_method === "manual_upi" ? <div className="flex flex-col gap-2"><button type="button" onClick={() => verifyManualPayment(order.id)} disabled={verifyingPayment === order.id || order.payment_status === "verified"} className="bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{verifyingPayment === order.id ? "Verifying..." : order.payment_status === "verified" ? "Payment Verified ✓" : "Payment Verified ✓"}</button><button type="button" onClick={() => rejectManualPayment(order.id)} disabled={verifyingPayment === order.id} className="border border-cocoa/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cocoa/70 hover:border-cocoa/40 disabled:opacity-50">Reject / Payment Not Received</button></div> : eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Loyalty card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block max-w-full break-words bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for loyalty card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant loyalty card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
+                <td className="px-4 py-4">{order.payment_method === "manual_upi" ? <div className="flex flex-col gap-2">{order.payment_status !== "verified" && <label className="flex items-start gap-2 text-[10px] leading-relaxed text-cocoa/70"><input type="checkbox" checked={Boolean(verifiedChecks[order.id])} onChange={(event) => setVerifiedChecks((current) => ({ ...current, [order.id]: event.target.checked }))} className="mt-0.5 accent-gold" />I have verified this payment in my UPI/bank app.</label>}<button type="button" onClick={() => verifyManualPayment(order.id)} disabled={verifyingPayment === order.id || order.payment_status === "verified" || !verifiedChecks[order.id]} className="bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{verifyingPayment === order.id ? "Confirming..." : order.payment_status === "verified" ? "Payment Verified ✓" : "Confirm & Unlock for Packing"}</button><button type="button" onClick={() => rejectManualPayment(order.id)} disabled={verifyingPayment === order.id} className="border border-cocoa/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cocoa/70 hover:border-cocoa/40 disabled:opacity-50">Reject / Payment Not Received</button></div> : eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Loyalty card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block max-w-full break-words bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for loyalty card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant loyalty card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
               </tr>;
             })}
             {orders.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-cocoa/60">No orders yet.</td></tr>}

@@ -564,6 +564,9 @@ router.post('/orders/:id/verify-manual-payment', (q, s) => {
   if (order.payment_method !== 'manual_upi') {
     return s.status(400).json({ error: 'This order is not a manual UPI order.' });
   }
+  if (q.body?.confirmed !== true) {
+    return s.status(400).json({ error: 'Confirm that you verified this payment in your UPI or bank app before unlocking packing.' });
+  }
 
   db.prepare(`
     UPDATE orders

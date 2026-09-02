@@ -13,8 +13,45 @@ const { requireAuth } = require('../middleware/auth');
 const { trySendEmail } = require('../utils/email');
 const { createInvoicePdf } = require('../utils/invoice');
 const { maskSensitiveText } = require('../utils/validate');
+const { createOrder } = require('./orders');
+const QRCode = require('qrcode');
 
 const router = express.Router();
+
+router.post('/create-upi', requireAuth, async (req, res) => {
+  try {
+    const upiId = String(process.env.UPI_ID || '').trim();
+    const payeeName = String(process.env.UPI_PAYEE_NAME || '').trim();
+    if (!upiId || !payeeName) return res.status(503).json({ error: 'UPI payment is not configured.' });
+
+    const order = createOrder({
+      customerId: req.customer.id,
+      items: req.body?.items,
+      addressId: req.body?.address_id,
+      paymentMethod: 'manual_upi',
+    });
+    const amount = Number(order.total_amount);
+    const deepLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount.toFixed(2)}&tn=${encodeURIComponent(String(order.order_id))}&cu=INR`;
+    const qrCode = await QRCode.toDataURL(deepLink, { errorCorrectionLevel: 'M', margin: 1, width: 320 });
+
+    return res.status(201).json({
+      order_id: order.order_id,
+      order_number: order.order_number,
+      payment_method: 'UPI',
+      payment_status: 'pending_verification',
+      amount,
+      deep_link: deepLink,
+      qr_code: qrCode,
+      qr_code_url: qrCode,
+      payee_name: payeeName,
+      upi_id: upiId,
+      order,
+    });
+  } catch (error) {
+    console.error('[UPI_CREATE_FAILED]', { message: maskSensitiveText(error.message), name: error.name });
+    return res.status(400).json({ error: error.message || 'Could not create UPI payment.' });
+  }
+});
 
 const markOrderPaid = db.transaction((orderId, paymentId) => {
   const updated = db.prepare(`
@@ -51,7 +88,7 @@ router.post('/create', requireAuth, async (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found.' });
 
   const provider = getPaymentProvider(payment_method);
-  const payload = provider.create(order, { id: req.customer.id, name: req.customer.name }, {
+  const payload = await provider.create(order, { id: req.customer.id, name: req.customer.name }, {
     baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in',
   });
 
@@ -208,7 +245,7 @@ async function sendPaidInvoice(orderId, customerId) {
  *
  * Configure this URL + secret in: Razorpay Dashboard → Settings → Webhooks.
  */
-router.get('/provider/:method', requireAuth, (req, res) => {
+router.get('/provider/:method', requireAuth, async (req, res) => {
   const method = String(req.params.method || '').trim().toLowerCase();
   const orderId = Number.parseInt(String(req.query.order_id || ''), 10);
   if (!Number.isInteger(orderId) || orderId < 1) {
@@ -223,7 +260,7 @@ router.get('/provider/:method', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Unsupported payment method.' });
   }
 
-  const payload = provider.create(order, { id: req.customer.id, name: req.customer.name }, { baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in' });
+  const payload = await provider.create(order, { id: req.customer.id, name: req.customer.name }, { baseUrl: process.env.APP_URL || 'https://www.paarajewellery.in' });
   res.json(payload);
 });
 

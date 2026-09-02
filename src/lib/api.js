@@ -199,6 +199,7 @@ export const getAddresses = () => apiGet("/addresses");
 export const postAddress = (payload) => apiPost("/addresses", payload);
 
 export const postOrder = (payload) => apiPost("/orders", payload);
+export const createUpiPayment = (payload) => apiPost("/payment/create-upi", payload);
 export const previewInvoice = async (items, addressId, paymentMethod = "razorpay") => {
   const res = await fetch(`${BASE_URL}/orders/proforma`, {
     method: "POST",

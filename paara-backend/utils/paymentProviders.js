@@ -1,12 +1,15 @@
+const QRCode = require('qrcode');
+
 const PAYMENT_METHODS = ['razorpay', 'manual_upi', 'cod'];
 const MANUAL_UPI_PENDING_STATUS = 'Auto-confirmed - Unverified';
 const MANUAL_UPI_VERIFIED_STATUS = 'verified';
 const MANUAL_UPI_REJECTED_STATUS = 'rejected';
 const MANUAL_UPI_CONFIRMED_STATUS = 'Order Confirmed';
 
-const buildManualUpiRequest = ({ order, customer, baseUrl = process.env.APP_URL || 'https://www.paarajewellery.in' }) => {
-  const payeeName = process.env.UPI_PAYEE_NAME || 'Paara Jewellery';
-  const upiId = process.env.UPI_ID || 'paara.jewellery@upi';
+const buildManualUpiRequest = async ({ order, customer, baseUrl = process.env.APP_URL || 'https://www.paarajewellery.in' }) => {
+  const payeeName = String(process.env.UPI_PAYEE_NAME || '').trim();
+  const upiId = String(process.env.UPI_ID || '').trim();
+  if (!payeeName || !upiId) throw new Error('UPI payment is not configured.');
   const orderLabel = `Paara Order ${order.order_number || order.id}`;
   const amount = Number(order.total_amount || 0);
   const params = new URLSearchParams({
@@ -18,7 +21,7 @@ const buildManualUpiRequest = ({ order, customer, baseUrl = process.env.APP_URL 
     tn: orderLabel,
   });
   const deepLink = `upi://pay?${params.toString()}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(deepLink)}`;
+  const qrCodeUrl = await QRCode.toDataURL(deepLink, { errorCorrectionLevel: 'M', margin: 1, width: 320 });
 
   return {
     method: 'manual_upi',
@@ -59,7 +62,7 @@ const paymentProviders = {
     name: 'manual_upi',
     label: 'Pay Now (Online)',
     description: 'Pay manually with UPI and submit a UTR for admin verification',
-    create: (order, customer, options = {}) => buildManualUpiRequest({ order, customer, baseUrl: options.baseUrl }),
+    create: async (order, customer, options = {}) => buildManualUpiRequest({ order, customer, baseUrl: options.baseUrl }),
     verify: (order, payload = {}) => {
       const reference = String(payload.payment_reference || payload.UTR || '').trim();
       if (!reference) {

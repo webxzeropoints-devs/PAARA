@@ -40,6 +40,66 @@ function buildLineItems(items) {
   return { lineItems, subtotal };
 }
 
+function createOrder({ customerId, items, addressId, paymentMethod = 'razorpay' }) {
+  const normalizedPaymentMethod = String(paymentMethod).trim().toLowerCase();
+  const paymentStatus = normalizedPaymentMethod === 'cod' ? 'pending' : normalizedPaymentMethod === 'manual_upi' ? 'pending_verification' : 'unpaid';
+  if (!['razorpay', 'manual_upi', 'cod'].includes(normalizedPaymentMethod)) throw new Error('Invalid payment method.');
+  if (!Array.isArray(items) || items.length === 0) throw new Error('Cart items are required.');
+
+  const address = db.prepare('SELECT * FROM addresses WHERE id = ? AND customer_id = ?').get(addressId, customerId);
+  if (!address) throw new Error('Invalid address.');
+  const customer = db.prepare('SELECT name, email, phone FROM customers WHERE id = ?').get(customerId);
+  if (!customer) throw new Error('Customer account not found.');
+
+  const { lineItems, subtotal } = buildLineItems(items);
+  const { gstAmount } = calculateGST(subtotal);
+  const totalWeightKg = lineItems.reduce((sum, item) => sum + item.weight_kg * item.quantity, 0);
+  const shipping = calculateShipping({ city: address.city, state: address.state, paymentMethod: normalizedPaymentMethod, totalWeightKg });
+  const totalAmount = round2(subtotal + gstAmount + shipping.amount);
+
+  const order = db.transaction(() => {
+    const orderInfo = db.prepare(`
+      INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount, status, payment_method, payment_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(customerId, addressId, subtotal, gstAmount, shipping.amount, totalAmount, 'Order Confirmed', normalizedPaymentMethod, paymentStatus);
+    const orderId = orderInfo.lastInsertRowid;
+    const orderNumber = formatOrderNumber(new Date().toISOString(), orderId);
+    db.prepare('UPDATE orders SET order_number = ? WHERE id = ?').run(orderNumber, orderId);
+
+    const insertItem = db.prepare(`
+      INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    lineItems.forEach((lineItem) => insertItem.run(orderId, lineItem.product_id, lineItem.product_name, lineItem.unit_price, lineItem.quantity, lineItem.line_total));
+
+    db.prepare(`
+      INSERT INTO customer_order_details
+        (order_id, customer_id, full_name, email, phone, shipping_line1, shipping_line2,
+         shipping_city, shipping_state, shipping_pincode, shipping_country, submitted_fields)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      orderId, customerId, customer.name, customer.email, customer.phone || null,
+      address.line1, address.line2, address.city, address.state, address.pincode, 'India',
+      JSON.stringify({ items, address_id: addressId, shipping_city: address.city })
+    );
+
+    return { orderId, orderNumber };
+  })();
+
+  return {
+    order_id: order.orderId,
+    order_number: order.orderNumber,
+    payment_method: normalizedPaymentMethod,
+    payment_status: paymentStatus,
+    subtotal,
+    gst_amount: gstAmount,
+    shipping_amount: shipping.amount,
+    shipping_method: shipping.method,
+    total_amount: totalAmount,
+    items: lineItems,
+  };
+}
+
 /**
  * POST /api/orders
  * body: { items: [{ product_id, quantity }], address_id }
@@ -48,75 +108,11 @@ function buildLineItems(items) {
  * totals sent from the client.
  */
 router.post('/', requireAuth, (req, res) => {
-  const { items, address_id, payment_method: requestedPaymentMethod = 'razorpay' } = req.body;
-  const paymentMethod = String(requestedPaymentMethod).trim().toLowerCase();
-  const paymentStatus = paymentMethod === 'cod' ? 'pending' : paymentMethod === 'manual_upi' ? 'pending_verification' : 'unpaid';
-  if (!['razorpay', 'manual_upi', 'cod'].includes(paymentMethod)) return res.status(400).json({ error: 'Invalid payment method.' });
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'Cart items are required.' });
-  }
-
-  const address = db
-    .prepare('SELECT * FROM addresses WHERE id = ? AND customer_id = ?')
-    .get(address_id, req.customer.id);
-  if (!address) return res.status(400).json({ error: 'Invalid address.' });
-  const customer = db.prepare('SELECT name, email, phone FROM customers WHERE id = ?').get(req.customer.id);
-
-  let lineItems;
-  let subtotal;
   try {
-    ({ lineItems, subtotal } = buildLineItems(items));
+    return res.status(201).json(createOrder({ customerId: req.customer.id, items: req.body?.items, addressId: req.body?.address_id, paymentMethod: req.body?.payment_method }));
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
-
-  const { gstAmount } = calculateGST(subtotal);
-  const totalWeightKg = lineItems.reduce((sum, item) => sum + item.weight_kg * item.quantity, 0);
-  const shipping = calculateShipping({ city: address.city, state: address.state, paymentMethod, totalWeightKg });
-  const totalAmount = round2(subtotal + gstAmount + shipping.amount);
-
-  const insertOrder = db.prepare(`
-    INSERT INTO orders (customer_id, address_id, subtotal, gst_amount, shipping_amount, total_amount, status, payment_method, payment_status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  const orderInfo = insertOrder.run(
-    req.customer.id, address_id, subtotal, gstAmount, shipping.amount, totalAmount, 'Order Confirmed', paymentMethod, paymentStatus
-  );
-  const orderId = orderInfo.lastInsertRowid;
-  const orderNumber = formatOrderNumber(new Date().toISOString(), orderId);
-  db.prepare('UPDATE orders SET order_number = ? WHERE id = ?').run(orderNumber, orderId);
-
-  const insertItem = db.prepare(`
-    INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  lineItems.forEach(li =>
-    insertItem.run(orderId, li.product_id, li.product_name, li.unit_price, li.quantity, li.line_total)
-  );
-
-  db.prepare(`
-    INSERT INTO customer_order_details
-      (order_id, customer_id, full_name, email, phone, shipping_line1, shipping_line2,
-       shipping_city, shipping_state, shipping_pincode, shipping_country, submitted_fields)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    orderId, req.customer.id, customer.name, customer.email, customer.phone || null,
-    address.line1, address.line2, address.city, address.state, address.pincode, 'India',
-    JSON.stringify({ items, address_id, shipping_city: address.city })
-  );
-
-  res.status(201).json({
-    order_id: orderId,
-    order_number: orderNumber,
-    payment_method: paymentMethod,
-    payment_status: paymentStatus,
-    subtotal,
-    gst_amount: gstAmount,
-    shipping_amount: shipping.amount,
-    shipping_method: shipping.method,
-    total_amount: totalAmount,
-    items: lineItems
-  });
 });
 
 router.post('/proforma', requireAuth, async (req, res) => {
@@ -261,3 +257,4 @@ router.get('/:id/invoice', requireAuth, (req, res) => {
 });
 
 module.exports = router;
+module.exports.createOrder = createOrder;
