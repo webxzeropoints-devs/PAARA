@@ -25,8 +25,9 @@ const ADMIN_TOKEN_KEY = "paara_admin_token";
 export const resolveAssetUrl = (value) => {
   const source = String(value || "");
   if (!source || source.startsWith("data:") || source.startsWith("blob:") || /^https?:\/\//i.test(source)) return source;
-  if (!source.startsWith("/")) return source;
-  return `${BASE_URL.replace(/\/api$/, "")}${source}`;
+  const assetPath = source.startsWith("/") ? source : `/${source}`;
+  const encodedPath = encodeURI(assetPath).replace(/#/g, "%23");
+  return `${new URL(BASE_URL).origin}${encodedPath}`;
 };
 
 const normalizeResponseAssets = (value, key = "") => {

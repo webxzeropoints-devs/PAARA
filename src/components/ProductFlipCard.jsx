@@ -5,6 +5,7 @@ import { Heart } from "lucide-react";
 
 import { prefersReducedMotion } from "../lib/motion";
 import { useWishlist } from "../lib/wishlist.jsx";
+import { resolveAssetUrl } from "../lib/api";
 
 // Product shape (from §3 GET /products):
 //   { id, slug, name, price, images: [url,...], is_exclusive, rating?, reviews_count? }
@@ -31,11 +32,12 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
       : [fallbackProductImage];
 
   // Only one image is ever shown on the front face — no hover image swap.
-  const frontImg = images[0];
+  const resolvedImages = images.map(resolveAssetUrl);
+  const frontImg = resolvedImages[0];
   const marqueeImgs =
-    images.length > 1
-      ? images
-      : [images[0], images[0], images[0], images[0]];
+    resolvedImages.length > 1
+      ? resolvedImages
+      : [resolvedImages[0], resolvedImages[0], resolvedImages[0], resolvedImages[0]];
 
   // Marquee duration scales with image count, 6–10s linear per §7.
   const marqueeDuration = Math.min(
