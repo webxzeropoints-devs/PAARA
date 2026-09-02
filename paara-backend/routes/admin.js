@@ -271,6 +271,16 @@ router.post('/products', async (q, s) => {
     const normalizedIsActive = normalizeFormBoolean(is_active, true);
     const normalizedIsVault = normalizeFormBoolean(is_vault, false);
 
+    if (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId < 1 || !db.prepare('SELECT 1 FROM categories WHERE id = ?').get(normalizedCategoryId)) {
+      return s.status(400).json({ error: 'A valid category is required.', code: 'INVALID_CATEGORY_ID' });
+    }
+    if (!String(name || '').trim() || !String(slug || '').trim()) {
+      return s.status(400).json({ error: 'Product name and slug are required.', code: 'INVALID_PRODUCT_FIELDS' });
+    }
+    if (!Number.isFinite(normalizedPrice) || normalizedPrice < 0 || !Number.isFinite(normalizedStock) || normalizedStock < 0) {
+      return s.status(400).json({ error: 'Product price and stock must be valid non-negative numbers.', code: 'INVALID_PRODUCT_NUMBERS' });
+    }
+
     // Ensure req.files is an array (may be undefined when no files are uploaded)
     const filesArray = Array.isArray(q.files) ? q.files : (q.files ? [q.files] : []);
     let uploadedImages = [];
@@ -292,7 +302,9 @@ router.post('/products', async (q, s) => {
     writeImages(result.lastInsertRowid, allImages);
     s.status(201).json(decorate([db.prepare('SELECT * FROM products WHERE id=?').get(result.lastInsertRowid)])[0]);
   } catch (err) {
-    s.status(400).json({ error: 'Could not create the product.' });
+    const productError = safeUploadError(err);
+    console.error('Product creation failed:', productError);
+    s.status(400).json({ error: `Could not create the product: ${productError.message}`, code: productError.code });
   }
 });
 
@@ -322,6 +334,16 @@ router.put('/products/:id', async (q, s) => {
       if (!productColumns.has(key)) delete updates[key];
     });
 
+    if (updates.category_id !== undefined && (!Number.isInteger(Number(updates.category_id)) || Number(updates.category_id) < 1 || !db.prepare('SELECT 1 FROM categories WHERE id = ?').get(Number(updates.category_id)))) {
+      return s.status(400).json({ error: 'A valid category is required.', code: 'INVALID_CATEGORY_ID' });
+    }
+    if (updates.name !== undefined && !String(updates.name || '').trim()) {
+      return s.status(400).json({ error: 'Product name cannot be empty.', code: 'INVALID_PRODUCT_FIELDS' });
+    }
+    if (updates.slug !== undefined && !String(updates.slug || '').trim()) {
+      return s.status(400).json({ error: 'Product slug cannot be empty.', code: 'INVALID_PRODUCT_FIELDS' });
+    }
+
     ['is_exclusive', 'is_bestseller', 'is_active', 'is_vault'].forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(updates, key)) {
         updates[key] = normalizeFormBoolean(updates[key], false);
@@ -338,7 +360,9 @@ router.put('/products/:id', async (q, s) => {
     }
     s.json(decorate([db.prepare('SELECT * FROM products WHERE id=?').get(q.params.id)])[0]);
   } catch (err) {
-    s.status(400).json({ error: 'Could not update the product.' });
+    const productError = safeUploadError(err);
+    console.error('Product update failed:', productError);
+    s.status(400).json({ error: `Could not update the product: ${productError.message}`, code: productError.code });
   }
 });
 
