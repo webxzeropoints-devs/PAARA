@@ -146,8 +146,6 @@ h3 {
   align-items: center;
   width: max-content;
   gap: 1.5rem;
-  animation: paara-love-marquee 52s linear infinite;
-  animation-timing-function: linear;
   will-change: transform;
 }
 

@@ -311,6 +311,32 @@ function Vault({ products }) {
 }
 
 function CustomerLove() {
+  const trackRef = useRef(null);
+  const hoveringRef = useRef(false);
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+
+    let frameId = 0;
+    let lastTime = performance.now();
+    let offset = 0;
+    let velocity = 30;
+    const tick = (time) => {
+      const elapsed = Math.min(100, time - lastTime);
+      lastTime = time;
+      const targetVelocity = hoveringRef.current ? 2 : 30;
+      velocity += (targetVelocity - velocity) * Math.min(1, elapsed / 900);
+      const loopWidth = track.scrollWidth / 2;
+      if (loopWidth > 0) {
+        offset = (offset + velocity * (elapsed / 1000)) % loopWidth;
+        track.style.transform = `translate3d(${-offset}px, 0, 0)`;
+      }
+      frameId = requestAnimationFrame(tick);
+    };
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
   const baseNotes = [
     "“The most beautiful little package to open.”",
     "“I wear my pearl hoops with everything.”",
@@ -336,7 +362,7 @@ function CustomerLove() {
   const notes = Array.from({ length: 20 }, (_, index) => baseNotes[index % baseNotes.length]);
   const marqueeNotes = [...notes, ...notes];
 
-  return <section className="customer-love-section relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat px-0 py-5 md:py-6"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">Customer Love</h2><HeadingWave className="mt-2" /></span></div><div className="relative z-10 love-marquee mt-5"><div className="love-track">{marqueeNotes.map((note, index) => <article key={`${note}-${index}`} className="shell-item relative w-[540px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none" /><div className="shell-text absolute inset-0 z-10 flex flex-col items-center justify-start overflow-hidden px-5 py-8 text-center md:px-6 md:py-10"><p className="mt-[34%] w-[62%] overflow-hidden text-[1rem] md:text-[1.1rem] font-semibold leading-snug text-cocoa">{note}</p><p className="mt-4 text-[9px] tracking-[.2em] uppercase text-cocoa/90">Paara. customer</p></div></article>)}</div></div></section>;
+  return <section className="customer-love-section relative overflow-hidden bg-[#efe4d2] bg-[url('/assets/img.png')] bg-cover bg-center bg-no-repeat px-0 py-5 md:py-6"><div className="absolute inset-0 bg-[#efe4d2]/35" /><div className="relative z-10 text-center px-6"><p className="text-xs uppercase tracking-[.3em] text-gold">Notes from our community</p><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">Customer Love</h2><HeadingWave className="mt-2" /></span></div><div className="relative z-10 love-marquee mt-5" onMouseEnter={() => { hoveringRef.current = true; }} onMouseLeave={() => { hoveringRef.current = false; }}><div ref={trackRef} className="love-track">{marqueeNotes.map((note, index) => <article key={`${note}-${index}`} className="shell-item relative w-[540px] aspect-[900/720] shrink-0"><img src="/assets/shell.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none" /><div className="shell-text absolute inset-0 z-10 flex flex-col items-center justify-start overflow-hidden px-5 py-8 text-center md:px-6 md:py-10"><p className="mt-[34%] w-[62%] overflow-hidden text-[1rem] md:text-[1.1rem] font-semibold leading-snug text-cocoa">{note}</p><p className="mt-4 text-[9px] tracking-[.2em] uppercase text-cocoa/90">Paara. customer</p></div></article>)}</div></div></section>;
 }
 
 function Collections() {
@@ -436,4 +462,3 @@ function WornByYou() {
   return <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-24"><motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.7 }} className="text-center"><p className="text-xs uppercase tracking-[.3em] text-gold">Your Paara. moments</p><h2 className="font-display text-4xl mt-3">Worn by You</h2></motion.div><div className="grid grid-cols-3 gap-3 md:gap-6 mt-10">{slots.map((entry, index) => { const hasImage = entry?.image_url && !failedImages[entry.id]; const imageSrc = cacheBustUrl(entry?.image_url, entry?.updated_at || entry?.cached_at || entry?.id); return <motion.div key={entry?.id || `empty-${index}`} initial={{ opacity: 0, x: index === 1 ? 0 : index === 0 ? -52 : 52, y: 30 }} whileInView={{ opacity: 1, x: 0, y: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.85, delay: index * 0.12, ease: [0.16, 1, 0.3, 1] }} className="aspect-[3/4] overflow-hidden bg-shell">{hasImage ? <img src={imageSrc} alt={entry.caption || "Customer wearing Paara jewellery"} onError={() => setFailedImages((current) => ({ ...current, [entry.id]: true }))} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" /> : <div className="h-full w-full flex flex-col items-center justify-center gap-3 bg-shell text-cocoa/55"><span aria-hidden="true" className="text-3xl text-gold/70">✦</span><span className="text-xs uppercase tracking-[.18em]">No image yet</span></div>}</motion.div>; })}</div></section>;
 }
 function FinalStatement() { return <section className="px-6 py-28 md:py-36 text-center bg-[#e6d4b9]"><p className="font-display text-5xl md:text-7xl max-w-4xl mx-auto leading-[1.05]">Made to be found.<br />Made to be loved.<br />Made for you.</p><span className="block mt-8 text-gold text-2xl">✦</span></section>; }
-
