@@ -137,7 +137,7 @@ export default function Checkout() {
     }, 0),
     [items, products]
   );
-  const customerTotal = order?.total_amount ?? Math.round((productSubtotal * 1.18 + (shipping?.amount || 0)) * 100) / 100;
+  const customerTotal = order?.total_amount ?? (productSubtotal + (shipping?.amount || 0));
 
   useEffect(() => {
     if (step !== 2 || !selectedAddress || !totalWeightKg) return undefined;

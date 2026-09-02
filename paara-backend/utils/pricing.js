@@ -1,15 +1,15 @@
-const GST_PERCENT = Number(process.env.GST_PERCENT || 18);
+const GST_PERCENT = 0;
 
 /**
- * Product prices are the pre-tax subtotal used for checkout calculations.
- * Always compute this server-side — never trust a total sent from the client.
+ * Product prices are already the final customer-facing price.
+ * Do not add another 18% GST to the payable total.
  */
 function calculateGST(subtotal) {
-  const gstAmount = round2(subtotal * (GST_PERCENT / 100));
+  const gstAmount = 0;
   return {
     gstPercent: GST_PERCENT,
     gstAmount,
-    totalWithGST: round2(subtotal + gstAmount)
+    totalWithGST: round2(subtotal)
   };
 }
 

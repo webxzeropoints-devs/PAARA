@@ -1,10 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { calculateShipping } = require('../utils/shipping');
+const { calculateGST } = require('../utils/pricing');
 
 test('uses the exact Chennai business rule for online payment', () => {
   const quote = calculateShipping({ city: 'Chennai', state: 'Tamil Nadu', paymentMethod: 'manual_upi', totalWeightKg: 0.5 });
-  assert.equal(quote.method, 'flat_city_rate');
+  assert.equal(quote.method, 'city_state_rate');
   assert.equal(quote.amount, 70);
   assert.notEqual(quote.amount, 0);
   assert.equal(quote.city, 'Chennai');
@@ -35,4 +36,10 @@ test('uses the exact Mumbai business rule for online and COD', () => {
   const cod = calculateShipping({ city: 'Mumbai', state: 'Maharashtra', paymentMethod: 'cod', totalWeightKg: 1 });
   assert.equal(online.amount, 130);
   assert.equal(cod.amount, 150);
+});
+
+test('does not add an extra 18% GST on top of customer-facing product prices', () => {
+  const { gstAmount, totalWithGST } = calculateGST(109);
+  assert.equal(gstAmount, 0);
+  assert.equal(totalWithGST, 109);
 });

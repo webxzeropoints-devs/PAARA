@@ -16,15 +16,18 @@ function normalizePaymentMethod(paymentMethod) {
   return 'online';
 }
 
-function getFlatCityRate(city) {
-  const normalizedCity = String(city || '').trim();
-  if (!normalizedCity) return null;
+function getDeliveryRate(city, state, paymentMethod) {
+  const normalizedCity = String(city || '').trim().toLowerCase();
+  const normalizedState = String(state || '').trim().toLowerCase();
+  const isCod = normalizePaymentMethod(paymentMethod) === 'cod';
 
-  const row = db.prepare('SELECT name, flat_shipping_rate FROM cities WHERE lower(trim(name)) = lower(trim(?))').get(normalizedCity);
-  if (!row) return null;
+  if (normalizedCity === 'chennai') return isCod ? RATES.chennai.cod : RATES.chennai.online;
+  if (normalizedCity === 'pondicherry' || normalizedCity === 'puducherry') return isCod ? RATES.pondicherry.cod : RATES.pondicherry.online;
+  if (normalizedState === 'tamil nadu') return isCod ? RATES.tamilNadu.cod : RATES.tamilNadu.online;
+  if (['andhra pradesh', 'kerala', 'karnataka'].includes(normalizedState)) return isCod ? RATES.groupedStates.cod : RATES.groupedStates.online;
+  if (['mumbai', 'kolkata', 'delhi'].includes(normalizedCity)) return isCod ? RATES.metroCities.cod : RATES.metroCities.online;
 
-  const flatRate = Number(row.flat_shipping_rate);
-  return Number.isFinite(flatRate) ? flatRate : null;
+  return null;
 }
 
 function getDeliveryRegion({ city, state }) {
@@ -51,31 +54,29 @@ function rateForRegion(region, paymentMethod) {
 function calculateShipping({ city, state, paymentMethod = 'razorpay', totalWeightKg }) {
   const normalizedCity = String(city || '').trim();
   const stateName = String(state || '').trim();
+  const amount = getDeliveryRate(normalizedCity, stateName, paymentMethod);
 
-  const flatRate = getFlatCityRate(normalizedCity);
-  if (flatRate !== null) {
+  if (amount == null) {
+    const region = getDeliveryRegion({ city, state });
+    if (!region) {
+      throw new Error(`No delivery rate is configured for ${city || 'the selected city'}, ${state || 'the selected state'}.`);
+    }
+    const regionAmount = rateForRegion(region, paymentMethod);
+    if (regionAmount == null) {
+      throw new Error(`No delivery rate is configured for ${city || 'the selected city'}, ${state || 'the selected state'}.`);
+    }
     return {
-      method: 'flat_city_rate',
+      method: 'city_state_rate',
       city: normalizedCity,
       state: stateName,
-      amount: round2(flatRate),
+      amount: round2(regionAmount),
       ratePerKg: null,
       weightKg: Number(totalWeightKg) || 0,
     };
   }
 
-  const region = getDeliveryRegion({ city, state });
-  if (!region) {
-    throw new Error(`No delivery rate is configured for ${city || 'the selected city'}, ${state || 'the selected state'}.`);
-  }
-
-  const amount = rateForRegion(region, paymentMethod);
-  if (amount == null) {
-    throw new Error(`No delivery rate is configured for ${city || 'the selected city'}, ${state || 'the selected state'}.`);
-  }
-
   return {
-    method: 'flat_city_rate',
+    method: 'city_state_rate',
     city: normalizedCity,
     state: stateName,
     amount: round2(amount),
@@ -84,4 +85,4 @@ function calculateShipping({ city, state, paymentMethod = 'razorpay', totalWeigh
   };
 }
 
-module.exports = { calculateShipping, getDeliveryRegion, rateForRegion };
+module.exports = { calculateShipping, getDeliveryRegion, rateForRegion, getDeliveryRate };
