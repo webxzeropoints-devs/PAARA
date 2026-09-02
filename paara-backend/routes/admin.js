@@ -591,7 +591,15 @@ router.delete('/gift-card-rules/:id', (q, s) => {
   s.json({ success: true });
 });
 
-router.get('/orders', (q, s) => s.json(db.prepare(`SELECT o.*,c.name customer_name,c.email customer_email FROM orders o JOIN customers c ON c.id=o.customer_id ORDER BY o.created_at DESC`).all()));
+router.get('/orders', (q, s) => s.json(db.prepare(`
+  SELECT o.*, c.name customer_name, c.email customer_email,
+         d.shipping_line1, d.shipping_line2, d.shipping_city,
+         d.shipping_state, d.shipping_pincode, d.shipping_country
+  FROM orders o
+  JOIN customers c ON c.id = o.customer_id
+  LEFT JOIN customer_order_details d ON d.order_id = o.id
+  ORDER BY o.created_at DESC
+`).all()));
 
 const ORDER_STAGES = ['Order Confirmed', 'Packed', 'Shipped', 'Delivered'];
 
@@ -668,7 +676,7 @@ router.post('/orders/:id/reject-manual-payment', async (q, s) => {
     SET payment_status = 'rejected',
         payment_rejected_at = datetime('now'),
         payment_verified_at = NULL,
-        status = 'Order Confirmed'
+        status = 'Rejected'
     WHERE id = ?
   `).run(orderId);
 
@@ -681,7 +689,7 @@ router.post('/orders/:id/reject-manual-payment', async (q, s) => {
     }, `manual UPI rejection email for order ${order.id}`);
   }
 
-  s.json({ success: true, order_id: orderId, payment_status: 'rejected', message: 'Manual UPI payment rejected for follow-up.' });
+  s.json({ success: true, order_id: orderId, payment_status: 'rejected', status: 'Rejected', message: 'Manual UPI payment rejected for follow-up.' });
 });
 
 router.post('/orders/:id/grant-gift-card', (q, s) => {

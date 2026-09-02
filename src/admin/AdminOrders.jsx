@@ -5,6 +5,7 @@ const ORDER_STAGES = ["Order Confirmed", "Packed", "Shipped", "Delivered"];
 
 const normalizeStatus = (status) => {
   const value = String(status || "").trim();
+  if (value.toLowerCase() === "rejected") return "Rejected";
   if (ORDER_STAGES.includes(value)) return value;
   if (["pending", "paid", "failed", "cancelled"].includes(value)) return "Order Confirmed";
   if (value === "shipped") return "Shipped";
@@ -95,21 +96,25 @@ export default function AdminOrders() {
       {error && <p className="mb-5 border border-gold/40 bg-shell px-4 py-3 text-sm text-cocoa">{error}</p>}
       <div className="overflow-x-auto border border-cocoa/10 bg-shell">
         <table className="w-full min-w-[1050px] table-fixed text-sm">
-          <colgroup><col className="w-[15%]" /><col className="w-[18%]" /><col className="w-[22%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[13%]" /><col className="w-[13%]" /></colgroup>
-          <thead className="border-b border-gold/30 text-left font-display text-[10px] uppercase tracking-[.18em] text-cocoa"><tr><th className="px-4 py-3.5">Order ID</th><th className="px-4 py-3.5">Customer</th><th className="px-4 py-3.5">Status</th><th className="px-4 py-3.5">Payment</th><th className="px-4 py-3.5 text-right">Amount</th><th className="px-4 py-3.5">Date</th><th className="px-4 py-3.5">Loyalty</th></tr></thead>
+          <colgroup><col className="w-[13%]" /><col className="w-[15%]" /><col className="w-[20%]" /><col className="w-[18%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[7%]" /><col className="w-[8%]" /></colgroup>
+          <thead className="border-b border-gold/30 text-left font-display text-[10px] uppercase tracking-[.18em] text-cocoa"><tr><th className="px-4 py-3.5">Order ID</th><th className="px-4 py-3.5">Customer</th><th className="px-4 py-3.5">Shipping Address</th><th className="px-4 py-3.5">Status</th><th className="px-4 py-3.5">Payment</th><th className="px-4 py-3.5 text-right">Amount</th><th className="px-4 py-3.5">Date</th><th className="px-4 py-3.5">Loyalty</th></tr></thead>
           <tbody>
             {orders.map((order) => {
               const currentStatus = normalizeStatus(order.status);
               const currentIndex = ORDER_STAGES.indexOf(currentStatus);
+              const isRejected = currentStatus === "Rejected";
               const eligible = order.gift_card_eligible_amount !== null && order.gift_card_eligible_amount !== undefined;
               const granted = Boolean(order.gift_card_granted_at);
               const isManualUpiVerifying = order.payment_method === "manual_upi" && order.payment_status !== "verified";
               return <tr key={order.id} className="border-b border-cocoa/10 align-top odd:bg-sand/35">
                 <td className="px-4 py-4 text-cocoa"><p className="whitespace-nowrap font-semibold">{order.order_number || `ORD-${order.id}`}</p><p className="mt-1 text-[10px] uppercase tracking-widest text-cocoa/50">Customer #{order.customer_id}</p></td>
                 <td className="px-4 py-4"><p className="truncate text-cocoa" title={order.customer_name}>{order.customer_name}</p><p className="truncate text-xs text-cocoa/50" title={order.customer_email}>{order.customer_email}</p></td>
-                <td className="px-4 py-4 text-cocoa/75">
+                <td className="px-4 py-4 text-xs leading-relaxed text-cocoa/75">
+                  {order.shipping_line1 ? <p>{order.shipping_line1}{order.shipping_line2 ? `, ${order.shipping_line2}` : ""}<br />{order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}{order.shipping_country ? `, ${order.shipping_country}` : ""}</p> : <span className="text-cocoa/40">Not available</span>}
+                </td>
+                <td className={`px-4 py-4 text-cocoa/75 ${isRejected ? "text-red-700" : ""}`}>
                   <div className="flex flex-col gap-2">
-                    {ORDER_STAGES.map((stage, index) => {
+                    {isRejected ? <span className="font-semibold uppercase tracking-[.14em]">Rejected</span> : ORDER_STAGES.map((stage, index) => {
                       const isCurrent = currentStatus === stage;
                       const isDone = index < currentIndex;
                       const isAllowed = index === currentIndex + 1;
@@ -120,7 +125,7 @@ export default function AdminOrders() {
                         <button
                           key={stage}
                           type="button"
-                          disabled={isDisabled || updatingStatus === order.id}
+                          disabled={isRejected || isDisabled || updatingStatus === order.id}
                           onClick={() => handleStatusChange(order.id, stage)}
                           className={`rounded-full border px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] transition-colors ${
                             isCurrent
@@ -142,7 +147,7 @@ export default function AdminOrders() {
                 <td className="px-4 py-4">{order.payment_method === "manual_upi" ? <div className="flex flex-col gap-2">{order.payment_status !== "verified" && <label className="flex items-start gap-2 text-[10px] leading-relaxed text-cocoa/70"><input type="checkbox" checked={Boolean(verifiedChecks[order.id])} onChange={(event) => setVerifiedChecks((current) => ({ ...current, [order.id]: event.target.checked }))} className="mt-0.5 accent-gold" />I have verified this payment in my UPI/bank app.</label>}<button type="button" onClick={() => verifyManualPayment(order.id)} disabled={verifyingPayment === order.id || order.payment_status === "verified" || !verifiedChecks[order.id]} className="bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{verifyingPayment === order.id ? "Confirming..." : order.payment_status === "verified" ? "Payment Verified ✓" : "Confirm & Unlock for Packing"}</button><button type="button" onClick={() => rejectManualPayment(order.id)} disabled={verifyingPayment === order.id} className="border border-cocoa/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cocoa/70 hover:border-cocoa/40 disabled:opacity-50">Reject / Payment Not Received</button></div> : eligible ? granted ? <span className="text-xs uppercase tracking-widest text-gold">Loyalty card granted<br /><span className="normal-case tracking-normal text-cocoa/50">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</span></span> : <div><span className="inline-block max-w-full break-words bg-gold/20 px-2 py-1 text-[10px] uppercase tracking-widest text-cocoa">Eligible for loyalty card grant</span><p className="mt-1 text-xs text-cocoa/65">₹{Number(order.gift_card_eligible_amount).toLocaleString("en-IN")}</p><button type="button" onClick={() => grant(order)} disabled={granting === order.id} className="mt-2 bg-gold px-3 py-1.5 text-[10px] uppercase tracking-widest text-sand hover:bg-cocoa disabled:opacity-50">{granting === order.id ? "Granting..." : "Grant loyalty card"}</button></div> : <span className="text-xs text-cocoa/40">Not eligible</span>}</td>
               </tr>;
             })}
-            {orders.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-cocoa/60">No orders yet.</td></tr>}
+            {orders.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-cocoa/60">No orders yet.</td></tr>}
           </tbody>
         </table>
       </div>

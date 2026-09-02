@@ -248,10 +248,12 @@ export default function Checkout() {
     setError("");
 
     try {
-      const provider = await createUpiPayment({
+      const orderPayload = {
         items: items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
         address_id: selectedAddressId,
-      });
+      };
+      console.debug("[CHECKOUT_ORDER_PAYLOAD]", { ...orderPayload, address: selectedAddress });
+      const provider = await createUpiPayment(orderPayload);
       const createdOrder = provider.order || provider;
 
       setOrder(createdOrder);
@@ -312,10 +314,14 @@ export default function Checkout() {
     setPaying(true);
     setError("");
     try {
-      const createdOrder = await postOrder({
+      const orderPayload = {
         items: items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
         address_id: selectedAddressId,
         payment_method: paymentMethod,
+      };
+      console.debug("[CHECKOUT_ORDER_PAYLOAD]", { ...orderPayload, address: selectedAddress });
+      const createdOrder = await postOrder({
+        ...orderPayload,
       });
       if (!createdOrder?.order_id) throw new Error("The order could not be created. Please try again.");
       setOrder(createdOrder);
