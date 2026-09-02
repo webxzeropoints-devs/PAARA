@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 
 import { fadeUp, gridParent, childFadeUp } from "../../lib/motion";
+import Seo from "../../components/Seo";
 
 const POSTS = [
   {
@@ -24,6 +25,7 @@ const POSTS = [
 export default function Journal() {
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
+      <Seo title="Journal" description="Explore styling notes, care guides and stories from Paara Jewellery." />
       <div className="max-w-5xl mx-auto px-6 md:px-10 py-20">
         <motion.div initial="hidden" animate="show" variants={fadeUp} className="text-center mb-14">
           <p className="text-xs uppercase tracking-[.3em] text-gold">The Paara. Journal</p>

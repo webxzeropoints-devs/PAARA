@@ -1,8 +1,10 @@
 import AccountPageLayout from "../account/AccountPageLayout";
+import Seo from "../../components/Seo";
 
 export default function ReturnPolicy() {
   return (
     <AccountPageLayout title="Return & Refund Policy">
+      <Seo title="Return & Refund Policy" description="Read the Paara Jewellery return and refund policy." />
       <article className="max-w-3xl space-y-8 text-sm leading-relaxed text-cocoa/80">
         <section>
           <h2 className="font-display text-2xl text-cocoa mb-3">RETURN &amp; REFUND POLICY</h2>

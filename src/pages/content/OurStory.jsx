@@ -2,10 +2,12 @@ import React from "react";
 import { motion } from "framer-motion";
 
 import { fadeUp } from "../../lib/motion";
+import Seo from "../../components/Seo";
 
 export default function OurStory() {
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
+      <Seo title="Our Story" description="Discover the story, vision and purpose behind Paara Jewellery." />
       <div className="max-w-4xl mx-auto px-6 md:px-10 py-20">
         <motion.p initial="hidden" animate="show" variants={fadeUp} className="text-xs uppercase tracking-[.32em] text-gold text-center">
           Paara. Our Story

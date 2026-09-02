@@ -6,6 +6,7 @@ import ProductFlipCard from "../components/ProductFlipCard";
 import VaultScrollStage from "../components/VaultScrollStage";
 import { apiGet, getProducts, getVaultToday } from "../lib/api";
 import { fadeUp, heroParent, childFadeUp } from "../lib/motion";
+import Seo from "../components/Seo";
 
 const placeholderImg = (label, index = 0) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -139,6 +140,7 @@ export default function Home() {
 
   return (
     <main ref={homeRef} className="bg-sand text-cocoa font-body overflow-hidden">
+      <Seo title="Paara Jewellery" description="Discover thoughtfully designed jewellery made to be loved, inspired by the ocean and made for you." />
       <AnimatePresence>{showSplash && <SplashScreen />}</AnimatePresence>
       <Hero />
       <MeetOwner />

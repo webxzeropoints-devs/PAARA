@@ -3,6 +3,7 @@ import { ChevronDown, Mail, MessageCircle, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import AccountPageLayout from "./AccountPageLayout";
+import Seo from "../../components/Seo";
 
 const PAARA_CONTACT_NUMBER = "+91 95142 93949";
 const PAARA_CONTACT_TEL = "tel:+919514293949";
@@ -26,6 +27,7 @@ export default function CustomerCare() {
 
   return (
     <AccountPageLayout title="Customer Care" subtitle="We're here to help with orders, returns, and everything in between.">
+      <Seo title="Customer Care" description="Contact Paara Jewellery for order support, returns and customer care." />
       <div className="grid md:grid-cols-3 gap-4 mb-12">
         <ContactCard icon={<Mail size={18} strokeWidth={1.4} />} label="Email us" value="support@paarajewellery.in" />
         <ContactCard icon={<Phone size={18} strokeWidth={1.4} />} label="Call us" value={PAARA_CONTACT_NUMBER} href={PAARA_CONTACT_TEL} />

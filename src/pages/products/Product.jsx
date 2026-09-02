@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Seo from "../../components/Seo";
 
 const Product = () => {
   const navigate = useNavigate();
@@ -855,6 +856,7 @@ const Product = () => {
           "--sea-bg": `url("${seaBackground}")`,
         }}
       >
+        <Seo title="Shop Jewellery" description="Shop Paara Jewellery collections, new arrivals and everyday pieces." />
         {/* ====================================================
             NAVBAR
         ===================================================== */}

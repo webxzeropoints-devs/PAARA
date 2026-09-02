@@ -19,6 +19,7 @@ import {
   postShippingQuote,
 } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
+import Seo from "../../components/Seo";
 import { INDIAN_STATES, STATE_CITIES } from "../../lib/locations";
 
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
@@ -369,6 +370,7 @@ export default function Checkout() {
 
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
+      <Seo title="Checkout" description="Complete your Paara Jewellery order securely." />
       {previewUrl && (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-cocoa/50 p-4">
           <div className="flex h-[90vh] w-full max-w-3xl flex-col bg-shell">

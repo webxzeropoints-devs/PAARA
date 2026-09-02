@@ -69,7 +69,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
       className={`group relative ${compact ? "w-56 md:w-64 shrink-0" : "w-full"} ${boutique ? "max-w-[280px] mx-auto" : ""}`}
     >
       <div
-        className={`relative w-full aspect-[4/5] ${disableFlip ? "" : "[perspective:1200px] cursor-pointer"}`}
+        className={`relative w-full aspect-square sm:aspect-[4/5] ${disableFlip ? "" : "[perspective:1200px] cursor-pointer"}`}
         {...(!disableFlip && {
           onClick: onActivate,
           role: "button",
@@ -120,7 +120,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
               }}
               aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
               aria-pressed={saved}
-              className="absolute top-3 right-3 bg-sand/80 backdrop-blur-sm rounded-full p-2 hover:bg-sand transition-colors"
+              className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 bg-sand/80 backdrop-blur-sm rounded-full p-1.5 sm:p-2 hover:bg-sand transition-colors"
             >
               <Heart
                 size={16}
@@ -164,15 +164,15 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
         </motion.div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-1.5 sm:mt-3 px-1.5 sm:px-0">
         <Link
           to={`/product/${product?.slug || product?.id}`}
           onClick={(e) => e.stopPropagation()}
-          className={`font-product-name text-base text-cocoa hover:text-gold transition-colors block`}
+          className="font-product-name text-xs sm:text-base text-cocoa hover:text-gold transition-colors block line-clamp-2"
         >
           {product?.name}
         </Link>
-        <div className={`font-numeric text-gold mt-1 text-sm ${boutique ? "font-medium" : ""}`}>{formatPrice(product?.price)}</div>
+        <div className={`font-numeric text-xs sm:text-sm text-gold mt-1 ${boutique ? "font-medium" : ""}`}>{formatPrice(product?.price)}</div>
       </div>
 
       <style>{`

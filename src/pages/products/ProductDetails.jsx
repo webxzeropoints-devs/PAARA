@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
-import { getProductBySlug, getToken } from "../../lib/api";
+import { getProductBySlug, getToken, resolveAssetUrl } from "../../lib/api";
 import { useCart } from "../../lib/cart.jsx";
 import { fadeUp } from "../../lib/motion";
+import Seo from "../../components/Seo";
 
 const placeholderImg = (label, idx = 0) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -104,6 +105,7 @@ export default function ProductDetails() {
 
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
+      <Seo title={product.name} description={product.description || `${product.name} by Paara Jewellery, crafted for everyday moments.`} image={resolveAssetUrl(images[0])} type="product" />
       <div className="max-w-[1300px] mx-auto px-6 md:px-10 py-10 md:py-14">
         <button
           onClick={() => navigate(-1)}
