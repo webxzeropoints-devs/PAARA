@@ -38,6 +38,20 @@ const normalizeBlobAccess = () => {
   return configured === 'private' ? 'private' : 'public';
 };
 
+const blobAuthOptions = () => {
+  const token = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
+  const storeId = String(process.env.BLOB_STORE_ID || '').trim();
+  if (token) return { token };
+  if (storeId) return { storeId };
+  return {};
+};
+
+const safeUploadError = (error) => {
+  const message = String(error?.message || 'Unknown storage error')
+    .replace(/(token|authorization|secret|key)[^,; ]*/gi, '$1 [redacted]');
+  return { code: error?.code || error?.name || 'UPLOAD_STORAGE_ERROR', message };
+};
+
 const cleanImages = (images) => {
   if (!Array.isArray(images)) return null;
   if (images.length > 3) throw new Error('A product can have at most 3 images.');
@@ -57,17 +71,30 @@ const writeImages = (id, images) => {
 const saveUploadedImages = async (files) => {
   if (!files || files.length === 0) return [];
 
+  files.forEach((file) => {
+    if (!file?.buffer?.length || !file.mimetype?.startsWith('image/')) {
+      throw Object.assign(new Error('The uploaded image data was empty or was not an image.'), { code: 'INVALID_IMAGE_UPLOAD' });
+    }
+  });
+
   if (db.isServerless) {
+    if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+      throw Object.assign(new Error('Persistent image storage is not configured for this deployment.'), { code: 'BLOB_STORAGE_NOT_CONFIGURED' });
+    }
     const { put } = require('@vercel/blob');
     return Promise.all(files.map(async (file) => {
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8);
       const filename = `product-${timestamp}-${random}${path.extname(file.originalname)}`;
       const blob = await put(`products/${filename}`, file.buffer, {
-        access: normalizeBlobAccess(),
+        access: 'public',
         addRandomSuffix: false,
         contentType: file.mimetype,
+        ...blobAuthOptions(),
       });
+      if (!blob?.url || !/^https?:\/\//i.test(blob.url)) {
+        throw Object.assign(new Error('Persistent image storage returned no public URL.'), { code: 'BLOB_URL_MISSING' });
+      }
       return blob.url;
     }));
   }
@@ -250,8 +277,9 @@ router.post('/products', async (q, s) => {
     try {
       uploadedImages = await saveUploadedImages(filesArray);
     } catch (imgErr) {
-      console.error('Image upload failed:', imgErr.message);
-      return s.status(400).json({ error: 'Failed to process uploaded images.' });
+      const uploadError = safeUploadError(imgErr);
+      console.error('Image upload failed:', uploadError);
+      return s.status(400).json({ error: `Could not store uploaded images: ${uploadError.message}`, code: uploadError.code });
     }
 
     const hasExistingImages = Object.prototype.hasOwnProperty.call(q.body, 'existingImages');
