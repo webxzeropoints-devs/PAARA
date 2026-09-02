@@ -32,6 +32,7 @@ import Wishlist from "./pages/shopping/wishlist";
 import OrderConfirmation from "./pages/shopping/order-confirmation";
 import OurStory from "./pages/content/OurStory";
 import Journal from "./pages/content/Journal";
+import ReturnPolicy from "./pages/content/ReturnPolicy";
 
 import Addresses from "./pages/account/Addresses";
 import GiftCards from "./pages/account/GiftCards";
@@ -85,6 +86,7 @@ function AnimatedRoutes() {
 
       <Route path="/our-story" element={<OurStory />} />
       <Route path="/journal" element={<Journal />} />
+      <Route path="/return-policy" element={<ReturnPolicy />} />
 
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<Checkout />} />

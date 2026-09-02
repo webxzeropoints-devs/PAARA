@@ -192,7 +192,7 @@ h3 {
 .customer-love-section > .love-marquee {
   position: absolute;
   inset-inline: 0;
-  top: 50%;
+  top: calc(50% + 2rem);
   margin-top: 0;
   transform: translateY(-50%);
 }

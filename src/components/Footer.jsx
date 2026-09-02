@@ -94,7 +94,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-cocoa/70">
               <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">FAQs</Link></li>
               <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">Shipping &amp; Delivery</Link></li>
-              <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">Returns &amp; Exchanges</Link></li>
+              <li><Link to="/return-policy" className="hover:text-gold transition-colors">Returns &amp; Exchanges</Link></li>
               <li><Link to="/account/track-order" className="hover:text-gold transition-colors">Track Order</Link></li>
               <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">Jewellery Care</Link></li>
             </ul>

@@ -1410,7 +1410,7 @@ const Product = () => {
                 Shipping & Delivery
               </button>
 
-              <button>
+              <button onClick={() => navigate("/return-policy")}>
                 Returns & Exchanges
               </button>
 

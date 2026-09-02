@@ -53,7 +53,7 @@ export default function CustomerCare() {
 
           <div className="mt-6 flex flex-wrap gap-4 text-xs uppercase tracking-widest">
             <Link to="/account/orders" className="text-gold hover:text-cocoa transition-colors">Order help →</Link>
-            <Link to="/account/track-order" className="text-gold hover:text-cocoa transition-colors">Return / exchange →</Link>
+            <Link to="/return-policy" className="text-gold hover:text-cocoa transition-colors">Return / exchange →</Link>
           </div>
         </div>
 
