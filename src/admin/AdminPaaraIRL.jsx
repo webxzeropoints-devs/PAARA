@@ -9,11 +9,11 @@ const readImage = (file, setImage, setError) => {
   reader.readAsDataURL(file);
 };
 export default function AdminPaaraIRL() {
-  const [form, setForm] = useState({ slots: Array.from({ length: 3 }, () => ({ image_url: "", caption: "", image_file: null })), owner_image_url: "", owner_image_file: null });
+  const [form, setForm] = useState({ image_url: "", owner_image_url: "", caption: "", image_file: null, owner_image_file: null });
   const [error, setError] = useState(""), [saved, setSaved] = useState("");
-  const load = useCallback(async () => { try { const data = await adminRequest("/admin/paara-irl"); setForm({ slots: (data?.slots || []).map((slot) => ({ ...slot, image_file: null })), owner_image_url: data?.owner_image_url || "", owner_image_file: null }); } catch (err) { setError(err.message); } }, []);
+  const load = useCallback(async () => { try { const row = await adminRequest("/admin/paara-irl"); setForm({ image_url: row?.image_url || "", owner_image_url: row?.owner_image_url || "", caption: row?.caption || "", image_file: null, owner_image_file: null }); } catch (err) { setError(err.message); } }, []);
   useEffect(() => { load(); }, [load]);
-  const save = async (event) => { event.preventDefault(); setError(""); try { const body = new FormData(); body.append("slots", JSON.stringify(form.slots.map((slot, sort_order) => ({ image_url: slot.image_url, caption: slot.caption, sort_order })))); body.append("owner_image_url", form.owner_image_url); form.slots.forEach((slot, index) => { if (slot.image_file) { body.append("images", slot.image_file); body.append("upload_slots", `slot:${index}`); } }); if (form.owner_image_file) { body.append("images", form.owner_image_file); body.append("upload_slots", "owner"); } await adminRequest("/admin/paara-irl", { method: "PUT", body }); await load(); setSaved("Saved."); } catch (err) { setError(err.message); } };
+  const save = async (event) => { event.preventDefault(); setError(""); try { const body = new FormData(); body.append("image_url", form.image_url); body.append("owner_image_url", form.owner_image_url); body.append("caption", form.caption); if (form.image_file) { body.append("images", form.image_file); body.append("upload_slots", "image"); } if (form.owner_image_file) { body.append("images", form.owner_image_file); body.append("upload_slots", "owner"); } await adminRequest("/admin/paara-irl", { method: "PUT", body }); await load(); setSaved("Saved."); } catch (err) { setError(err.message); } };
   return (
     <div className="max-w-2xl">
       <h1 className="font-display text-4xl text-cocoa mb-2">Paara IRL</h1>
@@ -25,17 +25,16 @@ export default function AdminPaaraIRL() {
             <h2 className="font-display text-2xl text-cocoa">Paara IRL Image</h2>
             <p className="mt-1 text-sm text-cocoa/60">This image appears in the Paara IRL section on the homepage.</p>
           </div>
-          {form.slots.map((slot, index) => <div key={slot.sort_order ?? index} className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="h-36 w-36 shrink-0 overflow-hidden border border-gold/35 bg-sand">
-              {slot.image_url ? <img src={slot.image_url} alt={`Current Paara IRL image slot ${index + 1}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center px-4 text-center text-xs text-cocoa/50">No image set</div>}
+              {form.image_url ? <img src={form.image_url} alt="Current Paara IRL image" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center px-4 text-center text-xs text-cocoa/50">No image set</div>}
             </div>
             <div className="min-w-0 flex-1 space-y-3">
-              <p className="text-xs uppercase tracking-widest text-cocoa">Slot {index + 1}</p>
-              <label className="block text-xs uppercase tracking-widest text-cocoa">Image URL<input value={slot.image_url || ""} onChange={(e) => setForm({ ...form, slots: form.slots.map((item, itemIndex) => itemIndex === index ? { ...item, image_url: e.target.value } : item) })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case outline-none focus:border-gold" /></label>
-              <label className="block text-xs uppercase tracking-widest text-cocoa">Upload replacement<input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0], ({ file, preview }) => setForm({ ...form, slots: form.slots.map((item, itemIndex) => itemIndex === index ? { ...item, image_url: preview, image_file: file } : item) }), setError)} className="mt-2 block w-full text-sm normal-case" /></label>
-              <label className="block text-xs uppercase tracking-widest text-cocoa">Caption<input value={slot.caption || ""} onChange={(e) => setForm({ ...form, slots: form.slots.map((item, itemIndex) => itemIndex === index ? { ...item, caption: e.target.value } : item) })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case outline-none focus:border-gold" /></label>
+              <label className="block text-xs uppercase tracking-widest text-cocoa">Image URL<input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case outline-none focus:border-gold" /></label>
+              <label className="block text-xs uppercase tracking-widest text-cocoa">Upload replacement<input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0], ({ file, preview }) => setForm({ ...form, image_url: preview, image_file: file }), setError)} className="mt-2 block w-full text-sm normal-case" /></label>
+              <label className="block text-xs uppercase tracking-widest text-cocoa">Caption<input value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case outline-none focus:border-gold" /></label>
             </div>
-          </div>)}
+          </div>
         </section>
         <section className="space-y-3 border-t border-cocoa/10 pt-6">
           <div>

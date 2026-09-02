@@ -4,6 +4,9 @@ import { Link } from "react-router-dom";
 
 import AccountPageLayout from "./AccountPageLayout";
 
+const PAARA_CONTACT_NUMBER = "+91 95142 93949";
+const PAARA_CONTACT_TEL = "tel:+919514293949";
+
 const FAQS = [
   { q: "How do I track my order?", a: "Go to Account → Track Order and enter your order number to see its current status." },
   { q: "What is your return policy?", a: "Unworn pieces in original packaging can be returned within 7 days of delivery." },
@@ -25,7 +28,7 @@ export default function CustomerCare() {
     <AccountPageLayout title="Customer Care" subtitle="We're here to help with orders, returns, and everything in between.">
       <div className="grid md:grid-cols-3 gap-4 mb-12">
         <ContactCard icon={<Mail size={18} strokeWidth={1.4} />} label="Email us" value="support@paarajewellery.in" />
-        <ContactCard icon={<Phone size={18} strokeWidth={1.4} />} label="Call us" value="+91 98765 43210" />
+        <ContactCard icon={<Phone size={18} strokeWidth={1.4} />} label="Call us" value={PAARA_CONTACT_NUMBER} href={PAARA_CONTACT_TEL} />
         <ContactCard icon={<MessageCircle size={18} strokeWidth={1.4} />} label="Live chat" value="Mon–Sat, 10am–7pm" />
       </div>
 
@@ -84,14 +87,14 @@ export default function CustomerCare() {
   );
 }
 
-function ContactCard({ icon, label, value }) {
+function ContactCard({ icon, label, value, href }) {
   return (
     <div className="border border-cocoa/10 rounded-sm p-5 flex items-center gap-3 bg-white/40">
       <span className="text-gold shrink-0">{icon}</span>
       <div>
         <p className="text-xs uppercase tracking-widest text-cocoa/60">{label}</p>
         <p className="text-sm mt-0.5">
-          {label === "Email us" ? <a href={`mailto:${value}`} className="hover:text-gold transition-colors">{value}</a> : value}
+          {href ? <a href={href} className="hover:text-gold transition-colors">{value}</a> : label === "Email us" ? <a href={`mailto:${value}`} className="hover:text-gold transition-colors">{value}</a> : value}
         </p>
       </div>
     </div>

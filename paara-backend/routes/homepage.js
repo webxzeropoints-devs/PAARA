@@ -20,8 +20,8 @@ router.get('/collection-tiles',(req,res)=>{
 });
 router.get('/paara-irl',(req,res)=>{
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  const rows = db.prepare('SELECT id,image_url,owner_image_url,caption,updated_at,sort_order FROM paara_irl WHERE sort_order BETWEEN 0 AND 2 ORDER BY sort_order ASC, id ASC').all();
-  res.json({ slots: rows.map((row) => ({ ...row, image_url: publicImageUrl(row.image_url) })), owner_image_url: publicImageUrl(rows[0]?.owner_image_url || '') });
+  const row = db.prepare('SELECT id,image_url,owner_image_url,caption,updated_at FROM paara_irl WHERE id=1').get() || null;
+  res.json(row ? { ...row, image_url: publicImageUrl(row.image_url), owner_image_url: publicImageUrl(row.owner_image_url) } : null);
 });
 
 router.get('/worn-by-you',(req,res)=>{

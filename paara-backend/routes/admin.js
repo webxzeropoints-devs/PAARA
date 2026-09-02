@@ -447,17 +447,13 @@ router.delete('/tile-products/:id', (q, s) => {
 });
 
 router.get('/paara-irl', (q, s) => {
-  const rows = db.prepare('SELECT * FROM paara_irl WHERE sort_order BETWEEN 0 AND 2 ORDER BY sort_order ASC, id ASC').all();
-  const owner = rows.find((row) => row.owner_image_url);
-  s.json({ slots: rows.map((row) => ({ ...row, image_url: publicImageUrl(row.image_url) })), owner_image_url: publicImageUrl(owner?.owner_image_url || '') });
+  const row = db.prepare('SELECT * FROM paara_irl WHERE id=1').get() || null;
+  s.json(row ? { ...row, image_url: publicImageUrl(row.image_url), owner_image_url: publicImageUrl(row.owner_image_url) } : null);
 });
 
 router.put('/paara-irl', async (q, s) => {
   try {
     const { image_url, owner_image_url, caption } = q.body || {};
-    let slots = [];
-    try { slots = q.body?.slots ? JSON.parse(q.body.slots) : []; } catch { throw Object.assign(new Error('Invalid image slot data.'), { code: 'INVALID_INPUT' }); }
-    if (!Array.isArray(slots) || slots.length !== 3) throw Object.assign(new Error('Exactly three Paara IRL slots are required.'), { code: 'INVALID_INPUT' });
     const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
     const files = asFiles(q.files);
     const uploadedImages = await Promise.all(files.map((file, index) => saveUploadedImage(file, uploadSlots[index] === 'owner' ? 'owner' : 'paara-irl')));
@@ -466,16 +462,17 @@ router.put('/paara-irl', async (q, s) => {
     const nextOwnerImageUrl = uploadedBySlot.owner || publicImageUrl(owner_image_url);
     if (String(image_url || '').startsWith('data:') && !uploadedBySlot.image) throw Object.assign(new Error('Upload the image file instead of pasting image data.'), { code: 'BASE64_IMAGE_NOT_ALLOWED' });
     if (String(owner_image_url || '').startsWith('data:') && !uploadedBySlot.owner) throw Object.assign(new Error('Upload the image file instead of pasting image data.'), { code: 'BASE64_IMAGE_NOT_ALLOWED' });
-    const updateSlot = db.prepare('UPDATE paara_irl SET image_url=?, caption=?, updated_at=datetime(\'now\') WHERE sort_order=?');
-    for (const slot of slots) {
-      const uploadedSlotImage = uploadedBySlot[`slot:${slot.sort_order}`];
-      const slotImage = uploadedSlotImage || (slot.sort_order === 0 && nextImageUrl ? nextImageUrl : publicImageUrl(slot.image_url || ''));
-      if (String(slotImage).startsWith('data:')) throw Object.assign(new Error('Upload the image file instead of pasting image data.'), { code: 'BASE64_IMAGE_NOT_ALLOWED' });
-      updateSlot.run(slotImage, String(slot.caption || ''), slot.sort_order);
-    }
-    db.prepare('UPDATE paara_irl SET owner_image_url=?, updated_at=datetime(\'now\') WHERE sort_order=0').run(nextOwnerImageUrl || null);
-    const rows = db.prepare('SELECT * FROM paara_irl WHERE sort_order BETWEEN 0 AND 2 ORDER BY sort_order ASC, id ASC').all();
-    s.json({ slots: rows, owner_image_url: publicImageUrl(rows[0]?.owner_image_url || '') });
+    db.prepare(`
+      INSERT INTO paara_irl (id, image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
+      VALUES (1, ?, ?, ?, 0, 1, datetime('now'), datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        image_url = excluded.image_url,
+        owner_image_url = excluded.owner_image_url,
+        caption = excluded.caption,
+        updated_at = datetime('now')
+    `).run(nextImageUrl || '', nextOwnerImageUrl || null, caption || null);
+    const row = db.prepare('SELECT * FROM paara_irl WHERE id=1').get();
+    s.json({ ...row, image_url: publicImageUrl(row.image_url), owner_image_url: publicImageUrl(row.owner_image_url) });
   } catch (error) {
     const uploadError = safeUploadError(error);
     console.error('Paara IRL image update failed:', error);

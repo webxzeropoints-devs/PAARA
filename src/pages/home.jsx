@@ -433,7 +433,7 @@ function PaaraIRL() {
   useEffect(() => {
     let cancelled = false;
     apiGet(`/homepage/paara-irl?fresh=${Date.now()}`)
-      .then((data) => !cancelled && setEntries(Array.isArray(data?.slots) ? data.slots : []))
+      .then((data) => !cancelled && setEntries(data ? [data] : []))
       .catch(() => !cancelled && setEntries([]));
     return () => { cancelled = true; };
   }, []);
