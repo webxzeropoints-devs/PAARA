@@ -108,7 +108,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             {product?.is_exclusive && (
-              <span className="absolute top-3 left-3 px-3 py-1 bg-espresso-ink/85 text-pearl font-script italic text-sm rounded-sm tracking-wide">
+              <span className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-0.5 sm:px-3 sm:py-1 bg-espresso-ink/85 text-pearl font-script italic text-xs sm:text-sm rounded-sm tracking-wide">
                 Exclusive
               </span>
             )}
@@ -168,7 +168,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
         <Link
           to={`/product/${product?.slug || product?.id}`}
           onClick={(e) => e.stopPropagation()}
-          className="font-product-name text-xs sm:text-base text-cocoa hover:text-gold transition-colors block line-clamp-2"
+          className="font-product-name text-xs sm:text-sm text-cocoa hover:text-gold transition-colors block line-clamp-2"
         >
           {product?.name}
         </Link>

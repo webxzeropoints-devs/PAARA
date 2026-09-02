@@ -6,7 +6,7 @@ export default function VaultScrollStage({ children }) {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto px-4 py-5">
+    <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-6xl mx-auto px-4 py-5">
       {cards.map((card, index) => (
         <motion.div
           key={card.key ?? index}

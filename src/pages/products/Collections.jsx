@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Filter, X } from "lucide-react";
 
 import ProductFlipCard from "../../components/ProductFlipCard";
 import { getCategories, getProducts } from "../../lib/api";
@@ -26,6 +27,8 @@ export default function Collections() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileDraft, setMobileDraft] = useState(null);
 
   const filters = useMemo(() => {
     const category = params.get("category") || "";
@@ -87,6 +90,31 @@ export default function Collections() {
     setParams(next, { replace: true });
   };
 
+  const activeFilterCount = ["gender", "material", "vibe", "category", "subcategory"].filter((key) => filters[key]).length;
+  const openMobileFilters = () => {
+    setMobileDraft({ ...filters });
+    setMobileFiltersOpen(true);
+  };
+  const closeMobileFilters = () => {
+    setMobileFiltersOpen(false);
+    setMobileDraft(null);
+  };
+  const applyMobileFilters = () => {
+    const next = new URLSearchParams(params);
+    ["gender", "material", "vibe", "category", "subcategory", "sort"].forEach((key) => {
+      if (mobileDraft?.[key] && mobileDraft[key] !== (key === "sort" ? "popularity" : "")) next.set(key, mobileDraft[key]);
+      else next.delete(key);
+    });
+    setParams(next, { replace: true });
+    setMobileFiltersOpen(false);
+    setMobileDraft(null);
+  };
+  const clearMobileFilters = () => {
+    setParams({}, { replace: true });
+    setMobileFiltersOpen(false);
+    setMobileDraft(null);
+  };
+
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
       <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-14">
@@ -102,7 +130,7 @@ export default function Collections() {
 
         <div className="grid md:grid-cols-[220px_1fr] gap-10">
           {/* Filter rail */}
-          <aside className="md:sticky md:top-24 h-fit border border-cocoa/10 rounded-sm p-5 bg-sand/60">
+          <aside className="hidden md:block md:sticky md:top-24 h-fit border border-cocoa/10 rounded-sm p-5 bg-sand/60">
             <h2 className="text-xs uppercase tracking-widest text-cocoa/60 mb-3">Filters</h2>
 
             <FilterGroup
@@ -154,6 +182,14 @@ export default function Collections() {
           </aside>
 
           <section>
+            <button
+              type="button"
+              onClick={openMobileFilters}
+              className="mb-5 flex w-full items-center justify-between rounded-sm border border-cocoa/15 bg-sand/60 px-4 py-3 text-xs uppercase tracking-widest md:hidden"
+            >
+              <span className="flex items-center gap-2"><Filter size={15} aria-hidden="true" /> Filters</span>
+              {activeFilterCount > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold px-1 text-[10px] text-white">{activeFilterCount}</span>}
+            </button>
             {error && (
               <div className="text-xs text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-sm mb-6">
                 {error}
@@ -191,6 +227,38 @@ export default function Collections() {
           </section>
         </div>
       </div>
+      {mobileFiltersOpen && mobileDraft && (
+        <div className="fixed inset-0 z-50 flex items-end bg-cocoa/40 md:hidden" onClick={closeMobileFilters}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Product filters"
+            className="max-h-[85vh] w-full overflow-y-auto rounded-t-2xl bg-shell p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-display text-2xl">Filters</h2>
+              <button type="button" onClick={closeMobileFilters} aria-label="Close filters" className="rounded-full p-2 text-cocoa/60 hover:bg-sand">
+                <X size={18} />
+              </button>
+            </div>
+            <FilterGroup label="Gender" value={mobileDraft.gender} options={GENDERS} onChange={(value) => setMobileDraft((current) => ({ ...current, gender: value }))} />
+            <FilterGroup label="Material" value={mobileDraft.material} options={MATERIALS} onChange={(value) => setMobileDraft((current) => ({ ...current, material: value }))} />
+            <FilterGroup label="Vibe" value={mobileDraft.vibe} options={VIBES} onChange={(value) => setMobileDraft((current) => ({ ...current, vibe: value }))} />
+            <FilterGroup label="Collection" value={mobileDraft.category} options={categories.map((category) => category.slug)} onChange={(value) => setMobileDraft((current) => ({ ...current, category: value, subcategory: "" }))} />
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-cocoa/60">Sort</p>
+              <select value={mobileDraft.sort} onChange={(event) => setMobileDraft((current) => ({ ...current, sort: event.target.value }))} className="w-full border-b border-cocoa/30 bg-transparent py-2 text-sm font-semibold outline-none focus:border-gold">
+                {SORTS.map((sort) => <option key={sort.value} value={sort.value}>{sort.label}</option>)}
+              </select>
+            </div>
+            <div className="mt-6 flex gap-3 border-t border-cocoa/10 pt-4">
+              <button type="button" onClick={clearMobileFilters} className="flex-1 border border-cocoa/20 px-4 py-3 text-xs uppercase tracking-widest text-cocoa/70">Clear All</button>
+              <button type="button" onClick={applyMobileFilters} className="flex-1 bg-gold px-4 py-3 text-xs uppercase tracking-widest text-white hover:bg-cocoa">Apply Filters</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
