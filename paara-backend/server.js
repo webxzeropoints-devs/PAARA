@@ -11,6 +11,7 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
+const path = require('path');
 const db = require('./db/database');
 const { maskSensitiveText } = require('./utils/validate');
 const { formatOrderNumber } = require('./utils/orderNumber');
@@ -95,6 +96,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+// Serve the shared public assets used by the storefront and local upload files.
+app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/assets', express.static(path.join(__dirname, '..', 'public', 'assets')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Both Vercel and Render sit behind a reverse proxy that sets X-Forwarded-For.
 // Without this, express-rate-limit can't safely derive client IPs and throws
@@ -262,16 +269,41 @@ const adminColumns = db.prepare("PRAGMA table_info(admins)").all().map((column) 
 if (adminColumns.length && !adminColumns.includes('must_change_password')) {
   db.exec('ALTER TABLE admins ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 1');
 }
-const adminCount = db.prepare('SELECT COUNT(*) as c FROM admins').get().c;
-if (adminCount === 0) {
+const ensureDefaultAdmin = () => {
   const bcrypt = require('bcryptjs');
-  const tempHash = bcrypt.hashSync('Paara@123', 10);
+  const defaultEmail = 'paara@gmail.com';
+  const defaultName = 'Paara Admin';
+  const defaultHash = bcrypt.hashSync('Paara@123', 10);
+  const existingDefault = db.prepare('SELECT id, email, password_hash, must_change_password FROM admins WHERE lower(email) = ?').get(defaultEmail.toLowerCase());
+
+  if (existingDefault) {
+    const needsReset = existingDefault.email.toLowerCase() !== defaultEmail.toLowerCase()
+      || existingDefault.password_hash !== defaultHash
+      || Number(existingDefault.must_change_password) !== 1;
+
+    if (needsReset) {
+      db.prepare('UPDATE admins SET email = ?, password_hash = ?, must_change_password = 1 WHERE id = ?')
+        .run(defaultEmail, defaultHash, existingDefault.id);
+      console.log('[ADMIN SAFETY NET] Normalized the default admin record to the dashboard login account.');
+    }
+    return;
+  }
+
+  const firstAdmin = db.prepare('SELECT id FROM admins ORDER BY id LIMIT 1').get();
+  if (firstAdmin) {
+    db.prepare('UPDATE admins SET name = ?, email = ?, password_hash = ?, must_change_password = 1 WHERE id = ?')
+      .run(defaultName, defaultEmail, defaultHash, firstAdmin.id);
+    console.log('[ADMIN SAFETY NET] Replaced the stale admin record with the dashboard login account.');
+    return;
+  }
+
   db.prepare(`
     INSERT INTO admins (name, email, password_hash, must_change_password)
     VALUES (?, ?, ?, 1)
-  `).run('Admin', 'paara@gmail.com', tempHash);
-  console.log('[ADMIN SAFETY NET] No admin account found after DB init; created temporary admin requiring password change.');
-}
+  `).run(defaultName, defaultEmail, defaultHash);
+  console.log('[ADMIN SAFETY NET] No admin account found after DB init; created default dashboard admin requiring password change.');
+};
+ensureDefaultAdmin();
 
 db.exec(`CREATE TABLE IF NOT EXISTS password_reset_otps (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

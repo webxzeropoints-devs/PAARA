@@ -1,4 +1,5 @@
 const { round2 } = require('./pricing');
+const db = require('../db/database');
 
 const RATES = {
   chennai: { online: 70, cod: 90 },
@@ -7,6 +8,21 @@ const RATES = {
   groupedStates: { online: 110, cod: 130 },
   metroCities: { online: 130, cod: 150 },
 };
+
+function normalizePaymentMethod(paymentMethod) {
+  const raw = String(paymentMethod || '').trim().toLowerCase();
+  if (raw === 'cod') return 'cod';
+  if (raw === 'razorpay' || raw === 'manual_upi' || raw === 'online') return 'online';
+  return 'online';
+}
+
+function getFlatCityRate(city) {
+  const normalizedCity = String(city || '').trim();
+  if (!normalizedCity) return null;
+  const row = db.prepare('SELECT name, flat_shipping_rate FROM cities WHERE lower(name) = lower(?)').get(normalizedCity);
+  if (!row) return null;
+  return Number(row.flat_shipping_rate || 0);
+}
 
 function getDeliveryRegion({ city, state }) {
   const normalizedCity = String(city || '').trim().toLowerCase();
@@ -26,10 +42,23 @@ function rateForRegion(region, paymentMethod) {
         : region === 'Andhra Pradesh / Kerala / Karnataka' ? RATES.groupedStates
           : region === 'Mumbai / Kolkata / Delhi' ? RATES.metroCities : null;
   if (!rates) return null;
-  return String(paymentMethod || '').trim().toLowerCase() === 'cod' ? rates.cod : rates.online;
+  return normalizePaymentMethod(paymentMethod) === 'cod' ? rates.cod : rates.online;
 }
 
 function calculateShipping({ city, state, paymentMethod = 'razorpay', totalWeightKg }) {
+  const normalizedCity = String(city || '').trim();
+  const flatRate = getFlatCityRate(normalizedCity);
+  if (flatRate !== null) {
+    return {
+      method: 'flat_city_rate',
+      city: normalizedCity,
+      state: String(state || '').trim(),
+      amount: round2(flatRate),
+      ratePerKg: null,
+      weightKg: Number(totalWeightKg) || 0,
+    };
+  }
+
   const region = getDeliveryRegion({ city, state });
   if (!region) throw new Error(`No delivery rate is configured for ${city || 'the selected city'}, ${state || 'the selected state'}.`);
   const weight = Number(totalWeightKg);
