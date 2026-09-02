@@ -21,7 +21,10 @@ export default function AdminWornByYou() {
   const load = useCallback(async () => {
     try {
       const rows = await adminRequest("/admin/worn-by-you");
-      setSlots((rows || []).map((row) => ({ ...blank(), ...row, image_url: resolveAssetUrl(row.image_url) })));
+      setSlots([0, 1, 2].map((index) => {
+        const row = (rows || []).find((candidate) => Number(candidate.sort_order) === index) || rows?.[index];
+        return { ...blank(), ...(row || {}), sort_order: index, image_url: resolveAssetUrl(row?.image_url) };
+      }));
     } catch (err) {
       setError(err.message || "Could not load Worn By You images.");
     }
@@ -35,14 +38,14 @@ export default function AdminWornByYou() {
   };
 
   const remove = async (slot) => {
-    if (!slot.id || !window.confirm("Delete this Worn By You entry?")) return;
+    if (!slot.id || !window.confirm("Delete this Worn By You image?")) return;
     setError("");
     try {
       await adminRequest(`/admin/worn-by-you/${slot.id}`, { method: "DELETE" });
       await load();
-      setSaved("Entry deleted.");
+      setSaved("Image deleted.");
     } catch (err) {
-      setError(err.message || "Could not delete this Worn By You entry.");
+      setError(err.message || "Could not delete this Worn By You image.");
     }
   };
 
@@ -79,7 +82,7 @@ export default function AdminWornByYou() {
           {slots.map((slot, index) => (
             <section key={slot.id || index} className="min-w-0 space-y-3 border border-cocoa/10 bg-sand/35 p-4">
               <div className="flex items-center justify-between"><h2 className="font-display text-xl text-cocoa">Slot {index + 1}</h2>{slot.id && <button type="button" onClick={() => remove(slot)} className="text-xs uppercase tracking-widest text-cocoa/60 hover:text-red-700">Delete</button>}</div>
-              <input required placeholder="Image link" value={slot.image_url} onChange={(event) => update(index, { image_url: event.target.value, file: null })} className="w-full min-w-0 border-b border-cocoa/25 bg-transparent py-2 text-sm outline-none focus:border-gold" />
+              <input placeholder={slot.image_url?.startsWith("data:") ? "Legacy image stored" : "Image link"} value={slot.image_url?.startsWith("data:") ? "" : slot.image_url} onChange={(event) => update(index, { image_url: event.target.value, file: null })} className="w-full min-w-0 border-b border-cocoa/25 bg-transparent py-2 text-sm outline-none focus:border-gold" />
               <label className="block text-xs uppercase tracking-widest text-cocoa/70">Or upload a photo<input type="file" accept="image/*" onChange={(event) => readImage(event.target.files?.[0], ({ file, preview }) => update(index, { image_url: preview, file }), setError)} className="mt-2 block w-full min-w-0 text-sm normal-case" /></label>
               <input placeholder="Caption" value={slot.caption || ""} onChange={(event) => update(index, { caption: event.target.value })} className="w-full min-w-0 border-b border-cocoa/25 bg-transparent py-2 text-sm outline-none focus:border-gold" />
               {slot.image_url && <img src={slot.image_url} alt={`Worn By You slot ${index + 1} preview`} className="aspect-[3/4] w-full object-cover" />}
@@ -87,8 +90,7 @@ export default function AdminWornByYou() {
           ))}
         </div>
         <div className="mt-6 flex items-center gap-3 border-t border-cocoa/10 pt-5">
-          <button type="button" onClick={() => setSlots((current) => [...current, blank()])} className="border border-gold/50 px-5 py-2.5 text-xs uppercase tracking-widest text-cocoa">Add slot</button>
-          <button type="submit" disabled={saving || slots.length === 0 || slots.some((slot) => !slot.image_url)} className="bg-gold px-5 py-2.5 text-xs uppercase tracking-widest text-sand hover:bg-cocoa disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Saving..." : "Save changes"}</button>
+          <button type="submit" disabled={saving || slots.length !== 3} className="bg-gold px-5 py-2.5 text-xs uppercase tracking-widest text-sand hover:bg-cocoa disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Saving..." : "Save changes"}</button>
           {saved && <span className="text-sm text-cocoa">{saved}</span>}
         </div>
       </form>

@@ -476,26 +476,24 @@ router.put('/paara-irl', async (q, s) => {
   }
 });
 
-router.get('/worn-by-you', (q, s) => s.json(db.prepare("SELECT id, instagram_post_url, image_url, caption, likes, sort_order, cached_at, updated_at FROM instagram_reviews WHERE product_id IS NULL ORDER BY sort_order ASC, id ASC").all()));
+router.get('/worn-by-you', (q, s) => s.json(db.prepare("SELECT id, instagram_post_url, image_url, caption, likes, sort_order, cached_at, updated_at FROM instagram_reviews WHERE product_id IS NULL AND sort_order BETWEEN 0 AND 2 ORDER BY sort_order ASC, id ASC").all()));
 
 router.put('/worn-by-you', async (q, s) => {
   let slots = q.body?.slots;
   if (typeof slots === 'string') {
     try { slots = JSON.parse(slots); } catch { slots = null; }
   }
-  if (!Array.isArray(slots) || slots.length === 0) return s.status(400).json({ error: 'At least one Worn By You slot is required.' });
+  if (!Array.isArray(slots) || slots.length !== 3) return s.status(400).json({ error: 'Exactly 3 Worn By You slots are required.' });
   try {
     const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
     const files = asFiles(q.files);
     const uploadedImages = await Promise.all(files.map((file) => saveUploadedImage(file, 'worn-by-you')));
     const uploadedBySlot = Object.fromEntries(files.map((file, index) => [uploadSlots[index], uploadedImages[index]]));
     const saved = db.transaction(() => slots.map((slot, slotIndex) => {
-      const imageUrl = uploadedBySlot[String(slotIndex)] || publicImageUrl(slot?.image_url);
+      const imageUrl = uploadedBySlot[String(slotIndex)] || publicImageUrl(slot?.image_url) || '';
       const caption = slot?.caption || null;
       const instagramPostUrl = slot?.instagram_post_url || '';
       const likes = Number(slot?.likes) || 0;
-
-      if (!imageUrl) throw Object.assign(new Error('Each Worn By You slot requires a persistent image URL or uploaded file.'), { code: 'PERSISTENT_IMAGE_URL_REQUIRED' });
 
       const targetId = Number(slot?.id);
       if (Number.isInteger(targetId) && targetId > 0) {
@@ -523,7 +521,12 @@ router.put('/worn-by-you', async (q, s) => {
 });
 
 router.delete('/worn-by-you/:id', (q, s) => {
-  const result = db.prepare('DELETE FROM instagram_reviews WHERE id = ? AND product_id IS NULL').run(q.params.id);
+  const result = db.prepare(`
+    UPDATE instagram_reviews
+    SET image_url = '', caption = NULL, instagram_post_url = '', likes = 0,
+        updated_at = datetime('now')
+    WHERE id = ? AND product_id IS NULL AND sort_order BETWEEN 0 AND 2
+  `).run(q.params.id);
   if (!result.changes) return s.status(404).json({ error: 'Worn By You entry not found.' });
   s.json({ success: true, id: Number(q.params.id) });
 });

@@ -29,7 +29,7 @@ router.get('/worn-by-you',(req,res)=>{
   const rows = db.prepare(`
     SELECT id, instagram_post_url, image_url, caption, likes, cached_at, updated_at
     FROM instagram_reviews
-    WHERE product_id IS NULL
+    WHERE product_id IS NULL AND sort_order BETWEEN 0 AND 2
     ORDER BY sort_order ASC, id ASC
     LIMIT 3
   `).all();
