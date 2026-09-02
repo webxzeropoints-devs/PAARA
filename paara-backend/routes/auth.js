@@ -9,7 +9,7 @@ const { normalizePhone, validatePassword, PASSWORD_ERROR, PHONE_ERROR, maskEmail
 const router = express.Router();
 
 router.post('/register', async (req, res) => {
-  const { name, email, password, phone } = req.body;
+  const { name, email, password, phone } = req.body || {};
   const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = normalizePhone(phone);
   if (!name || !normalizedEmail || !password) {
@@ -18,18 +18,41 @@ router.post('/register', async (req, res) => {
   if (!validatePassword(password)) return res.status(400).json({ ok: false, code: 'WEAK_PASSWORD', message: PASSWORD_ERROR });
   if (!normalizedPhone) return res.status(400).json({ ok: false, code: 'INVALID_PHONE', message: PHONE_ERROR });
 
-  const existing = db.prepare('SELECT id FROM customers WHERE email = ? OR lower(email) = ?').get(normalizedEmail, normalizedEmail);
-  if (existing) return res.status(409).json({ ok: false, code: 'ACCOUNT_EXISTS', message: 'An account with this email already exists.' });
+  let info;
+  try {
+    const existing = db.prepare('SELECT id FROM customers WHERE email = ? OR lower(email) = ?').get(normalizedEmail, normalizedEmail);
+    if (existing) return res.status(409).json({ ok: false, code: 'ACCOUNT_EXISTS', message: 'An account with this email already exists.' });
 
-  const password_hash = bcrypt.hashSync(password, 10);
-  console.log('[AUTH_REGISTER]', { email: maskEmail(normalizedEmail) });
-  const info = db
-    .prepare('INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)')
-    .run(name, normalizedEmail, normalizedPhone, password_hash);
+    const password_hash = bcrypt.hashSync(password, 10);
+    console.log('[AUTH_REGISTER]', { email: maskEmail(normalizedEmail) });
+    info = db
+      .prepare('INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)')
+      .run(name.trim(), normalizedEmail, normalizedPhone, password_hash);
+  } catch (error) {
+    console.error('[AUTH_REGISTER_DB_ERROR]', {
+      email: maskEmail(normalizedEmail),
+      error: error.message,
+      name: error.name,
+      code: error.code,
+    });
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return res.status(409).json({ ok: false, code: 'ACCOUNT_EXISTS', message: 'An account with this email already exists.' });
+    }
+    if (error.code === 'SQLITE_ERROR' && /no such (table|column)/i.test(error.message)) {
+      return res.status(503).json({ ok: false, code: 'STORAGE_UNAVAILABLE', message: 'Account registration is temporarily unavailable. Please try again shortly.' });
+    }
+    return res.status(500).json({ ok: false, code: 'REGISTRATION_FAILED', message: 'We could not create your account. Please try again.' });
+  }
 
   try {
     await issueEmailOtp(normalizedEmail, 'Signup OTP');
   } catch (error) {
+    console.error('[AUTH_REGISTER_OTP_ERROR]', {
+      email: maskEmail(normalizedEmail),
+      error: error.message,
+      name: error.name,
+      code: error.code,
+    });
     db.prepare('DELETE FROM email_otps WHERE email = ? AND verified = 0').run(normalizedEmail);
     db.prepare('DELETE FROM customers WHERE id = ?').run(info.lastInsertRowid);
     return res.status(503).json({ ok: false, code: 'OTP_DELIVERY_UNAVAILABLE', message: 'Verification email could not be sent. Please try again.' });
