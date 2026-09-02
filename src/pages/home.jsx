@@ -208,6 +208,7 @@ function MeetOwner() {
   const founderVideos = ["/videos/founder-story.mp4"];
   const [ownerPhoto, setOwnerPhoto] = useState("");
   const [ownerPhotoVersion, setOwnerPhotoVersion] = useState("current");
+  const [ownerPhotoFailed, setOwnerPhotoFailed] = useState(false);
   useEffect(() => {
     let cancelled = false;
     apiGet(`/homepage/paara-irl?fresh=${Date.now()}`)
@@ -215,11 +216,14 @@ function MeetOwner() {
         if (cancelled) return;
         setOwnerPhoto(data?.owner_image_url || "");
         setOwnerPhotoVersion(data?.updated_at || Date.now());
+        setOwnerPhotoFailed(false);
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
-  const ownerPhotoSrc = cacheBustUrl(ownerPhoto, ownerPhotoVersion) || "/assets/founder-placeholder.svg";
+  const ownerPhotoSrc = !ownerPhotoFailed
+    ? (cacheBustUrl(ownerPhoto, ownerPhotoVersion) || "/assets/founder-placeholder.svg")
+    : "/assets/founder-placeholder.svg";
   const togglePlayback = async () => {
     const video = videoRef.current;
     if (!video) return;
@@ -239,7 +243,7 @@ function MeetOwner() {
         <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-9 md:gap-10 text-center sm:text-left">
           <div className="relative shrink-0">
             <div className="founder-pearl-ring relative w-52 h-52">
-              <img src={ownerPhotoSrc} alt="Meet the Owner" className="absolute inset-4 h-[calc(100%-2rem)] w-[calc(100%-2rem)] object-cover rounded-[48%_52%_45%_55%/55%_44%_56%_45%]" />
+              <img src={ownerPhotoSrc} alt="Meet the Owner" onError={() => setOwnerPhotoFailed(true)} className="absolute inset-4 h-[calc(100%-2rem)] w-[calc(100%-2rem)] object-cover rounded-[48%_52%_45%_55%/55%_44%_56%_45%]" />
               <PearlRing />
             </div>
             <svg aria-hidden="true" className="absolute -bottom-6 -left-7 h-14 w-16 text-gold/45" viewBox="0 0 64 56" fill="none"><path d="M31 7l4 16 14-9-9 14 16 4-16 4 9 14-14-9-4 16-4-16-14 9 9-14-16-4 16-4-9-14 14 9z" stroke="currentColor" strokeWidth="1.2" /></svg>
