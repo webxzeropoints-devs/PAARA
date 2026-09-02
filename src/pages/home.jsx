@@ -407,7 +407,7 @@ function PaaraIRL() {
   useEffect(() => {
     let cancelled = false;
     apiGet(`/homepage/paara-irl?fresh=${Date.now()}`)
-      .then((data) => !cancelled && setEntries(data ? [data] : []))
+      .then((data) => !cancelled && setEntries(Array.isArray(data?.slots) ? data.slots : []))
       .catch(() => !cancelled && setEntries([]));
     return () => { cancelled = true; };
   }, []);
@@ -436,5 +436,4 @@ function WornByYou() {
   return <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-24"><motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.7 }} className="text-center"><p className="text-xs uppercase tracking-[.3em] text-gold">Your Paara. moments</p><h2 className="font-display text-4xl mt-3">Worn by You</h2></motion.div><div className="grid grid-cols-3 gap-3 md:gap-6 mt-10">{slots.map((entry, index) => { const hasImage = entry?.image_url && !failedImages[entry.id]; const imageSrc = cacheBustUrl(entry?.image_url, entry?.updated_at || entry?.cached_at || entry?.id); return <motion.div key={entry?.id || `empty-${index}`} initial={{ opacity: 0, x: index === 1 ? 0 : index === 0 ? -52 : 52, y: 30 }} whileInView={{ opacity: 1, x: 0, y: 0 }} viewport={{ once: true, amount: 0.25 }} transition={{ duration: 0.85, delay: index * 0.12, ease: [0.16, 1, 0.3, 1] }} className="aspect-[3/4] overflow-hidden bg-shell">{hasImage ? <img src={imageSrc} alt={entry.caption || "Customer wearing Paara jewellery"} onError={() => setFailedImages((current) => ({ ...current, [entry.id]: true }))} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" /> : <div className="h-full w-full flex flex-col items-center justify-center gap-3 bg-shell text-cocoa/55"><span aria-hidden="true" className="text-3xl text-gold/70">✦</span><span className="text-xs uppercase tracking-[.18em]">No image yet</span></div>}</motion.div>; })}</div></section>;
 }
 function FinalStatement() { return <section className="px-6 py-28 md:py-36 text-center bg-[#e6d4b9]"><p className="font-display text-5xl md:text-7xl max-w-4xl mx-auto leading-[1.05]">Made to be found.<br />Made to be loved.<br />Made for you.</p><span className="block mt-8 text-gold text-2xl">✦</span></section>; }
-
 

@@ -159,6 +159,14 @@ if (paaraIrlColumns.length && !paaraIrlColumns.includes('updated_at')) {
   db.exec('ALTER TABLE paara_irl ADD COLUMN updated_at TEXT');
   db.exec("UPDATE paara_irl SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''");
 }
+if (paaraIrlColumns.length) {
+  const paaraIrlCount = db.prepare('SELECT COUNT(*) AS count FROM paara_irl WHERE sort_order BETWEEN 0 AND 2').get().count;
+  const addPaaraIrlSlot = db.prepare(`
+    INSERT INTO paara_irl (image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
+    VALUES ('', NULL, NULL, ?, 1, datetime('now'), datetime('now'))
+  `);
+  for (let slot = paaraIrlCount; slot < 3; slot += 1) addPaaraIrlSlot.run(slot);
+}
 const couponColumns = db.prepare("PRAGMA table_info(coupons)").all().map((column) => column.name);
 if (couponColumns.length && !couponColumns.includes('redeemed_at')) {
   db.exec('ALTER TABLE coupons ADD COLUMN redeemed_at TEXT');
