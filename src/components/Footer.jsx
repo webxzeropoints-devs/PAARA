@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+
 // Social icons as inline SVGs — avoids depending on lucide-react's export set,
 // which varies by installed version and was causing build errors.
 function IconBase({ size = 18, strokeWidth = 1.4, children, ...props }) {
@@ -28,24 +31,28 @@ function Instagram(props) {
   );
 }
 
-function Facebook(props) {
-  return (
-    <IconBase {...props}>
-      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-    </IconBase>
-  );
-}
-
 function Youtube(props) {
   return (
     <IconBase {...props}>
-      <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+      <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0-.46-5.25 29 29 0 0 0-.46-5.33z" />
       <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
     </IconBase>
   );
 }
 
 export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const submitNewsletter = (event) => {
+    event.preventDefault();
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      return;
+    }
+    setEmail("");
+    setMessage("Thanks for connecting! We will get to you soon!!");
+  };
+
   return (
     <footer className="w-full bg-shell border-t border-cocoa/10 mt-24">
       <div className="max-w-[1600px] mx-auto px-6 md:px-10 pt-16 pb-8">
@@ -64,11 +71,11 @@ export default function Footer() {
           <div>
             <h4 className="text-sm tracking-widest uppercase text-cocoa mb-4">Shop</h4>
             <ul className="space-y-2 text-sm text-cocoa/70">
-              <li><a href="/collections" className="hover:text-gold transition-colors">Collections</a></li>
-              <li><a href="/shop" className="hover:text-gold transition-colors">All Products</a></li>
-              <li><a href="/shop?filter=new" className="hover:text-gold transition-colors">New Arrivals</a></li>
-              <li><a href="/shop?filter=best-sellers" className="hover:text-gold transition-colors">Best Sellers</a></li>
-              <li><a href="/gift-cards" className="hover:text-gold transition-colors">Loyalty Card</a></li>
+              <li><Link to="/collections" className="hover:text-gold transition-colors">Collections</Link></li>
+              <li><Link to="/shop" className="hover:text-gold transition-colors">All Products</Link></li>
+              <li><Link to="/shop?filter=new" className="hover:text-gold transition-colors">New Arrivals</Link></li>
+              <li><Link to="/shop?filter=best-sellers" className="hover:text-gold transition-colors">Best Sellers</Link></li>
+              <li><Link to="/account/gift-cards" className="hover:text-gold transition-colors">Loyalty Card</Link></li>
             </ul>
           </div>
 
@@ -76,9 +83,8 @@ export default function Footer() {
           <div>
             <h4 className="text-sm tracking-widest uppercase text-cocoa mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-cocoa/70">
-              <li><a href="#our-story" className="hover:text-gold transition-colors">Our Story</a></li>
-              <li><a href="/sustainability" className="hover:text-gold transition-colors">Sustainability</a></li>
-              <li><a href="/contact" className="hover:text-gold transition-colors">Contact Us</a></li>
+              <li><Link to="/our-story" className="hover:text-gold transition-colors">Our Story</Link></li>
+              <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 
@@ -86,24 +92,28 @@ export default function Footer() {
           <div>
             <h4 className="text-sm tracking-widest uppercase text-cocoa mb-4">Help</h4>
             <ul className="space-y-2 text-sm text-cocoa/70">
-              <li><a href="/faqs" className="hover:text-gold transition-colors">FAQs</a></li>
-              <li><a href="/shipping" className="hover:text-gold transition-colors">Shipping &amp; Delivery</a></li>
-              <li><a href="/returns" className="hover:text-gold transition-colors">Returns &amp; Exchanges</a></li>
-              <li><a href="/track-order" className="hover:text-gold transition-colors">Track Order</a></li>
-              <li><a href="/jewellery-care" className="hover:text-gold transition-colors">Jewellery Care</a></li>
+              <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">FAQs</Link></li>
+              <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">Shipping &amp; Delivery</Link></li>
+              <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">Returns &amp; Exchanges</Link></li>
+              <li><Link to="/account/track-order" className="hover:text-gold transition-colors">Track Order</Link></li>
+              <li><Link to="/account/customer-care" className="hover:text-gold transition-colors">Jewellery Care</Link></li>
             </ul>
           </div>
 
           {/* Stay connected */}
           <div className="col-span-2 md:col-span-1">
             <h4 className="text-sm tracking-widest uppercase text-cocoa mb-4">Stay Connected</h4>
-            <p className="text-sm text-cocoa/70 mb-3">Join our ocean of love.</p>
+            <p className="text-sm text-cocoa/70 mb-3">JOIN OUR PAARA COMMUNITY</p>
             <form
               className="flex items-center border border-cocoa/30 rounded-full overflow-hidden mb-4"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={submitNewsletter}
             >
               <input
                 type="email"
+                aria-label="Email address"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="Enter your email"
                 className="flex-1 bg-transparent px-4 py-2 text-sm text-cocoa placeholder:text-cocoa/40 outline-none"
               />
@@ -112,9 +122,7 @@ export default function Footer() {
               </button>
             </form>
             <div className="flex items-center gap-4 text-cocoa">
-              <a href="#" aria-label="Instagram" className="hover:text-gold transition-colors"><Instagram size={18} strokeWidth={1.4} /></a>
-              <a href="#" aria-label="Facebook" className="hover:text-gold transition-colors"><Facebook size={18} strokeWidth={1.4} /></a>
-              <a href="#" aria-label="YouTube" className="hover:text-gold transition-colors"><Youtube size={18} strokeWidth={1.4} /></a>
+              <a href="https://www.instagram.com/paara.jewellery?igsi=MTZyZ3JrdGRldTRhag==" target="_blank" rel="noreferrer" aria-label="Instagram" className="hover:text-gold transition-colors"><Instagram size={18} strokeWidth={1.4} /></a>
             </div>
           </div>
         </div>
@@ -123,6 +131,14 @@ export default function Footer() {
           <p>© 2026 Paara Jewellery. All Rights Reserved.</p>
         </div>
       </div>
+      {message && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-cocoa/35 px-6" role="dialog" aria-modal="true" aria-label="Newsletter confirmation">
+          <div className="w-full max-w-sm bg-shell p-7 text-center shadow-xl">
+            <p className="font-display text-2xl text-cocoa">{message}</p>
+            <button type="button" onClick={() => setMessage("")} className="mt-6 border border-gold px-5 py-2 text-xs uppercase tracking-widest text-cocoa">Close</button>
+          </div>
+        </div>
+      )}
     </footer>
   );
 }
