@@ -37,16 +37,16 @@ db.prepare("UPDATE products SET release_date = datetime(release_date) WHERE rele
 
 // ---- Seed: 10 named cities with flat shipping rates ----
 const cities = [
-  ['Chennai', 0],
-  ['Bengaluru', 60],
-  ['Hyderabad', 70],
-  ['Mumbai', 90],
-  ['Delhi', 110],
-  ['Kolkata', 120],
-  ['Pune', 85],
-  ['Coimbatore', 40],
-  ['Kochi', 65],
-  ['Ahmedabad', 100]
+  ['Chennai', 70],
+  ['Bengaluru', 110],
+  ['Hyderabad', 110],
+  ['Mumbai', 130],
+  ['Delhi', 130],
+  ['Kolkata', 130],
+  ['Pune', 110],
+  ['Coimbatore', 80],
+  ['Kochi', 110],
+  ['Ahmedabad', 130]
 ];
 const insertCity = db.prepare('INSERT OR IGNORE INTO cities (name, flat_shipping_rate) VALUES (?, ?)');
 cities.forEach(c => insertCity.run(...c));
