@@ -18,7 +18,7 @@ const formatPrice = (n) =>
 export default function ProductDetails() {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +102,7 @@ export default function ProductDetails() {
   }
 
   const price = product.price ?? 0;
+  const cartQuantity = items.find((item) => String(item.product_id) === String(product.id))?.quantity || 0;
 
   return (
     <div className="min-h-[80vh] bg-sand text-cocoa font-body">
@@ -203,7 +204,7 @@ export default function ProductDetails() {
                 onClick={handleAddToCart}
                 className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors"
               >
-                {added ? "✓ Added to cart" : "Add to cart"}
+                {added ? "✓ Added to cart" : cartQuantity > 0 ? `Add to cart · In bag: ${cartQuantity}` : "Add to cart"}
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.97 }}

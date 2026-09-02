@@ -41,10 +41,11 @@ export function CartProvider({ children }) {
   }, []);
 
   const updateQuantity = useCallback((product_id, quantity) => {
+    const nextQuantity = Math.floor(Number(quantity));
     setItems((prev) => {
-      if (quantity <= 0) return prev.filter((i) => i.product_id !== product_id);
+      if (!Number.isFinite(nextQuantity) || nextQuantity <= 0) return prev.filter((i) => i.product_id !== product_id);
       return prev.map((i) =>
-        i.product_id === product_id ? { ...i, quantity } : i
+        i.product_id === product_id ? { ...i, quantity: nextQuantity } : i
       );
     });
   }, []);

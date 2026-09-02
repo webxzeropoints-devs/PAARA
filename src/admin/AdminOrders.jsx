@@ -94,8 +94,8 @@ export default function AdminOrders() {
     <div className="max-w-7xl">
       <div className="mb-7"><p className="text-[10px] uppercase tracking-[.28em] text-gold">Fulfilment</p><h1 className="mt-2 font-display text-4xl text-cocoa">Orders</h1><p className="mt-2 text-sm text-cocoa/60">Review purchases and approve qualifying loyalty card grants.</p></div>
       {error && <p className="mb-5 border border-gold/40 bg-shell px-4 py-3 text-sm text-cocoa">{error}</p>}
-      <div className="overflow-x-auto border border-cocoa/10 bg-shell">
-        <table className="w-full min-w-[1050px] table-fixed text-sm">
+      <div className="w-full max-w-full border border-cocoa/10 bg-shell">
+        <table className="w-full max-w-full table-fixed text-sm">
           <colgroup><col className="w-[13%]" /><col className="w-[15%]" /><col className="w-[20%]" /><col className="w-[18%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[7%]" /><col className="w-[8%]" /></colgroup>
           <thead className="border-b border-gold/30 text-left font-display text-[10px] uppercase tracking-[.18em] text-cocoa"><tr><th className="px-4 py-3.5">Order ID</th><th className="px-4 py-3.5">Customer</th><th className="px-4 py-3.5">Shipping Address</th><th className="px-4 py-3.5">Status</th><th className="px-4 py-3.5">Payment</th><th className="px-4 py-3.5 text-right">Amount</th><th className="px-4 py-3.5">Date</th><th className="px-4 py-3.5">Loyalty</th></tr></thead>
           <tbody>
@@ -113,7 +113,7 @@ export default function AdminOrders() {
                   {order.shipping_line1 ? <p>{order.shipping_line1}{order.shipping_line2 ? `, ${order.shipping_line2}` : ""}<br />{order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}{order.shipping_country ? `, ${order.shipping_country}` : ""}</p> : <span className="text-cocoa/40">Not available</span>}
                 </td>
                 <td className={`px-4 py-4 text-cocoa/75 ${isRejected ? "text-red-700" : ""}`}>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {isRejected ? <span className="font-semibold uppercase tracking-[.14em]">Rejected</span> : ORDER_STAGES.map((stage, index) => {
                       const isCurrent = currentStatus === stage;
                       const isDone = index < currentIndex;
@@ -127,7 +127,7 @@ export default function AdminOrders() {
                           type="button"
                           disabled={isRejected || isDisabled || updatingStatus === order.id}
                           onClick={() => handleStatusChange(order.id, stage)}
-                          className={`rounded-full border px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                          className={`rounded-full border px-1.5 py-1 text-[9px] uppercase tracking-[0.1em] transition-colors ${
                             isCurrent
                               ? "border-gold bg-gold/15 text-cocoa"
                               : isDone
