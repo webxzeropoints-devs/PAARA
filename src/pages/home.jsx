@@ -257,8 +257,8 @@ function MeetOwner() {
           </div>
         </div>
         <div className="relative mx-auto w-full max-w-[600px] rounded-[1.75rem] border border-gold/35 p-1.5 shadow-[0_20px_48px_rgba(75,45,25,.14)] overflow-hidden">
-          <div className="relative overflow-hidden rounded-[1.35rem] aspect-[5/4] bg-cocoa outline outline-1 outline-white/50 outline-offset-[-7px]">
-            <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay loop={founderVideos.length === 1} muted playsInline onEnded={playNextVideo} src={founderVideos[videoIndex]} />
+          <div className="relative overflow-hidden rounded-[1.35rem] bg-cocoa outline outline-1 outline-white/50 outline-offset-[-7px]">
+            <video ref={videoRef} className="block w-full h-auto rounded-[1.35rem]" autoPlay loop={founderVideos.length === 1} muted playsInline onEnded={playNextVideo} src={founderVideos[videoIndex]} />
             <button type="button" onClick={togglePlayback} aria-label={playing ? "Pause founder story video" : "Play founder story video"} className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/75 text-cocoa backdrop-blur-sm transition hover:bg-white">{playing ? "Ⅱ" : "▶"}</button>
           </div>
           <svg aria-hidden="true" className="absolute -bottom-7 -left-5 h-16 w-20 text-gold/45" viewBox="0 0 80 64" fill="none"><path d="M11 53C18 31 22 15 39 9M25 57c2-18 16-35 34-42M40 57c7-13 19-20 32-22M11 53c9-1 15 2 19 8M25 57c8-2 15 0 20 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
