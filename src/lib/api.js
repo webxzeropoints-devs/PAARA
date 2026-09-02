@@ -97,7 +97,16 @@ const clearStoredSession = (admin) => {
 
 const handle = async (res, { admin = false } = {}) => {
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: res.status === 429
+        ? "Too many login attempts. Please wait a few minutes and try again."
+        : `Request failed (${res.status}). Please try again.` };
+    }
+  }
   if (!res.ok) {
     if (res.status === 401) clearStoredSession(admin);
     const msg = data?.error || data?.message || `Request failed (${res.status})`;
