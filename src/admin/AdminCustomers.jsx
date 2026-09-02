@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { adminDeleteCustomer, adminRequest } from "../lib/api";
 
 export default function AdminCustomers() {
@@ -6,15 +6,23 @@ export default function AdminCustomers() {
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const loadCustomers = async () => {
+  const loadCustomers = useCallback(async () => {
     setLoading(true);
-    try { setCustomers(await adminRequest("/admin/customers")); }
+    try {
+      setCustomers(await adminRequest("/admin/customers"));
+      setLastUpdated(new Date());
+    }
     catch (err) { setError(err.message); }
     finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { loadCustomers(); }, []);
+  useEffect(() => {
+    loadCustomers();
+    const intervalId = window.setInterval(loadCustomers, 20000);
+    return () => window.clearInterval(intervalId);
+  }, [loadCustomers]);
 
   const openCustomer = async (id) => {
     try { setSelected(await adminRequest(`/admin/customers/${id}`)); }
@@ -33,7 +41,7 @@ export default function AdminCustomers() {
 
   return (
     <div className="max-w-7xl">
-      <div className="mb-8"><p className="text-[10px] uppercase tracking-[.28em] text-gold">Relationships</p><h1 className="mt-2 font-display text-4xl text-cocoa">Customers</h1><p className="mt-2 text-sm text-cocoa/60">Every submitted checkout detail and order history.</p></div>
+      <div className="mb-8"><p className="text-[10px] uppercase tracking-[.28em] text-gold">Relationships</p><div className="flex items-baseline gap-3"><h1 className="mt-2 font-display text-4xl text-cocoa">Customers</h1>{lastUpdated && <span className="text-[10px] text-cocoa/45">Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}</div><p className="mt-2 text-sm text-cocoa/60">Every submitted checkout detail and order history.</p></div>
       {error && <p className="mb-5 border border-gold/40 bg-shell px-4 py-3 text-sm text-cocoa">{error}</p>}
       <div className="overflow-x-auto border border-cocoa/10 bg-shell">
         <table className="w-full text-sm"><thead className="border-b border-gold/30 text-left font-display text-xs uppercase tracking-[.18em]"><tr><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Orders</th><th className="px-4 py-3">Paid total</th><th className="px-4 py-3">Action</th></tr></thead>
