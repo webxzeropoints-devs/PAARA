@@ -7,7 +7,7 @@ const readImage = (file, onRead, onError) => {
   if (!file) return;
   if (!file.type.startsWith("image/")) return onError("Please choose an image file.");
   const reader = new FileReader();
-  reader.onload = () => onRead(String(reader.result));
+  reader.onload = () => onRead({ file, preview: String(reader.result) });
   reader.onerror = () => onError("Could not read that image.");
   reader.readAsDataURL(file);
 };
@@ -40,7 +40,10 @@ export default function AdminWornByYou() {
     setSaved("");
     setSaving(true);
     try {
-      const response = await adminRequest("/admin/worn-by-you", { method: "PUT", body: JSON.stringify({ slots }) });
+      const body = new FormData();
+      body.append("slots", JSON.stringify(slots.map(({ file, ...slot }) => slot)));
+      slots.forEach((slot, index) => { if (slot.file) { body.append("images", slot.file); body.append("upload_slots", String(index)); } });
+      const response = await adminRequest("/admin/worn-by-you", { method: "PUT", body });
       setSlots(response.slots || slots);
       setSaved("All three images saved.");
     } catch (err) {
@@ -63,8 +66,8 @@ export default function AdminWornByYou() {
           {slots.map((slot, index) => (
             <section key={slot.id || index} className="min-w-0 space-y-3 border border-cocoa/10 bg-sand/35 p-4">
               <h2 className="font-display text-xl text-cocoa">Slot {index + 1}</h2>
-              <input required placeholder="Image link" value={slot.image_url} onChange={(event) => update(index, { image_url: event.target.value })} className="w-full min-w-0 border-b border-cocoa/25 bg-transparent py-2 text-sm outline-none focus:border-gold" />
-              <label className="block text-xs uppercase tracking-widest text-cocoa/70">Or upload a photo<input type="file" accept="image/*" onChange={(event) => readImage(event.target.files?.[0], (image_url) => update(index, { image_url }), setError)} className="mt-2 block w-full min-w-0 text-sm normal-case" /></label>
+              <input required placeholder="Image link" value={slot.image_url} onChange={(event) => update(index, { image_url: event.target.value, file: null })} className="w-full min-w-0 border-b border-cocoa/25 bg-transparent py-2 text-sm outline-none focus:border-gold" />
+              <label className="block text-xs uppercase tracking-widest text-cocoa/70">Or upload a photo<input type="file" accept="image/*" onChange={(event) => readImage(event.target.files?.[0], ({ file, preview }) => update(index, { image_url: preview, file }), setError)} className="mt-2 block w-full min-w-0 text-sm normal-case" /></label>
               <input placeholder="Caption" value={slot.caption || ""} onChange={(event) => update(index, { caption: event.target.value })} className="w-full min-w-0 border-b border-cocoa/25 bg-transparent py-2 text-sm outline-none focus:border-gold" />
               {slot.image_url && <img src={slot.image_url} alt={`Worn By You slot ${index + 1} preview`} className="aspect-[3/4] w-full object-cover" />}
             </section>

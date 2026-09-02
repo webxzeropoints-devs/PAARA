@@ -4,16 +4,16 @@ const readImage = (file, setImage, setError) => {
   if (!file) return;
   if (!file.type.startsWith("image/")) return setError("Please choose an image file.");
   const reader = new FileReader();
-  reader.onload = () => setImage(String(reader.result));
+  reader.onload = () => setImage({ file, preview: String(reader.result) });
   reader.onerror = () => setError("Could not read that image.");
   reader.readAsDataURL(file);
 };
 export default function AdminPaaraIRL() {
-  const [form, setForm] = useState({ image_url: "", owner_image_url: "", caption: "" });
+  const [form, setForm] = useState({ image_url: "", owner_image_url: "", caption: "", image_file: null, owner_image_file: null });
   const [error, setError] = useState(""), [saved, setSaved] = useState("");
-  const load = useCallback(async () => { try { const rows = await adminRequest("/admin/paara-irl"); const row = rows[0] || {}; setForm({ image_url: row.image_url || "", owner_image_url: row.owner_image_url || "", caption: row.caption || "" }); } catch (err) { setError(err.message); } }, []);
+  const load = useCallback(async () => { try { const row = await adminRequest("/admin/paara-irl"); setForm({ image_url: row?.image_url || "", owner_image_url: row?.owner_image_url || "", caption: row?.caption || "", image_file: null, owner_image_file: null }); } catch (err) { setError(err.message); } }, []);
   useEffect(() => { load(); }, [load]);
-  const save = async (event) => { event.preventDefault(); setError(""); try { await adminRequest("/admin/paara-irl", { method: "PUT", body: JSON.stringify(form) }); await load(); setSaved("Saved."); } catch (err) { setError(err.message); } };
+  const save = async (event) => { event.preventDefault(); setError(""); try { const body = new FormData(); body.append("image_url", form.image_url); body.append("owner_image_url", form.owner_image_url); body.append("caption", form.caption); if (form.image_file) { body.append("images", form.image_file); body.append("upload_slots", "image"); } if (form.owner_image_file) { body.append("images", form.owner_image_file); body.append("upload_slots", "owner"); } await adminRequest("/admin/paara-irl", { method: "PUT", body }); await load(); setSaved("Saved."); } catch (err) { setError(err.message); } };
   return (
     <div className="max-w-2xl">
       <h1 className="font-display text-4xl text-cocoa mb-2">Paara IRL</h1>
@@ -31,7 +31,7 @@ export default function AdminPaaraIRL() {
             </div>
             <div className="min-w-0 flex-1 space-y-3">
               <label className="block text-xs uppercase tracking-widest text-cocoa">Image URL<input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case outline-none focus:border-gold" /></label>
-              <label className="block text-xs uppercase tracking-widest text-cocoa">Upload replacement<input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0], (image_url) => setForm({ ...form, image_url }), setError)} className="mt-2 block w-full text-sm normal-case" /></label>
+              <label className="block text-xs uppercase tracking-widest text-cocoa">Upload replacement<input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0], ({ file, preview }) => setForm({ ...form, image_url: preview, image_file: file }), setError)} className="mt-2 block w-full text-sm normal-case" /></label>
             </div>
           </div>
         </section>
@@ -46,7 +46,7 @@ export default function AdminPaaraIRL() {
             </div>
             <div className="min-w-0 flex-1 space-y-3">
               <label className="block text-xs uppercase tracking-widest text-cocoa">Photo URL<input value={form.owner_image_url} onChange={(e) => setForm({ ...form, owner_image_url: e.target.value })} className="mt-2 block w-full border border-cocoa/25 bg-sand px-3 py-2 text-sm normal-case outline-none focus:border-gold" /></label>
-              <label className="block text-xs uppercase tracking-widest text-cocoa">Upload replacement<input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0], (owner_image_url) => setForm({ ...form, owner_image_url }), setError)} className="mt-2 block w-full text-sm normal-case" /></label>
+              <label className="block text-xs uppercase tracking-widest text-cocoa">Upload replacement<input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0], ({ file, preview }) => setForm({ ...form, owner_image_url: preview, owner_image_file: file }), setError)} className="mt-2 block w-full text-sm normal-case" /></label>
             </div>
           </div>
         </section>

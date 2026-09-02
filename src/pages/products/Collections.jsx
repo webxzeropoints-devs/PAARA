@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import ProductFlipCard from "../../components/ProductFlipCard";
-import { getProducts } from "../../lib/api";
+import { getCategories, getProducts } from "../../lib/api";
 import { fadeUp, gridParent, childFadeUp } from "../../lib/motion";
 
 const MATERIALS = ["sterling_silver", "stainless_steel", "brass", "titanium"];
@@ -36,6 +36,7 @@ const AUDIENCE_GENDERS = { "for-her": "women", "for-him": "men" };
 export default function Collections() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -79,6 +80,10 @@ export default function Collections() {
       cancelled = true;
     };
   }, [apiFilters]);
+
+  useEffect(() => {
+    getCategories().then((data) => setCategories(Array.isArray(data) ? data : [])).catch(() => setCategories([]));
+  }, []);
 
   const setFilter = (key, value) => {
     const next = new URLSearchParams(params);
@@ -134,7 +139,7 @@ export default function Collections() {
             <FilterGroup
               label="Collection"
               value={filters.category}
-              options={Object.keys(COLLECTIONS)}
+              options={categories.length ? categories.map((category) => category.slug) : Object.keys(COLLECTIONS)}
               onChange={setCategory}
             />
             {filters.category && COLLECTIONS[filters.category]?.length > 0 && (

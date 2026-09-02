@@ -167,6 +167,7 @@ export const getProducts = (params = {}) => {
   ).toString();
   return apiGet(`/products${qs ? `?${qs}` : ""}`);
 };
+export const getCategories = () => apiGet("/products/categories");
 export const getProductBySlug = (slug) => apiGet(`/products/${slug}`);
 
 export const getVaultToday = () => apiGet("/vault/today");

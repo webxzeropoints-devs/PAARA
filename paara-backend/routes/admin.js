@@ -6,6 +6,12 @@ const fs = require('fs');
 
 const router = express.Router();
 
+router.use(requireAdmin);
+router.use((q, s, next) => {
+  s.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  next();
+});
+
 const normalizeFormBoolean = (value, fallback = false) => {
   if (typeof value === 'boolean') return value;
   if (value === null || value === undefined || value === '') return fallback;
@@ -77,6 +83,30 @@ const saveUploadedImages = async (files) => {
   });
 };
 
+const saveUploadedImage = async (file, prefix) => {
+  if (!file) return null;
+  if (db.isServerless) {
+    const { put } = require('@vercel/blob');
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    const filename = `${prefix}-${timestamp}-${random}${path.extname(file.originalname)}`;
+    const blob = await put(`homepage/${filename}`, file.buffer, {
+      access: normalizeBlobAccess(),
+      addRandomSuffix: false,
+      contentType: file.mimetype,
+    });
+    return blob.url;
+  }
+
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  const filename = `${prefix}-${timestamp}-${random}${path.extname(file.originalname)}`;
+  const homepageUploadsDir = path.join(__dirname, '../public/uploads/homepage');
+  if (!fs.existsSync(homepageUploadsDir)) fs.mkdirSync(homepageUploadsDir, { recursive: true });
+  fs.writeFileSync(path.join(homepageUploadsDir, filename), file.buffer);
+  return `/uploads/homepage/${filename}`;
+};
+
 router.get('/products', (q, s) => s.json(decorate(db.prepare('SELECT p.*,c.name category_name FROM products p JOIN categories c ON c.id=p.category_id ORDER BY p.created_at DESC').all())));
 
 router.get('/categories', (q, s) => s.json(db.prepare('SELECT id,name,slug,gender FROM categories ORDER BY gender,name').all()));
@@ -134,6 +164,10 @@ router.put('/categories/:id', (q, s) => {
 });
 
 router.delete('/categories/:id', (q, s) => {
+  const assignedProducts = db.prepare('SELECT COUNT(*) AS count FROM products WHERE category_id = ?').get(q.params.id);
+  if (assignedProducts?.count > 0) {
+    return s.status(409).json({ error: 'Category cannot be deleted while products are assigned to it.' });
+  }
   const result = db.prepare('DELETE FROM categories WHERE id = ?').run(q.params.id);
   if (!result.changes) return s.status(404).json({ error: 'Category not found.' });
   s.json({ success: true });
@@ -247,6 +281,16 @@ router.put('/products/:id', async (q, s) => {
       writeImages(q.params.id, allImages);
     }
     delete updates.existingImages;
+    delete updates.images;
+
+    const productColumns = new Set([
+      'category_id', 'name', 'slug', 'description', 'price', 'material',
+      'subcategory', 'stock', 'is_exclusive', 'is_bestseller', 'is_active',
+      'is_vault', 'release_date',
+    ]);
+    Object.keys(updates).forEach((key) => {
+      if (!productColumns.has(key)) delete updates[key];
+    });
 
     ['is_exclusive', 'is_bestseller', 'is_active', 'is_vault'].forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(updates, key)) {
@@ -258,7 +302,10 @@ router.put('/products/:id', async (q, s) => {
     if (updates.price !== undefined) updates.price = Number(updates.price);
     if (updates.stock !== undefined) updates.stock = Number(updates.stock);
 
-    db.prepare('UPDATE products SET ' + Object.keys(updates).map(k => k + '=?').join(',') + ' WHERE id=?').run(...Object.values(updates), q.params.id);
+    const updateKeys = Object.keys(updates);
+    if (updateKeys.length > 0) {
+      db.prepare('UPDATE products SET ' + updateKeys.map(k => k + '=?').join(',') + ' WHERE id=?').run(...updateKeys.map((key) => updates[key]), q.params.id);
+    }
     s.json(decorate([db.prepare('SELECT * FROM products WHERE id=?').get(q.params.id)])[0]);
   } catch (err) {
     s.status(400).json({ error: 'Could not update the product.' });
@@ -292,9 +339,13 @@ router.delete('/tile-products/:id', (q, s) => {
 
 router.get('/paara-irl', (q, s) => s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').all()));
 
-router.put('/paara-irl', (q, s) => {
+router.put('/paara-irl', async (q, s) => {
   const { image_url, owner_image_url, caption } = q.body || {};
-  const nextImageUrl = String(image_url ?? '').trim();
+  const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
+  const uploadedImages = await Promise.all((q.files || []).map((file, index) => saveUploadedImage(file, uploadSlots[index] === 'owner' ? 'owner' : 'paara-irl')));
+  const uploadedBySlot = Object.fromEntries((q.files || []).map((file, index) => [uploadSlots[index] || 'image', uploadedImages[index]]));
+  const nextImageUrl = uploadedBySlot.image || String(image_url ?? '').trim();
+  const nextOwnerImageUrl = uploadedBySlot.owner || String(owner_image_url ?? '').trim();
   db.prepare(`
     INSERT INTO paara_irl (id, image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
     VALUES (1, ?, ?, ?, 0, 1, datetime('now'), datetime('now'))
@@ -303,18 +354,25 @@ router.put('/paara-irl', (q, s) => {
       owner_image_url = excluded.owner_image_url,
       caption = excluded.caption,
       updated_at = datetime('now')
-  `).run(nextImageUrl || '', owner_image_url || null, caption || null);
+  `).run(nextImageUrl || '', nextOwnerImageUrl || null, caption || null);
   s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get());
 });
 
-router.get('/worn-by-you', (q, s) => s.json(db.prepare('SELECT * FROM instagram_reviews WHERE product_id IS NULL ORDER BY COALESCE(updated_at, cached_at, datetime("2000-01-01")) DESC, id ASC LIMIT 3').all()));
+router.get('/worn-by-you', (q, s) => s.json(db.prepare("SELECT * FROM instagram_reviews WHERE product_id IS NULL ORDER BY COALESCE(updated_at, cached_at, datetime('2000-01-01')) DESC, id ASC LIMIT 3").all()));
 
-router.put('/worn-by-you', (q, s) => {
-  const slots = q.body?.slots;
+router.put('/worn-by-you', async (q, s) => {
+  let slots = q.body?.slots;
+  if (typeof slots === 'string') {
+    try { slots = JSON.parse(slots); } catch { slots = null; }
+  }
   if (!Array.isArray(slots) || slots.length !== 3) return s.status(400).json({ error: 'Exactly 3 Worn By You slots are required.' });
   try {
+    const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
+    const uploadedImages = await Promise.all((q.files || []).map((file) => saveUploadedImage(file, 'worn-by-you')));
+    const uploadedBySlot = Object.fromEntries((q.files || []).map((file, index) => [uploadSlots[index], uploadedImages[index]]));
     const saved = db.transaction(() => slots.map((slot) => {
-      const imageUrl = String(slot?.image_url || '').trim();
+      const slotIndex = slots.indexOf(slot);
+      const imageUrl = uploadedBySlot[String(slotIndex)] || String(slot?.image_url || '').trim();
       const caption = slot?.caption || null;
       const instagramPostUrl = slot?.instagram_post_url || '';
       const likes = Number(slot?.likes) || 0;

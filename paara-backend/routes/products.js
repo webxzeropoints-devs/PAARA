@@ -67,6 +67,11 @@ router.get('/', (req, res) => {
   res.json(addProductImages(products));
 });
 
+router.get('/categories', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.json(db.prepare('SELECT id, name, slug, gender, vibe, material FROM categories ORDER BY gender, name').all());
+});
+
 // GET /api/products/:slug  — full detail + gallery images for the flip-card marquee
 router.get('/:slug', (req, res) => {
   const product = db
