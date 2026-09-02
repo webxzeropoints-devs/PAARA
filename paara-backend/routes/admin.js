@@ -632,13 +632,19 @@ router.patch('/orders/:id/status', (q, s) => {
   s.json({ success: true, order_id: orderId, status: requestedStatus });
 });
 
-router.post('/orders/:id/verify-manual-payment', (q, s) => {
+router.post('/orders/:id/verify-manual-payment', async (q, s) => {
   const orderId = Number.parseInt(q.params.id, 10);
   if (!Number.isInteger(orderId) || orderId < 1) {
     return s.status(400).json({ error: 'A valid order ID is required.' });
   }
 
-  const order = db.prepare('SELECT id, payment_method, payment_status, payment_reference FROM orders WHERE id = ?').get(orderId);
+  const order = db.prepare(`
+    SELECT o.id, o.order_number, o.payment_method, o.payment_status,
+           o.payment_reference, o.total_amount, c.email, c.name
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+    WHERE o.id = ?
+  `).get(orderId);
   if (!order) return s.status(404).json({ error: 'Order not found.' });
   if (order.payment_method !== 'manual_upi') {
     return s.status(400).json({ error: 'This order is not a manual UPI order.' });
@@ -655,6 +661,19 @@ router.post('/orders/:id/verify-manual-payment', (q, s) => {
         status = CASE WHEN status = 'Order Confirmed' THEN 'Order Confirmed' ELSE status END
     WHERE id = ?
   `).run(orderId);
+
+  if (order.email) {
+    const { trySendEmail } = require('../utils/email');
+    await trySendEmail({
+      to: order.email,
+      subject: `Order confirmed — ${order.order_number || `Order ${order.id}`}`,
+      text: `Hi ${order.name || 'Customer'},\n\nYour payment has been verified and your Paara Jewellery order is confirmed.\nOrder: ${order.order_number || order.id}\nAmount: ₹${Number(order.total_amount || 0).toLocaleString('en-IN')}\n\nThank you for shopping with Paara Jewellery.`,
+    }, `manual UPI confirmation email for order ${order.order_number || order.id}`);
+  } else {
+    console.error(`[Email failed] manual UPI confirmation email for order ${order.order_number || order.id}`, {
+      message: 'Customer email address is missing.',
+    });
+  }
 
   s.json({ success: true, order_id: orderId, payment_status: 'verified', message: 'Manual UPI payment verified.' });
 });
