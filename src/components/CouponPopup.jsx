@@ -4,10 +4,12 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { apiGet } from "../lib/api";
 
+const COUPON_MINIMIZED_KEY = "paara_coupon_popup_minimized";
+
 export default function CouponPopup() {
   const [coupon, setCoupon] = useState(null);
   const [visible, setVisible] = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(() => localStorage.getItem(COUPON_MINIMIZED_KEY) === "true");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -23,11 +25,10 @@ export default function CouponPopup() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    if (!coupon) return undefined;
-    const timer = window.setInterval(() => setMinimized(false), 5 * 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, [coupon]);
+  const minimize = () => {
+    localStorage.setItem(COUPON_MINIMIZED_KEY, "true");
+    setMinimized(true);
+  };
 
   const copyCode = async () => {
     if (!coupon?.code) return;
@@ -78,7 +79,7 @@ export default function CouponPopup() {
             <div className="absolute right-4 top-4 flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setMinimized(true)}
+                onClick={minimize}
                 className="p-1 text-cocoa/55 transition-colors hover:text-cocoa"
                 aria-label="Minimize coupon offer"
                 title="Minimize offer"
@@ -87,7 +88,7 @@ export default function CouponPopup() {
               </button>
               <button
                 type="button"
-                onClick={() => setMinimized(true)}
+                onClick={minimize}
                 className="p-1 text-cocoa/55 transition-colors hover:text-cocoa"
                 aria-label="Minimize coupon offer"
                 title="Minimize offer"

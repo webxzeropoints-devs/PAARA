@@ -250,7 +250,7 @@ function MeetOwner() {
             <svg aria-hidden="true" className="absolute -bottom-4 right-0 h-12 w-14 text-gold/35" viewBox="0 0 56 48" fill="none"><path d="M6 40C7 17 20 5 31 5c12 0 19 12 19 29-12-7-24-7-44 6zM22 14c7 8 11 16 12 26" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
           </div>
           <div className="max-w-sm pt-1">
-              <blockquote className="text-2xl md:text-[1.9rem] leading-[1.22] text-cocoa/85 italic font-medium" style={{ fontFamily: "Cormorant Garamond, serif" }}>“Paara is a reflection of my love for the ocean and the belief that simplicity is the truest form of elegance.”</blockquote>
+              <blockquote className="text-2xl md:text-[1.9rem] leading-[1.22] text-cocoa/85 italic font-medium" style={{ fontFamily: "Cormorant Garamond, serif" }}>“Paara started with a dream I couldn’t let go of. Today, every piece is a little part of that dream, created with love, care, and the hope that it becomes a part of someone else’s story too.”</blockquote>
             <p className="font-script mt-7 text-3xl md:text-4xl text-cocoa">— Dharshini</p>
             <p className="mt-1 text-[10px] uppercase tracking-[.24em] text-cocoa/60">Founder</p>
             <Link to="/our-story" className="inline-block mt-7 text-xs uppercase tracking-[.18em] text-gold border-b border-gold/70 pb-1">Read our story →</Link>

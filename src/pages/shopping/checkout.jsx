@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -87,6 +87,7 @@ export default function Checkout() {
   const [previewingInvoice, setPreviewingInvoice] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [error, setError] = useState("");
+  const upiPreparationStarted = useRef(false);
 
   useEffect(() => {
     if (!getToken()) {
@@ -273,6 +274,16 @@ export default function Checkout() {
     }
   };
 
+  useEffect(() => {
+    if (step !== 2 || paymentMethod !== "manual_upi" || !selectedAddressId || items.length === 0 || upiPreparationStarted.current) {
+      return;
+    }
+    upiPreparationStarted.current = true;
+    prepareManualUpi().catch(() => {
+      upiPreparationStarted.current = false;
+    });
+  }, [items.length, paymentMethod, selectedAddressId, step]);
+
   const confirmUpiPaid = () => {
     if (!order?.order_id) {
       setError("Generate the UPI QR code before confirming payment.");
@@ -286,8 +297,7 @@ export default function Checkout() {
     });
   };
 
-  // The payment screen creates the order. COD stops here; Razorpay continues
-  // with the existing gateway and server-side signature verification flow.
+  // Non-UPI payment methods retain their existing order/payment flow.
   const payNow = async () => {
     if (!paymentMethod || !selectedAddressId || items.length === 0) {
       setError("Please select an address and add an item before paying.");
@@ -622,7 +632,8 @@ export default function Checkout() {
                       <p className="mb-3 text-xs text-cocoa/70">
                         Scan with any UPI app (GPay, PhonePe, Paytm) to pay ₹{Number(manualUpi.amount || customerTotal || 0).toLocaleString("en-IN")}.
                       </p>
-                      <div className="flex items-center gap-4">
+                      {paying && <p className="mb-3 flex items-center gap-2 text-sm text-cocoa/70"><span className="h-4 w-4 animate-spin rounded-full border-2 border-cocoa/20 border-t-gold" aria-hidden="true" />Generating your UPI QR code…</p>}
+                      {manualUpi.ready && <div className="flex items-center gap-4">
                         {manualUpi.qr_code_url && (
                           <img src={manualUpi.qr_code_url} alt="UPI QR code" className="h-28 w-28 rounded-md border border-cocoa/10 bg-white p-2" />
                         )}
@@ -633,6 +644,7 @@ export default function Checkout() {
                           <a href={manualUpi.deep_link || "upi://pay"} className="mt-2 inline-block text-xs uppercase tracking-widest text-gold">Open UPI app</a>
                         </div>
                       </div>
+                      }
 
                       <div className="mt-4 border-t border-gold/20 pt-4">
                         <button type="button" onClick={confirmUpiPaid} disabled={paying || !order} className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60">I&apos;ve Paid</button>
@@ -648,14 +660,16 @@ export default function Checkout() {
                   <p className="font-numeric text-2xl mt-1">{formatPrice(customerTotal)}</p>
                   <p className="text-xs text-cocoa/60 mt-1">Inclusive of all taxes</p>
                 </div>
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={payNow}
-                  disabled={paying || !shipping}
-                  className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
-                >
-                  {paying ? paymentMethod === "cod" ? "Placing COD order…" : "Generating UPI QR…" : paymentMethod === "cod" ? "Place COD order" : "Pay Now"}
-                </motion.button>
+                {paymentMethod !== "manual_upi" && (
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={payNow}
+                    disabled={paying || !shipping}
+                    className="bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60"
+                  >
+                    {paying ? "Placing COD order…" : "Place COD order"}
+                  </motion.button>
+                )}
               </div>
             )}
           </main>
