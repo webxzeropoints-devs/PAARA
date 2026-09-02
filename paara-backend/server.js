@@ -155,6 +155,12 @@ const paaraIrlColumns = db.prepare("PRAGMA table_info(paara_irl)").all().map((co
 if (paaraIrlColumns.length && !paaraIrlColumns.includes('owner_image_url')) {
   db.exec('ALTER TABLE paara_irl ADD COLUMN owner_image_url TEXT');
 }
+if (paaraIrlColumns.length && !paaraIrlColumns.includes('sort_order')) {
+  db.exec('ALTER TABLE paara_irl ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
+}
+if (paaraIrlColumns.length && !paaraIrlColumns.includes('is_active')) {
+  db.exec('ALTER TABLE paara_irl ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1');
+}
 if (paaraIrlColumns.length && !paaraIrlColumns.includes('updated_at')) {
   db.exec('ALTER TABLE paara_irl ADD COLUMN updated_at TEXT');
   db.exec("UPDATE paara_irl SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''");
