@@ -346,7 +346,7 @@ router.put('/products/:id', async (q, s) => {
 
     ['is_exclusive', 'is_bestseller', 'is_active', 'is_vault'].forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(updates, key)) {
-        updates[key] = normalizeFormBoolean(updates[key], false);
+        updates[key] = normalizeFormBoolean(updates[key], false) ? 1 : 0;
       }
     });
 
@@ -400,7 +400,7 @@ router.delete('/tile-products/:id', (q, s) => {
   s.json({ success: true });
 });
 
-router.get('/paara-irl', (q, s) => s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').all()));
+router.get('/paara-irl', (q, s) => s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get() || null));
 
 router.put('/paara-irl', async (q, s) => {
   const { image_url, owner_image_url, caption } = q.body || {};
