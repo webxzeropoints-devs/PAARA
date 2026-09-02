@@ -109,7 +109,7 @@ const saveUploadedImage = async (file, prefix) => {
 
 router.get('/products', (q, s) => s.json(decorate(db.prepare('SELECT p.*,c.name category_name FROM products p JOIN categories c ON c.id=p.category_id ORDER BY p.created_at DESC').all())));
 
-router.get('/categories', (q, s) => s.json(db.prepare('SELECT id,name,slug,gender FROM categories ORDER BY gender,name').all()));
+router.get('/categories', (q, s) => s.json(db.prepare('SELECT id,name,slug,gender,vibe,material FROM categories ORDER BY gender,name').all()));
 
 router.post('/categories', (q, s) => {
   const { name, slug, gender, vibe = null, material = null } = q.body || {};
@@ -254,14 +254,15 @@ router.post('/products', async (q, s) => {
       return s.status(400).json({ error: 'Failed to process uploaded images.' });
     }
 
-    const existingImages = q.body.existingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
+    const hasExistingImages = Object.prototype.hasOwnProperty.call(q.body, 'existingImages');
+    const existingImages = hasExistingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
     const allImages = [...uploadedImages, ...existingImages];
 
     const result = db.prepare('INSERT INTO products (category_id,name,slug,description,price,material,subcategory,stock,is_exclusive,is_bestseller,is_active,is_vault,release_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
       normalizedCategoryId, name, slug, description, normalizedPrice, material, subcategory, normalizedStock, normalizedIsExclusive ? 1 : 0, normalizedIsBestseller ? 1 : 0, normalizedIsActive ? 1 : 0, normalizedIsVault ? 1 : 0, release_date || new Date().toISOString()
     );
     writeImages(result.lastInsertRowid, allImages);
-    s.json(decorate([db.prepare('SELECT * FROM products WHERE id=?').get(result.lastInsertRowid)])[0]);
+    s.status(201).json(decorate([db.prepare('SELECT * FROM products WHERE id=?').get(result.lastInsertRowid)])[0]);
   } catch (err) {
     s.status(400).json({ error: 'Could not create the product.' });
   }
@@ -273,11 +274,12 @@ router.put('/products/:id', async (q, s) => {
     if (!current) return s.status(404).json({ error: 'Product not found.' });
 
     const uploadedImages = await saveUploadedImages(q.files || []);
-    const existingImages = q.body.existingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
+    const hasExistingImages = Object.prototype.hasOwnProperty.call(q.body, 'existingImages');
+    const existingImages = hasExistingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
     const allImages = [...uploadedImages, ...existingImages];
 
     const updates = { ...q.body };
-    if (allImages.length > 0) {
+    if (uploadedImages.length > 0 || hasExistingImages) {
       writeImages(q.params.id, allImages);
     }
     delete updates.existingImages;
@@ -313,6 +315,10 @@ router.put('/products/:id', async (q, s) => {
 });
 
 router.delete('/products/:id', (q, s) => {
+  const orderReference = db.prepare('SELECT 1 FROM order_items WHERE product_id = ? LIMIT 1').get(q.params.id);
+  if (orderReference) {
+    return s.status(409).json({ error: 'This product is referenced by an order and cannot be deleted.' });
+  }
   const r = db.prepare('DELETE FROM products WHERE id=?').run(q.params.id);
   if (!r.changes) return s.status(404).json({ error: 'Product not found.' });
   s.json({ success: true });
@@ -327,8 +333,13 @@ router.get('/tile-products/:tile_key', (q, s) => {
 router.post('/tile-products', (q, s) => {
   const { tile_key, product_id, sort_order = 0 } = q.body;
   if (!keys.includes(tile_key) || !product_id) return s.status(400).json({ error: 'tile_key and product_id are required.' });
-  db.prepare('INSERT INTO tile_products (tile_key,product_id,sort_order) VALUES (?,?,?)').run(tile_key, product_id, sort_order);
-  s.json({ success: true });
+  try {
+    const result = db.prepare('INSERT INTO tile_products (tile_key,product_id,sort_order) VALUES (?,?,?)').run(tile_key, product_id, sort_order);
+    s.status(201).json(db.prepare('SELECT * FROM tile_products WHERE id=?').get(result.lastInsertRowid));
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE constraint failed')) return s.status(409).json({ error: 'This product is already assigned to that tile.' });
+    s.status(400).json({ error: 'Could not assign the product to the tile.' });
+  }
 });
 
 router.delete('/tile-products/:id', (q, s) => {
@@ -407,15 +418,20 @@ router.get('/coupons', (q, s) => s.json(db.prepare('SELECT * FROM coupons ORDER 
 router.post('/coupons', (q, s) => {
   const { code, description, discount_type, discount_value, deadline, is_active } = q.body;
   if (!code || !['percent', 'flat'].includes(discount_type) || !discount_value || !deadline) return s.status(400).json({ error: 'Invalid coupon data.' });
-  db.prepare('INSERT INTO coupons (code,description,discount_type,discount_value,deadline,is_active) VALUES (?,?,?,?,?,?)').run(code, description, discount_type, discount_value, deadline, is_active ? 1 : 0);
-  s.json({ success: true });
+  try {
+    const result = db.prepare('INSERT INTO coupons (code,description,discount_type,discount_value,deadline,is_active) VALUES (?,?,?,?,?,?)').run(String(code).trim().toUpperCase(), description || null, discount_type, Number(discount_value), deadline, is_active ? 1 : 0);
+    s.status(201).json(db.prepare('SELECT * FROM coupons WHERE id=?').get(result.lastInsertRowid));
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE constraint failed')) return s.status(409).json({ error: 'A coupon with this code already exists.' });
+    s.status(400).json({ error: 'Could not create the coupon.' });
+  }
 });
 
 router.put('/coupons/:id', (q, s) => {
   const { code, description, discount_type, discount_value, deadline, is_active } = q.body;
   const r = db.prepare('UPDATE coupons SET code=?,description=?,discount_type=?,discount_value=?,deadline=?,is_active=? WHERE id=?').run(code, description, discount_type, discount_value, deadline, is_active ? 1 : 0, q.params.id);
   if (!r.changes) return s.status(404).json({ error: 'Coupon not found.' });
-  s.json({ success: true });
+  s.json(db.prepare('SELECT * FROM coupons WHERE id=?').get(q.params.id));
 });
 
 router.delete('/coupons/:id', (q, s) => {
@@ -429,8 +445,13 @@ router.get('/gift-card-rules', (q, s) => s.json(db.prepare(`SELECT r.*,p.name pr
 router.post('/gift-card-rules', (q, s) => {
   const { product_id, gift_card_value, is_active = true } = q.body;
   if (!product_id || !Number.isFinite(Number(gift_card_value)) || Number(gift_card_value) <= 0) return s.status(400).json({ error: 'Invalid gift card rule data.' });
-  db.prepare('INSERT INTO gift_card_rules (product_id,gift_card_value,is_active) VALUES (?,?,?)').run(product_id, gift_card_value, is_active ? 1 : 0);
-  s.json({ success: true });
+  try {
+    const result = db.prepare('INSERT INTO gift_card_rules (product_id,gift_card_value,is_active) VALUES (?,?,?)').run(product_id, gift_card_value, is_active ? 1 : 0);
+    s.status(201).json(db.prepare('SELECT * FROM gift_card_rules WHERE id=?').get(result.lastInsertRowid));
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE constraint failed')) return s.status(409).json({ error: 'A loyalty rule already exists for this product.' });
+    s.status(400).json({ error: 'Could not create the loyalty rule.' });
+  }
 });
 
 router.put('/gift-card-rules/:id', (q, s) => {
@@ -438,7 +459,7 @@ router.put('/gift-card-rules/:id', (q, s) => {
   if (!product_id || !Number.isFinite(Number(gift_card_value)) || Number(gift_card_value) <= 0) return s.status(400).json({ error: 'Invalid gift card rule data.' });
   const r = db.prepare("UPDATE gift_card_rules SET product_id=?,gift_card_value=?,is_active=?,updated_at=datetime('now') WHERE id=?").run(product_id, gift_card_value, is_active ? 1 : 0, q.params.id);
   if (!r.changes) return s.status(404).json({ error: 'Gift card rule not found.' });
-  s.json({ success: true });
+  s.json(db.prepare('SELECT * FROM gift_card_rules WHERE id=?').get(q.params.id));
 });
 
 router.delete('/gift-card-rules/:id', (q, s) => {

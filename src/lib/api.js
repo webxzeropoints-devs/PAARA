@@ -22,6 +22,23 @@ const TOKEN_KEY = "paara_token";
 
 const ADMIN_TOKEN_KEY = "paara_admin_token";
 
+export const resolveAssetUrl = (value) => {
+  const source = String(value || "");
+  if (!source || source.startsWith("data:") || source.startsWith("blob:") || /^https?:\/\//i.test(source)) return source;
+  if (!source.startsWith("/")) return source;
+  return `${BASE_URL.replace(/\/api$/, "")}${source}`;
+};
+
+const normalizeResponseAssets = (value, key = "") => {
+  if (Array.isArray(value)) return value.map((item) => normalizeResponseAssets(item, key));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => {
+    if (entryKey === "images" && Array.isArray(entryValue)) return [entryKey, entryValue.map(resolveAssetUrl)];
+    if (entryKey.endsWith("image_url")) return [entryKey, resolveAssetUrl(entryValue)];
+    return [entryKey, normalizeResponseAssets(entryValue, entryKey)];
+  }));
+};
+
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
@@ -64,7 +81,7 @@ const handle = async (res) => {
     err.data = data;
     throw err;
   }
-  return data;
+  return normalizeResponseAssets(data);
 };
 
 // Catch network-level failures (backend down, CORS, DNS) so a missing

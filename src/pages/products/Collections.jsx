@@ -16,20 +16,6 @@ const SORTS = [
   { value: "newest", label: "Newest" },
 ];
 
-const COLLECTIONS = {
-  "for-her": [],
-  "for-him": [],
-  necklaces: ["pendant-necklaces", "layered-necklaces", "charm-necklaces"],
-  earrings: ["studs", "hoops", "drop-earrings", "statement-earrings"],
-  bracelets: ["chain-bracelets", "charm-bracelets", "cuff-style-bracelets"],
-  rings: ["minimal-rings", "statement-rings", "stackable-rings"],
-  charms: ["shell-charms", "heart-charms", "pearl-charms", "letter-initial-charms"],
-  pearls: ["pearl-necklaces", "pearl-earrings", "pearl-bracelets", "pearl-charms"],
-  shells: ["shell-necklaces", "shell-earrings", "shell-bracelets", "shell-charms"],
-};
-
-const labelize = (value) => value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-
 const normalizeList = (data) => (Array.isArray(data) ? data : data?.products || []);
 const AUDIENCE_GENDERS = { "for-her": "women", "for-him": "men" };
 
@@ -139,17 +125,9 @@ export default function Collections() {
             <FilterGroup
               label="Collection"
               value={filters.category}
-              options={categories.length ? categories.map((category) => category.slug) : Object.keys(COLLECTIONS)}
+              options={categories.map((category) => category.slug)}
               onChange={setCategory}
             />
-            {filters.category && COLLECTIONS[filters.category]?.length > 0 && (
-              <FilterGroup
-                label={`${labelize(filters.category)} styles`}
-                value={filters.subcategory}
-                options={COLLECTIONS[filters.category] || []}
-                onChange={(value) => setFilter("subcategory", value)}
-              />
-            )}
 
             <div className="mt-4">
               <p className="text-xs uppercase tracking-widest text-cocoa/60 mb-2">Sort</p>
