@@ -19,7 +19,7 @@ router.get('/collection-tiles',(req,res)=>{
   res.json(tiles.map(tile=>{const mapped=productRows.all(tile.tile_key).map((product) => ({ ...product, image_url: publicImageUrl(product.image_url) }));return {...tile,products:mapped,image_url:publicImageUrl(mapped[0]?.image_url||tile.image_url)};}));
 });
 router.get('/paara-irl',(req,res)=>{
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   const row = db.prepare('SELECT id,image_url,owner_image_url,caption,updated_at FROM paara_irl WHERE id=1').get() || null;
   res.json(row ? { ...row, image_url: publicImageUrl(row.image_url), owner_image_url: publicImageUrl(row.owner_image_url) } : null);
 });

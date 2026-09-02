@@ -476,7 +476,8 @@ router.put('/paara-irl', async (q, s) => {
   } catch (error) {
     const uploadError = safeUploadError(error);
     console.error('Paara IRL image update failed:', error);
-    s.status(400).json({ error: uploadError.message, code: uploadError.code });
+    const clientErrorCodes = new Set(['BASE64_IMAGE_NOT_ALLOWED', 'INVALID_IMAGE_UPLOAD', 'BLOB_STORAGE_NOT_CONFIGURED', 'BLOB_URL_MISSING']);
+    s.status(clientErrorCodes.has(uploadError.code) ? 400 : 500).json({ error: uploadError.message, code: uploadError.code });
   }
 });
 
