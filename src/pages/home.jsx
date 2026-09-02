@@ -256,7 +256,7 @@ function MeetOwner() {
             <Link to="/our-story" className="inline-block mt-7 text-xs uppercase tracking-[.18em] text-gold border-b border-gold/70 pb-1">Read our story →</Link>
           </div>
         </div>
-        <div className="relative mx-auto w-full max-w-[500px] rounded-[1.75rem] border border-gold/35 p-1.5 shadow-[0_20px_48px_rgba(75,45,25,.14)] overflow-hidden">
+        <div className="relative mx-auto w-full max-w-[400px] rounded-[1.75rem] border border-gold/35 p-1.5 shadow-[0_20px_48px_rgba(75,45,25,.14)] overflow-hidden">
           <div className="relative overflow-hidden rounded-[1.35rem] bg-cocoa outline outline-1 outline-white/50 outline-offset-[-7px]">
             <video ref={videoRef} className="block w-full h-auto rounded-[1.35rem]" autoPlay loop={founderVideos.length === 1} muted playsInline onEnded={playNextVideo} src={founderVideos[videoIndex]} />
             <button type="button" onClick={togglePlayback} aria-label={playing ? "Pause founder story video" : "Play founder story video"} className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/75 text-cocoa backdrop-blur-sm transition hover:bg-white">{playing ? "Ⅱ" : "▶"}</button>
