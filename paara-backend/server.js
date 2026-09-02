@@ -336,28 +336,8 @@ const ensureDefaultAdmin = () => {
   const defaultEmail = 'paara@gmail.com';
   const defaultName = 'Paara Admin';
   const defaultHash = bcrypt.hashSync('Paara@123', 10);
-  const existingDefault = db.prepare('SELECT id, email, password_hash, must_change_password FROM admins WHERE lower(email) = ?').get(defaultEmail.toLowerCase());
-
-  if (existingDefault) {
-    const needsReset = existingDefault.email.toLowerCase() !== defaultEmail.toLowerCase()
-      || existingDefault.password_hash !== defaultHash
-      || Number(existingDefault.must_change_password) !== 1;
-
-    if (needsReset) {
-      db.prepare('UPDATE admins SET email = ?, password_hash = ?, must_change_password = 1 WHERE id = ?')
-        .run(defaultEmail, defaultHash, existingDefault.id);
-      console.log('[ADMIN SAFETY NET] Normalized the default admin record to the dashboard login account.');
-    }
-    return;
-  }
-
-  const firstAdmin = db.prepare('SELECT id FROM admins ORDER BY id LIMIT 1').get();
-  if (firstAdmin) {
-    db.prepare('UPDATE admins SET name = ?, email = ?, password_hash = ?, must_change_password = 1 WHERE id = ?')
-      .run(defaultName, defaultEmail, defaultHash, firstAdmin.id);
-    console.log('[ADMIN SAFETY NET] Replaced the stale admin record with the dashboard login account.');
-    return;
-  }
+  const existingAdmin = db.prepare('SELECT id FROM admins LIMIT 1').get();
+  if (existingAdmin) return;
 
   db.prepare(`
     INSERT INTO admins (name, email, password_hash, must_change_password)

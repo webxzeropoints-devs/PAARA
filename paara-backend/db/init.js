@@ -226,22 +226,14 @@ console.log(`✔ Seeded ${imageFiles.length} products with primary images. Done.
 // ---- Seed: placeholder admin (paara@gmail.com / Paara@123) ----
 const defaultEmail = 'paara@gmail.com';
 const defaultPasswordHash = bcrypt.hashSync('Paara@123', 10);
-const existingAdmin = db.prepare('SELECT id, email FROM admins WHERE lower(email) = ?').get(defaultEmail.toLowerCase());
-if (existingAdmin) {
-  db.prepare('UPDATE admins SET name = ?, email = ?, password_hash = ?, must_change_password = 1 WHERE id = ?')
-    .run('Paara Admin', defaultEmail, defaultPasswordHash, existingAdmin.id);
-} else {
-  const firstAdmin = db.prepare('SELECT id FROM admins ORDER BY id LIMIT 1').get();
-  if (firstAdmin) {
-    db.prepare('UPDATE admins SET name = ?, email = ?, password_hash = ?, must_change_password = 1 WHERE id = ?')
-      .run('Paara Admin', defaultEmail, defaultPasswordHash, firstAdmin.id);
-  } else {
-    db.prepare(`
-      INSERT INTO admins (name, email, password_hash, must_change_password)
-      VALUES (?, ?, ?, ?)
-    `).run('Paara Admin', defaultEmail, defaultPasswordHash, 1);
-  }
+const existingAdmin = db.prepare('SELECT id FROM admins LIMIT 1').get();
+if (!existingAdmin) {
+  db.prepare(`
+    INSERT INTO admins (name, email, password_hash, must_change_password)
+    VALUES (?, ?, ?, ?)
+  `).run('Paara Admin', defaultEmail, defaultPasswordHash, 1);
 }
-console.log('✔ Seeded default admin with the dashboard login account and forced password change enabled.');
-
+console.log(existingAdmin
+  ? '✔ Preserved existing admin account(s).'
+  : '✔ Seeded default admin with the dashboard login account and forced password change enabled.');
 
