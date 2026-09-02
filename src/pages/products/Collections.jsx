@@ -151,10 +151,10 @@ export default function Collections() {
               options={VIBES}
               onChange={(v) => setFilter("vibe", v)}
             />
-            <FilterGroup
+            <SelectFilter
               label="Collection"
               value={filters.category}
-              options={categories.map((category) => category.slug)}
+              options={categories}
               onChange={setCategory}
             />
 
@@ -201,7 +201,9 @@ export default function Collections() {
             ) : products.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-sm text-cocoa/60 mb-4">
-                  Curating luxury pieces for this collection. Check back soon.
+                  {filters.category
+                    ? "No products found in this collection."
+                    : "Curating luxury pieces for this collection. Check back soon."}
                 </p>
                 <button
                   onClick={() => setParams({}, { replace: true })}
@@ -245,7 +247,12 @@ export default function Collections() {
             <FilterGroup label="Gender" value={mobileDraft.gender} options={GENDERS} onChange={(value) => setMobileDraft((current) => ({ ...current, gender: value }))} />
             <FilterGroup label="Material" value={mobileDraft.material} options={MATERIALS} onChange={(value) => setMobileDraft((current) => ({ ...current, material: value }))} />
             <FilterGroup label="Vibe" value={mobileDraft.vibe} options={VIBES} onChange={(value) => setMobileDraft((current) => ({ ...current, vibe: value }))} />
-            <FilterGroup label="Collection" value={mobileDraft.category} options={categories.map((category) => category.slug)} onChange={(value) => setMobileDraft((current) => ({ ...current, category: value, subcategory: "" }))} />
+            <SelectFilter
+              label="Collection"
+              value={mobileDraft.category}
+              options={categories}
+              onChange={(value) => setMobileDraft((current) => ({ ...current, category: value, subcategory: "" }))}
+            />
             <div className="mt-4">
               <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-cocoa/60">Sort</p>
               <select value={mobileDraft.sort} onChange={(event) => setMobileDraft((current) => ({ ...current, sort: event.target.value }))} className="w-full border-b border-cocoa/30 bg-transparent py-2 text-sm font-semibold outline-none focus:border-gold">
@@ -283,5 +290,25 @@ function FilterGroup({ label, value, options, onChange }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function SelectFilter({ label, value, options, onChange }) {
+  return (
+    <label className="mt-4 block">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-cocoa/60">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full border-b border-cocoa/30 bg-transparent py-1 text-sm font-semibold outline-none focus:border-gold"
+      >
+        <option value="">All Collections</option>
+        {options.map((option) => (
+          <option key={option.id || option.slug} value={option.slug}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
