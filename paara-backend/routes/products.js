@@ -1,12 +1,8 @@
 const express = require('express');
 const db = require('../db/database');
+const publicImageUrl = require('../utils/publicImageUrl');
 
 const router = express.Router();
-const publicImageUrl = (value) => {
-  const image = String(value || '').trim();
-  return image.startsWith('data:') ? null : image || null;
-};
-
 function getDailyBestsellers(limit) {
   const allActive = db.prepare(`
     SELECT p.*, c.name AS category_name, c.gender

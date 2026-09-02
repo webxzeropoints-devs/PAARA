@@ -24,7 +24,18 @@ const ADMIN_TOKEN_KEY = "paara_admin_token";
 
 export const resolveAssetUrl = (value) => {
   const source = String(value || "");
-  if (!source || source.startsWith("data:") || source.startsWith("blob:") || /^https?:\/\//i.test(source)) return source;
+  if (!source || source.startsWith("data:") || source.startsWith("blob:")) return source;
+  if (/^https?:\/\//i.test(source)) {
+    try {
+      const parsed = new URL(source);
+      if (parsed.hostname.endsWith(".blob.vercel-storage.com")) {
+        return `${new URL(BASE_URL).origin}/images/blob${parsed.pathname}`;
+      }
+    } catch {
+      return source;
+    }
+    return source;
+  }
   const assetPath = source.startsWith("/") ? source : `/${source}`;
   const encodedPath = encodeURI(assetPath).replace(/#/g, "%23");
   return `${new URL(BASE_URL).origin}${encodedPath}`;

@@ -3,6 +3,7 @@ const db = require('../db/database');
 const { requireAdmin } = require('../middleware/admin');
 const path = require('path');
 const fs = require('fs');
+const publicImageUrl = require('../utils/publicImageUrl');
 
 const router = express.Router();
 
@@ -33,23 +34,31 @@ if (!db.isServerless && !fs.existsSync(uploadsDir)) {
 const imageRows = db.prepare('SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order ASC,id ASC');
 const decorate = (rows) => rows.map(p => ({ ...p, images: imageRows.all(p.id).map(r => r.image_url) }));
 
-const normalizeBlobAccess = () => {
-  const configured = String(process.env.VERCEL_BLOB_ACCESS || process.env.BLOB_ACCESS || 'public').trim().toLowerCase();
-  return configured === 'private' ? 'private' : 'public';
-};
-
-const blobAuthOptions = () => {
+const privateBlobAuthOptions = () => {
   const token = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
   const storeId = String(process.env.BLOB_STORE_ID || '').trim();
   if (token) return { token };
   if (storeId) return { storeId };
-  return {};
+  throw Object.assign(new Error('Persistent image storage is not configured.'), { code: 'BLOB_STORAGE_NOT_CONFIGURED' });
+};
+
+const imageBlobOptions = () => {
+  const publicToken = String(process.env.BLOB_PUBLIC_READ_WRITE_TOKEN || '').trim();
+  const publicStoreId = String(process.env.BLOB_PUBLIC_STORE_ID || '').trim();
+  if (publicToken) return { access: 'public', token: publicToken };
+  if (publicStoreId) return { access: 'public', storeId: publicStoreId };
+  return { access: 'private', ...privateBlobAuthOptions() };
 };
 
 const safeUploadError = (error) => {
-  const message = String(error?.message || 'Unknown storage error')
-    .replace(/(token|authorization|secret|key)[^,; ]*/gi, '$1 [redacted]');
-  return { code: error?.code || error?.name || 'UPLOAD_STORAGE_ERROR', message };
+  const code = error?.code || error?.name || 'UPLOAD_STORAGE_ERROR';
+  const safeMessages = {
+    BLOB_STORAGE_NOT_CONFIGURED: 'Persistent image storage is not configured.',
+    BLOB_URL_MISSING: 'Persistent image storage did not return an image URL.',
+    INVALID_IMAGE_UPLOAD: 'The uploaded file is not a valid image.',
+    BASE64_IMAGE_NOT_ALLOWED: 'Upload the image file instead of pasting image data.',
+  };
+  return { code, message: safeMessages[code] || 'Image upload failed. Please try again.' };
 };
 
 const cleanImages = (images) => {
@@ -70,9 +79,25 @@ const writeImages = (id, images) => {
   clean.forEach((url, index) => add.run(id, url, index));
 };
 
-const publicImageUrl = (value) => {
-  const image = String(value || '').trim();
-  return image.startsWith('data:') ? null : image || null;
+const asFiles = (files) => (Array.isArray(files) ? files : files ? [files] : []);
+
+const parseSlots = (value) => {
+  if (Array.isArray(value)) return value.map((slot) => Number.parseInt(slot, 10));
+  if (value === undefined || value === null || value === '') return [];
+  return [Number.parseInt(value, 10)];
+};
+
+const orderedImageUrls = ({ uploadedImages, existingImages, uploadSlots, existingSlots }) => {
+  const slots = new Map();
+  uploadedImages.forEach((url, index) => {
+    const slot = Number.isInteger(uploadSlots[index]) ? uploadSlots[index] : index;
+    slots.set(slot, url);
+  });
+  existingImages.forEach((url, index) => {
+    const slot = Number.isInteger(existingSlots[index]) ? existingSlots[index] : uploadedImages.length + index;
+    slots.set(slot, url);
+  });
+  return [...slots.entries()].sort(([left], [right]) => left - right).map(([, url]) => url);
 };
 
 // Helper function to save uploaded files — Vercel Blob when serverless
@@ -87,19 +112,15 @@ const saveUploadedImages = async (files) => {
   });
 
   if (db.isServerless) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
-      throw Object.assign(new Error('Persistent image storage is not configured for this deployment.'), { code: 'BLOB_STORAGE_NOT_CONFIGURED' });
-    }
     const { put } = require('@vercel/blob');
     return Promise.all(files.map(async (file) => {
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8);
       const filename = `product-${timestamp}-${random}${path.extname(file.originalname)}`;
       const blob = await put(`products/${filename}`, file.buffer, {
-        access: 'public',
+        ...imageBlobOptions(),
         addRandomSuffix: false,
         contentType: file.mimetype,
-        ...blobAuthOptions(),
       });
       if (!blob?.url || !/^https?:\/\//i.test(blob.url)) {
         throw Object.assign(new Error('Persistent image storage returned no public URL.'), { code: 'BLOB_URL_MISSING' });
@@ -125,18 +146,14 @@ const saveUploadedImage = async (file, prefix) => {
     throw Object.assign(new Error('The uploaded image data was empty or was not an image.'), { code: 'INVALID_IMAGE_UPLOAD' });
   }
   if (db.isServerless) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
-      throw Object.assign(new Error('Persistent image storage is not configured for this deployment.'), { code: 'BLOB_STORAGE_NOT_CONFIGURED' });
-    }
     const { put } = require('@vercel/blob');
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
     const filename = `${prefix}-${timestamp}-${random}${path.extname(file.originalname)}`;
     const blob = await put(`homepage/${filename}`, file.buffer, {
-      access: 'public',
+      ...imageBlobOptions(),
       addRandomSuffix: false,
       contentType: file.mimetype,
-      ...blobAuthOptions(),
     });
     if (!blob?.url || !/^https?:\/\//i.test(blob.url)) {
       throw Object.assign(new Error('Persistent image storage returned no public URL.'), { code: 'BLOB_URL_MISSING' });
@@ -301,7 +318,7 @@ router.post('/products', async (q, s) => {
     }
 
     // Ensure req.files is an array (may be undefined when no files are uploaded)
-    const filesArray = Array.isArray(q.files) ? q.files : (q.files ? [q.files] : []);
+    const filesArray = asFiles(q.files);
     let uploadedImages = [];
     try {
       uploadedImages = await saveUploadedImages(filesArray);
@@ -313,7 +330,12 @@ router.post('/products', async (q, s) => {
 
     const hasExistingImages = Object.prototype.hasOwnProperty.call(q.body, 'existingImages');
     const existingImages = hasExistingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
-    const allImages = [...uploadedImages, ...existingImages];
+    const allImages = orderedImageUrls({
+      uploadedImages,
+      existingImages,
+      uploadSlots: parseSlots(q.body?.upload_slots),
+      existingSlots: parseSlots(q.body?.existing_slots),
+    });
 
     const result = db.prepare('INSERT INTO products (category_id,name,slug,description,price,material,subcategory,stock,is_exclusive,is_bestseller,is_active,is_vault,release_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
       normalizedCategoryId, name, slug, description, normalizedPrice, material, subcategory, normalizedStock, normalizedIsExclusive ? 1 : 0, normalizedIsBestseller ? 1 : 0, normalizedIsActive ? 1 : 0, normalizedIsVault ? 1 : 0, release_date || new Date().toISOString()
@@ -332,10 +354,15 @@ router.put('/products/:id', async (q, s) => {
     const current = db.prepare('SELECT * FROM products WHERE id=?').get(q.params.id);
     if (!current) return s.status(404).json({ error: 'Product not found.' });
 
-    const uploadedImages = await saveUploadedImages(q.files || []);
+    const uploadedImages = await saveUploadedImages(asFiles(q.files));
     const hasExistingImages = Object.prototype.hasOwnProperty.call(q.body, 'existingImages');
     const existingImages = hasExistingImages ? (Array.isArray(q.body.existingImages) ? q.body.existingImages : [q.body.existingImages]) : [];
-    const allImages = [...uploadedImages, ...existingImages];
+    const allImages = orderedImageUrls({
+      uploadedImages,
+      existingImages,
+      uploadSlots: parseSlots(q.body?.upload_slots),
+      existingSlots: parseSlots(q.body?.existing_slots),
+    });
 
     const updates = { ...q.body };
     if (uploadedImages.length > 0 || hasExistingImages) {
@@ -422,24 +449,31 @@ router.delete('/tile-products/:id', (q, s) => {
 router.get('/paara-irl', (q, s) => s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get() || null));
 
 router.put('/paara-irl', async (q, s) => {
-  const { image_url, owner_image_url, caption } = q.body || {};
-  const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
-  const uploadedImages = await Promise.all((q.files || []).map((file, index) => saveUploadedImage(file, uploadSlots[index] === 'owner' ? 'owner' : 'paara-irl')));
-  const uploadedBySlot = Object.fromEntries((q.files || []).map((file, index) => [uploadSlots[index] || 'image', uploadedImages[index]]));
-  const nextImageUrl = uploadedBySlot.image || publicImageUrl(image_url);
-  const nextOwnerImageUrl = uploadedBySlot.owner || publicImageUrl(owner_image_url);
-  if (String(image_url || '').startsWith('data:') && !uploadedBySlot.image) return s.status(400).json({ error: 'Base64 image data is not accepted. Upload the image file instead.', code: 'BASE64_IMAGE_NOT_ALLOWED' });
-  if (String(owner_image_url || '').startsWith('data:') && !uploadedBySlot.owner) return s.status(400).json({ error: 'Base64 image data is not accepted. Upload the image file instead.', code: 'BASE64_IMAGE_NOT_ALLOWED' });
-  db.prepare(`
-    INSERT INTO paara_irl (id, image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
-    VALUES (1, ?, ?, ?, 0, 1, datetime('now'), datetime('now'))
-    ON CONFLICT(id) DO UPDATE SET
-      image_url = excluded.image_url,
-      owner_image_url = excluded.owner_image_url,
-      caption = excluded.caption,
-      updated_at = datetime('now')
-  `).run(nextImageUrl || '', nextOwnerImageUrl || null, caption || null);
-  s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get());
+  try {
+    const { image_url, owner_image_url, caption } = q.body || {};
+    const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
+    const files = asFiles(q.files);
+    const uploadedImages = await Promise.all(files.map((file, index) => saveUploadedImage(file, uploadSlots[index] === 'owner' ? 'owner' : 'paara-irl')));
+    const uploadedBySlot = Object.fromEntries(files.map((file, index) => [uploadSlots[index] || 'image', uploadedImages[index]]));
+    const nextImageUrl = uploadedBySlot.image || publicImageUrl(image_url);
+    const nextOwnerImageUrl = uploadedBySlot.owner || publicImageUrl(owner_image_url);
+    if (String(image_url || '').startsWith('data:') && !uploadedBySlot.image) throw Object.assign(new Error('Upload the image file instead of pasting image data.'), { code: 'BASE64_IMAGE_NOT_ALLOWED' });
+    if (String(owner_image_url || '').startsWith('data:') && !uploadedBySlot.owner) throw Object.assign(new Error('Upload the image file instead of pasting image data.'), { code: 'BASE64_IMAGE_NOT_ALLOWED' });
+    db.prepare(`
+      INSERT INTO paara_irl (id, image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
+      VALUES (1, ?, ?, ?, 0, 1, datetime('now'), datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        image_url = excluded.image_url,
+        owner_image_url = excluded.owner_image_url,
+        caption = excluded.caption,
+        updated_at = datetime('now')
+    `).run(nextImageUrl || '', nextOwnerImageUrl || null, caption || null);
+    s.json(db.prepare('SELECT * FROM paara_irl WHERE id=1').get());
+  } catch (error) {
+    const uploadError = safeUploadError(error);
+    console.error('Paara IRL image update failed:', error);
+    s.status(400).json({ error: uploadError.message, code: uploadError.code });
+  }
 });
 
 router.get('/worn-by-you', (q, s) => s.json(db.prepare("SELECT * FROM instagram_reviews WHERE product_id IS NULL ORDER BY COALESCE(updated_at, cached_at, datetime('2000-01-01')) DESC, id ASC LIMIT 3").all()));
@@ -452,8 +486,9 @@ router.put('/worn-by-you', async (q, s) => {
   if (!Array.isArray(slots) || slots.length !== 3) return s.status(400).json({ error: 'Exactly 3 Worn By You slots are required.' });
   try {
     const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
-    const uploadedImages = await Promise.all((q.files || []).map((file) => saveUploadedImage(file, 'worn-by-you')));
-    const uploadedBySlot = Object.fromEntries((q.files || []).map((file, index) => [uploadSlots[index], uploadedImages[index]]));
+    const files = asFiles(q.files);
+    const uploadedImages = await Promise.all(files.map((file) => saveUploadedImage(file, 'worn-by-you')));
+    const uploadedBySlot = Object.fromEntries(files.map((file, index) => [uploadSlots[index], uploadedImages[index]]));
     const saved = db.transaction(() => slots.map((slot) => {
       const slotIndex = slots.indexOf(slot);
       const imageUrl = uploadedBySlot[String(slotIndex)] || publicImageUrl(slot?.image_url);
@@ -482,7 +517,9 @@ router.put('/worn-by-you', async (q, s) => {
     }))();
     s.json({ success: true, slots: saved });
   } catch (error) {
-    return s.status(400).json({ error: error.message });
+    const uploadError = safeUploadError(error);
+    console.error('Worn By You image update failed:', error);
+    return s.status(400).json({ error: uploadError.message, code: uploadError.code });
   }
 });
 

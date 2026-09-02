@@ -1,12 +1,8 @@
 const express = require('express');
 const db = require('../db/database');
+const publicImageUrl = require('../utils/publicImageUrl');
 
 const router = express.Router();
-const publicImageUrl = (value) => {
-  const image = String(value || '').trim();
-  return image.startsWith('data:') ? null : image || null;
-};
-
 // GET /api/vault/today — products released today (the homepage Vault strip)
 router.get('/today', (req, res) => {
   const products = db

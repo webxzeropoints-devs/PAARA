@@ -99,6 +99,28 @@ app.options('*', cors(corsOptions));
 
 // Serve the shared public assets used by the storefront and local upload files.
 app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images')));
+app.get('/images/blob/*', async (req, res) => {
+  try {
+    const pathname = decodeURIComponent(req.params[0] || '');
+    if (!pathname || pathname.includes('..')) return res.status(404).end();
+    const { get } = require('@vercel/blob');
+    const token = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
+    const storeId = String(process.env.BLOB_STORE_ID || '').trim();
+    const blob = await get(pathname, { access: 'private', ...(token ? { token } : { storeId }) });
+    if (!blob) return res.status(404).end();
+    res.set('Content-Type', blob.blob.contentType || 'application/octet-stream');
+    const reader = blob.stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    res.end();
+  } catch (error) {
+    console.error('Private image delivery failed:', error);
+    res.status(404).end();
+  }
+});
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public', 'assets')));
 app.use(express.static(path.join(__dirname, '..', 'public')));

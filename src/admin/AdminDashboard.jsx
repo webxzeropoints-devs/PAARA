@@ -754,9 +754,11 @@ function ProductEditor({ product, categories, onClose, onSaved }) {
       form.images.forEach((image, index) => {
         if (image.file) {
           formData.append(`images`, image.file);
+          formData.append("upload_slots", String(index));
         } else if (image.url) {
           // For existing images from edit mode, send as URL reference
           formData.append(`existingImages`, image.url);
+          formData.append("existing_slots", String(index));
         }
       });
 

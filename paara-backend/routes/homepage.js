@@ -1,10 +1,7 @@
 const express = require('express');
 const db = require('../db/database');
+const publicImageUrl = require('../utils/publicImageUrl');
 const router = express.Router();
-const publicImageUrl = (value) => {
-  const image = String(value || '').trim();
-  return image.startsWith('data:') ? null : image || null;
-};
 router.get('/collection-tiles',(req,res)=>{
   const tiles=db.prepare('SELECT tile_key,label,subtitle,image_url,link_path FROM collection_tiles ORDER BY id').all();
   const productRows=db.prepare(`
