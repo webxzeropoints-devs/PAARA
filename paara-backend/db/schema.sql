@@ -154,6 +154,26 @@ CREATE TABLE IF NOT EXISTS instagram_reviews (
 CREATE INDEX IF NOT EXISTS idx_products_release ON products(release_date);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+
+CREATE TABLE IF NOT EXISTS loyalty_cards (
+  customer_id INTEGER PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+  stamp_count INTEGER NOT NULL DEFAULT 0 CHECK (stamp_count BETWEEN 0 AND 6),
+  first_stamp_at TEXT,
+  expires_at TEXT,
+  completed_at TEXT,
+  reward_redeemed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS loyalty_stamps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  awarded_at TEXT NOT NULL DEFAULT (datetime('now')),
+  animation_shown_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_loyalty_stamps_customer ON loyalty_stamps(customer_id, awarded_at);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 
 CREATE TABLE IF NOT EXISTS gift_card_rules (
@@ -257,6 +277,5 @@ CREATE TABLE IF NOT EXISTS paara_irl (
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
 
 

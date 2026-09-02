@@ -30,6 +30,7 @@ const adminRouter = require('./routes/admin');
 const adminAuthRouter = require('./routes/adminAuth');
 const couponsRouter = require('./routes/coupons');
 const homepageRouter = require('./routes/homepage');
+const loyaltyRouter = require('./routes/loyalty');
 
 const app = express();
 
@@ -262,6 +263,26 @@ db.exec(`
   END
   WHERE status IS NOT NULL
 `);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS loyalty_cards (
+    customer_id INTEGER PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+    stamp_count INTEGER NOT NULL DEFAULT 0 CHECK (stamp_count BETWEEN 0 AND 6),
+    first_stamp_at TEXT,
+    expires_at TEXT,
+    completed_at TEXT,
+    reward_redeemed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS loyalty_stamps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+    awarded_at TEXT NOT NULL DEFAULT (datetime('now')),
+    animation_shown_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_loyalty_stamps_customer ON loyalty_stamps(customer_id, awarded_at);
+`);
 db.exec(`CREATE TABLE IF NOT EXISTS gift_card_rules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   product_id INTEGER NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE,
@@ -468,6 +489,7 @@ app.use('/api/vault', vaultRouter);
 app.use('/api/shipping', shippingRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/payment', paymentRouter);
+app.use('/api/loyalty', loyaltyRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

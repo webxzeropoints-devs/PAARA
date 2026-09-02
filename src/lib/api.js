@@ -235,6 +235,10 @@ export const previewInvoice = async (items, addressId, paymentMethod = "razorpay
 export const getOrders = () => apiGet("/orders");
 export const getOrderById = (id) => apiGet(`/orders/${id}`);
 export const getOrderStatus = (orderId, email) => apiGet(`/orders/${orderId}/status?email=${encodeURIComponent(email)}`);
+export const getLoyaltyStatus = () => apiGet("/loyalty");
+export const getLoyaltyOrder = (orderId) => apiGet(`/loyalty/order/${orderId}`);
+export const processLoyaltyOrder = (orderId) => apiPost("/loyalty/process-order", { order_id: orderId });
+export const markLoyaltyAnimationShown = (orderId) => apiPost("/loyalty/mark-animation-shown", { order_id: orderId });
 export const updateOrderStatus = (orderId, status) => adminRequest(`/admin/orders/${orderId}/status`, { method: "PATCH", body: { status } });
 
 export const postCreateRazorpay = (order_id) =>

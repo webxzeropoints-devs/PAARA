@@ -75,7 +75,7 @@ export default function Footer() {
               <li><Link to="/shop" className="hover:text-gold transition-colors">All Products</Link></li>
               <li><Link to="/shop?filter=new" className="hover:text-gold transition-colors">New Arrivals</Link></li>
               <li><Link to="/shop?filter=best-sellers" className="hover:text-gold transition-colors">Best Sellers</Link></li>
-              <li><Link to="/account/gift-cards" className="hover:text-gold transition-colors">Loyalty Card</Link></li>
+              <li><Link to="/account/loyalty" className="hover:text-gold transition-colors">Loyalty Card</Link></li>
             </ul>
           </div>
 

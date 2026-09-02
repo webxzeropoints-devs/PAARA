@@ -38,7 +38,7 @@ const NAV_ITEMS = [
 const ACCOUNT_ITEMS = [
   { label: "Orders", to: "/account/orders", icon: Package },
   { label: "Saved Addresses", to: "/account/addresses", icon: MapPin },
-  { label: "Loyalty Card", to: "/account/gift-cards", icon: Gift },
+  { label: "Loyalty Card", to: "/account/loyalty", icon: Gift },
   { label: "Notifications", to: "/account/notifications", icon: Bell },
   { label: "Customer Care", to: "/account/customer-care", icon: Headphones },
   { label: "Track Order", to: "/account/track-order", icon: Truck },
