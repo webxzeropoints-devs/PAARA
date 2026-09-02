@@ -164,6 +164,10 @@ if (couponColumns.length && !couponColumns.includes('redeemed_at')) {
   db.exec('ALTER TABLE coupons ADD COLUMN redeemed_at TEXT');
 }
 const instagramReviewColumns = db.prepare("PRAGMA table_info(instagram_reviews)").all().map((column) => column.name);
+if (instagramReviewColumns.length && !instagramReviewColumns.includes('sort_order')) {
+  db.exec('ALTER TABLE instagram_reviews ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
+  db.prepare('UPDATE instagram_reviews SET sort_order = id WHERE product_id IS NULL').run();
+}
 if (instagramReviewColumns.length && !instagramReviewColumns.includes('updated_at')) {
   db.exec('ALTER TABLE instagram_reviews ADD COLUMN updated_at TEXT');
   db.exec("UPDATE instagram_reviews SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''");

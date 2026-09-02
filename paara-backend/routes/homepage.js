@@ -30,7 +30,7 @@ router.get('/worn-by-you',(req,res)=>{
     SELECT id, instagram_post_url, image_url, caption, likes, cached_at, updated_at
     FROM instagram_reviews
     WHERE product_id IS NULL
-    ORDER BY COALESCE(updated_at, cached_at, datetime('2000-01-01')) DESC, id ASC
+    ORDER BY sort_order ASC, id ASC
     LIMIT 3
   `).all();
   res.json(rows.map((row) => ({ ...row, image_url: publicImageUrl(row.image_url) })));

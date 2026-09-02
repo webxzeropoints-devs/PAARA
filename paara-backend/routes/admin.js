@@ -476,21 +476,20 @@ router.put('/paara-irl', async (q, s) => {
   }
 });
 
-router.get('/worn-by-you', (q, s) => s.json(db.prepare("SELECT * FROM instagram_reviews WHERE product_id IS NULL ORDER BY COALESCE(updated_at, cached_at, datetime('2000-01-01')) DESC, id ASC LIMIT 3").all()));
+router.get('/worn-by-you', (q, s) => s.json(db.prepare("SELECT id, instagram_post_url, image_url, caption, likes, sort_order, cached_at, updated_at FROM instagram_reviews WHERE product_id IS NULL ORDER BY sort_order ASC, id ASC").all()));
 
 router.put('/worn-by-you', async (q, s) => {
   let slots = q.body?.slots;
   if (typeof slots === 'string') {
     try { slots = JSON.parse(slots); } catch { slots = null; }
   }
-  if (!Array.isArray(slots) || slots.length !== 3) return s.status(400).json({ error: 'Exactly 3 Worn By You slots are required.' });
+  if (!Array.isArray(slots) || slots.length === 0) return s.status(400).json({ error: 'At least one Worn By You slot is required.' });
   try {
     const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
     const files = asFiles(q.files);
     const uploadedImages = await Promise.all(files.map((file) => saveUploadedImage(file, 'worn-by-you')));
     const uploadedBySlot = Object.fromEntries(files.map((file, index) => [uploadSlots[index], uploadedImages[index]]));
-    const saved = db.transaction(() => slots.map((slot) => {
-      const slotIndex = slots.indexOf(slot);
+    const saved = db.transaction(() => slots.map((slot, slotIndex) => {
       const imageUrl = uploadedBySlot[String(slotIndex)] || publicImageUrl(slot?.image_url);
       const caption = slot?.caption || null;
       const instagramPostUrl = slot?.instagram_post_url || '';
@@ -502,17 +501,17 @@ router.put('/worn-by-you', async (q, s) => {
       if (Number.isInteger(targetId) && targetId > 0) {
         const result = db.prepare(`
           UPDATE instagram_reviews
-          SET image_url = ?, caption = ?, instagram_post_url = ?, likes = ?, cached_at = datetime('now'), updated_at = datetime('now')
+          SET image_url = ?, caption = ?, instagram_post_url = ?, likes = ?, sort_order = ?, cached_at = datetime('now'), updated_at = datetime('now')
           WHERE id = ? AND product_id IS NULL
-        `).run(imageUrl, caption, instagramPostUrl, likes, targetId);
+        `).run(imageUrl, caption, instagramPostUrl, likes, slotIndex, targetId);
         if (result.changes !== 1) throw new Error(`Worn By You slot ${targetId} could not be updated.`);
         return db.prepare('SELECT * FROM instagram_reviews WHERE id = ?').get(targetId);
       }
 
       const result = db.prepare(`
-        INSERT INTO instagram_reviews (product_id, instagram_post_url, image_url, caption, likes, cached_at, updated_at)
-        VALUES (NULL, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `).run(instagramPostUrl, imageUrl, caption, likes);
+        INSERT INTO instagram_reviews (product_id, instagram_post_url, image_url, caption, likes, sort_order, cached_at, updated_at)
+        VALUES (NULL, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).run(instagramPostUrl, imageUrl, caption, likes, slotIndex);
       return db.prepare('SELECT * FROM instagram_reviews WHERE id = ?').get(result.lastInsertRowid);
     }))();
     s.json({ success: true, slots: saved });
@@ -521,6 +520,12 @@ router.put('/worn-by-you', async (q, s) => {
     console.error('Worn By You image update failed:', error);
     return s.status(400).json({ error: uploadError.message, code: uploadError.code });
   }
+});
+
+router.delete('/worn-by-you/:id', (q, s) => {
+  const result = db.prepare('DELETE FROM instagram_reviews WHERE id = ? AND product_id IS NULL').run(q.params.id);
+  if (!result.changes) return s.status(404).json({ error: 'Worn By You entry not found.' });
+  s.json({ success: true, id: Number(q.params.id) });
 });
 
 router.get('/coupons', (q, s) => s.json(db.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all()));

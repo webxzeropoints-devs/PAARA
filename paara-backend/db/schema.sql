@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS instagram_reviews (
   image_url         TEXT NOT NULL,
   caption           TEXT,
   likes             INTEGER DEFAULT 0,
+  sort_order        INTEGER NOT NULL DEFAULT 0,
   cached_at         TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -256,7 +257,6 @@ CREATE TABLE IF NOT EXISTS paara_irl (
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
 
 
 

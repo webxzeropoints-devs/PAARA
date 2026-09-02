@@ -5,7 +5,7 @@ const hasPublicImageStore = Boolean(
 
 module.exports = (value) => {
   const image = String(value || '').trim();
-  if (!image || image.startsWith('data:')) return null;
+  if (!image || image.startsWith('data:')) return image || null;
   if (!hasPublicImageStore) {
     try {
       const parsed = new URL(image);
