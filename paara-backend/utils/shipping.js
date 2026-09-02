@@ -50,6 +50,20 @@ function rateForRegion(region, paymentMethod) {
 
 function calculateShipping({ city, state, paymentMethod = 'razorpay', totalWeightKg }) {
   const normalizedCity = String(city || '').trim();
+  const stateName = String(state || '').trim();
+
+  const flatRate = getFlatCityRate(normalizedCity);
+  if (flatRate !== null) {
+    return {
+      method: 'flat_city_rate',
+      city: normalizedCity,
+      state: stateName,
+      amount: round2(flatRate),
+      ratePerKg: null,
+      weightKg: Number(totalWeightKg) || 0,
+    };
+  }
+
   const region = getDeliveryRegion({ city, state });
   if (!region) {
     throw new Error(`No delivery rate is configured for ${city || 'the selected city'}, ${state || 'the selected state'}.`);
@@ -63,7 +77,7 @@ function calculateShipping({ city, state, paymentMethod = 'razorpay', totalWeigh
   return {
     method: 'flat_city_rate',
     city: normalizedCity,
-    state: String(state || '').trim(),
+    state: stateName,
     amount: round2(amount),
     ratePerKg: null,
     weightKg: Number(totalWeightKg) || 0,
