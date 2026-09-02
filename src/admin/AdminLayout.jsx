@@ -2,8 +2,8 @@
 // Navbar/Footer. Wraps every /admin/* route. The <AdminRouteGuard/> child
 // decides whether the requested admin page is actually reachable.
 
-import React, { useState } from "react";
-import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut, Menu } from "lucide-react";
 
@@ -23,7 +23,21 @@ const NAV = [
 function AdminRouteGuard() {
   const { token, loginStep } = useAdmin();
   const location = useLocation();
+  const navigate = useNavigate();
   const isPasswordSetupRoute = loginStep === "password-change" && location.pathname.startsWith("/admin/profile");
+
+  useEffect(() => {
+    const lockedUrl = `${location.pathname}${location.search}${location.hash}`;
+    window.history.pushState({ adminLock: true }, "", lockedUrl);
+    const handlePopState = () => {
+      if (!window.location.pathname.startsWith("/admin")) {
+        window.history.pushState({ adminLock: true }, "", lockedUrl);
+        navigate(lockedUrl, { replace: true });
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [location.pathname, location.search, location.hash, navigate]);
 
   if (isPasswordSetupRoute) {
     return <Outlet />;
@@ -74,7 +88,12 @@ function Sidebar({ onClose }) {
 
 export default function AdminLayout() {
   const { admin, logout } = useAdmin();
+  const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const handleLogout = () => {
+    logout();
+    navigate("/admin/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-sand text-cocoa font-body">
@@ -141,7 +160,7 @@ export default function AdminLayout() {
                 )}
                 <button
                   type="button"
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-[.18em] text-cocoa border border-gold hover:bg-gold hover:text-sand transition-colors"
                 >
                   <LogOut size={14} /> Logout

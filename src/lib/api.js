@@ -83,10 +83,23 @@ const prepareRequestBody = (body, headers) => {
   };
 };
 
-const handle = async (res) => {
+const clearStoredSession = (admin) => {
+  if (typeof window === "undefined") return;
+  if (admin) {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem("paara_admin_user");
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem("paara_customer_name");
+  }
+  window.dispatchEvent(new Event("paara-auth-change"));
+};
+
+const handle = async (res, { admin = false } = {}) => {
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) {
+    if (res.status === 401) clearStoredSession(admin);
     const msg = data?.error || data?.message || `Request failed (${res.status})`;
     const err = new Error(msg);
     err.status = res.status;
@@ -122,7 +135,7 @@ export const apiGet = wrapFetch((path) =>
   fetch(`${BASE_URL}${path}`, {
     headers: buildHeaders(),
     cache: "no-store",
-  }).then(handle)
+  }).then((res) => handle(res))
 );
 
 export const apiPost = wrapFetch((path, body) => {
@@ -133,7 +146,7 @@ export const apiPost = wrapFetch((path, body) => {
     headers: payload.headers,
     body: payload.body,
     cache: "no-store",
-  }).then(handle);
+  }).then((res) => handle(res))
 });
 
 export const apiPut = wrapFetch((path, body) => {
@@ -144,7 +157,7 @@ export const apiPut = wrapFetch((path, body) => {
     headers: payload.headers,
     body: payload.body,
     cache: "no-store",
-  }).then(handle);
+  }).then((res) => handle(res));
 });
 
 export const apiDelete = wrapFetch((path) =>
@@ -152,7 +165,7 @@ export const apiDelete = wrapFetch((path) =>
     method: "DELETE",
     headers: buildHeaders(),
     cache: "no-store",
-  }).then(handle)
+  }).then((res) => handle(res))
 );
 
 export const adminRequest = wrapFetch((path, options = {}) => {
@@ -164,7 +177,7 @@ export const adminRequest = wrapFetch((path, options = {}) => {
     headers: payload.headers,
     body: payload.body,
     cache: "no-store",
-  }).then(handle);
+  }).then((res) => handle(res, { admin: true }));
 });
 
 // Admin helpers
