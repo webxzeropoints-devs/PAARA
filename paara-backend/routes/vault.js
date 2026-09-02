@@ -2,6 +2,10 @@ const express = require('express');
 const db = require('../db/database');
 
 const router = express.Router();
+const publicImageUrl = (value) => {
+  const image = String(value || '').trim();
+  return image.startsWith('data:') ? null : image || null;
+};
 
 // GET /api/vault/today — products released today (the homepage Vault strip)
 router.get('/today', (req, res) => {
@@ -17,7 +21,7 @@ router.get('/today', (req, res) => {
     'SELECT image_url FROM product_images WHERE product_id = ? ORDER BY sort_order ASC'
   );
   products.forEach((product) => {
-    product.images = imagesForProduct.all(product.id).map((image) => image.image_url);
+    product.images = imagesForProduct.all(product.id).map((image) => publicImageUrl(image.image_url)).filter(Boolean);
   });
   res.json(products);
 });
@@ -33,7 +37,7 @@ router.get('/selected', (req, res) => {
     ORDER BY vp.sort_order ASC
   `).all();
   const imagesForProduct = db.prepare('SELECT image_url FROM product_images WHERE product_id = ? ORDER BY sort_order ASC');
-  products.forEach((product) => { product.images = imagesForProduct.all(product.id).map((image) => image.image_url); });
+  products.forEach((product) => { product.images = imagesForProduct.all(product.id).map((image) => publicImageUrl(image.image_url)).filter(Boolean); });
   res.json(products);
 });
 

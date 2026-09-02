@@ -85,7 +85,6 @@ export function AdminProvider({ children }) {
         localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(merged));
       }
     } catch (err) {
-      console.error("Failed to refresh admin profile", err);
     }
   }, []);
 

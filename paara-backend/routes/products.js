@@ -2,6 +2,10 @@ const express = require('express');
 const db = require('../db/database');
 
 const router = express.Router();
+const publicImageUrl = (value) => {
+  const image = String(value || '').trim();
+  return image.startsWith('data:') ? null : image || null;
+};
 
 function getDailyBestsellers(limit) {
   const allActive = db.prepare(`
@@ -29,7 +33,7 @@ function addProductImages(products) {
     'SELECT image_url FROM product_images WHERE product_id = ? ORDER BY sort_order ASC'
   );
   products.forEach((product) => {
-    product.images = imagesForProduct.all(product.id).map((image) => image.image_url);
+    product.images = imagesForProduct.all(product.id).map((image) => publicImageUrl(image.image_url)).filter(Boolean);
   });
   return products;
 }
@@ -87,7 +91,7 @@ router.get('/:slug', (req, res) => {
   product.images = db
     .prepare('SELECT image_url, is_primary FROM product_images WHERE product_id = ? ORDER BY sort_order ASC')
     .all(product.id)
-    .map((image) => image.image_url);
+    .map((image) => publicImageUrl(image.image_url)).filter(Boolean);
 
   product.instagram = db
     .prepare('SELECT instagram_post_url, image_url, caption, likes FROM instagram_reviews WHERE product_id = ? ORDER BY cached_at DESC LIMIT 8')

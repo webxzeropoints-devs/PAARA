@@ -55,7 +55,11 @@ const safeUploadError = (error) => {
 const cleanImages = (images) => {
   if (!Array.isArray(images)) return null;
   if (images.length > 3) throw new Error('A product can have at most 3 images.');
-  return images.map(x => String(x || '').trim()).filter(Boolean);
+  const cleaned = images.map(x => String(x || '').trim()).filter(Boolean);
+  if (cleaned.some((image) => image.startsWith('data:'))) {
+    throw Object.assign(new Error('Base64 image data is not accepted. Upload the image file instead.'), { code: 'BASE64_IMAGE_NOT_ALLOWED' });
+  }
+  return cleaned;
 };
 
 const writeImages = (id, images) => {
@@ -64,6 +68,11 @@ const writeImages = (id, images) => {
   db.prepare('DELETE FROM product_images WHERE product_id=?').run(id);
   const add = db.prepare('INSERT INTO product_images (product_id, image_url, sort_order) VALUES (?, ?, ?)');
   clean.forEach((url, index) => add.run(id, url, index));
+};
+
+const publicImageUrl = (value) => {
+  const image = String(value || '').trim();
+  return image.startsWith('data:') ? null : image || null;
 };
 
 // Helper function to save uploaded files — Vercel Blob when serverless
@@ -112,16 +121,26 @@ const saveUploadedImages = async (files) => {
 
 const saveUploadedImage = async (file, prefix) => {
   if (!file) return null;
+  if (!file.buffer?.length || !file.mimetype?.startsWith('image/')) {
+    throw Object.assign(new Error('The uploaded image data was empty or was not an image.'), { code: 'INVALID_IMAGE_UPLOAD' });
+  }
   if (db.isServerless) {
+    if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+      throw Object.assign(new Error('Persistent image storage is not configured for this deployment.'), { code: 'BLOB_STORAGE_NOT_CONFIGURED' });
+    }
     const { put } = require('@vercel/blob');
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
     const filename = `${prefix}-${timestamp}-${random}${path.extname(file.originalname)}`;
     const blob = await put(`homepage/${filename}`, file.buffer, {
-      access: normalizeBlobAccess(),
+      access: 'public',
       addRandomSuffix: false,
       contentType: file.mimetype,
+      ...blobAuthOptions(),
     });
+    if (!blob?.url || !/^https?:\/\//i.test(blob.url)) {
+      throw Object.assign(new Error('Persistent image storage returned no public URL.'), { code: 'BLOB_URL_MISSING' });
+    }
     return blob.url;
   }
 
@@ -407,8 +426,10 @@ router.put('/paara-irl', async (q, s) => {
   const uploadSlots = Array.isArray(q.body?.upload_slots) ? q.body.upload_slots : [q.body?.upload_slots].filter(Boolean);
   const uploadedImages = await Promise.all((q.files || []).map((file, index) => saveUploadedImage(file, uploadSlots[index] === 'owner' ? 'owner' : 'paara-irl')));
   const uploadedBySlot = Object.fromEntries((q.files || []).map((file, index) => [uploadSlots[index] || 'image', uploadedImages[index]]));
-  const nextImageUrl = uploadedBySlot.image || String(image_url ?? '').trim();
-  const nextOwnerImageUrl = uploadedBySlot.owner || String(owner_image_url ?? '').trim();
+  const nextImageUrl = uploadedBySlot.image || publicImageUrl(image_url);
+  const nextOwnerImageUrl = uploadedBySlot.owner || publicImageUrl(owner_image_url);
+  if (String(image_url || '').startsWith('data:') && !uploadedBySlot.image) return s.status(400).json({ error: 'Base64 image data is not accepted. Upload the image file instead.', code: 'BASE64_IMAGE_NOT_ALLOWED' });
+  if (String(owner_image_url || '').startsWith('data:') && !uploadedBySlot.owner) return s.status(400).json({ error: 'Base64 image data is not accepted. Upload the image file instead.', code: 'BASE64_IMAGE_NOT_ALLOWED' });
   db.prepare(`
     INSERT INTO paara_irl (id, image_url, owner_image_url, caption, sort_order, is_active, created_at, updated_at)
     VALUES (1, ?, ?, ?, 0, 1, datetime('now'), datetime('now'))
@@ -435,12 +456,12 @@ router.put('/worn-by-you', async (q, s) => {
     const uploadedBySlot = Object.fromEntries((q.files || []).map((file, index) => [uploadSlots[index], uploadedImages[index]]));
     const saved = db.transaction(() => slots.map((slot) => {
       const slotIndex = slots.indexOf(slot);
-      const imageUrl = uploadedBySlot[String(slotIndex)] || String(slot?.image_url || '').trim();
+      const imageUrl = uploadedBySlot[String(slotIndex)] || publicImageUrl(slot?.image_url);
       const caption = slot?.caption || null;
       const instagramPostUrl = slot?.instagram_post_url || '';
       const likes = Number(slot?.likes) || 0;
 
-      if (!imageUrl) throw new Error('Each Worn By You slot requires an image_url.');
+      if (!imageUrl) throw Object.assign(new Error('Each Worn By You slot requires a persistent image URL or uploaded file.'), { code: 'PERSISTENT_IMAGE_URL_REQUIRED' });
 
       const targetId = Number(slot?.id);
       if (Number.isInteger(targetId) && targetId > 0) {
