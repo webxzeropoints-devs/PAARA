@@ -674,7 +674,12 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
   try {
     loyalty = processLoyaltyOrder(orderId, order.customer_id);
   } catch (error) {
-    console.error('[LOYALTY_ADMIN_PROCESS_FAILED]', { orderId, message: error.message, name: error.name });
+    console.error('[LOYALTY_ADMIN_PROCESS_FAILED]', {
+      orderId,
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+    });
     return s.status(500).json({ error: 'Payment was verified, but the loyalty stamp could not be processed.' });
   }
 

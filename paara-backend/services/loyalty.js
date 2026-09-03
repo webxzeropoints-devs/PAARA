@@ -80,6 +80,7 @@ function processLoyaltyOrder(orderId, customerId) {
     }
 
     const now = new Date();
+    ensureLoyaltyCard(customerId);
     let card = db.prepare('SELECT * FROM loyalty_cards WHERE customer_id = ?').get(customerId);
     const expired = card?.expires_at && new Date(card.expires_at) <= now && !card.completed_at;
     if (expired) {
