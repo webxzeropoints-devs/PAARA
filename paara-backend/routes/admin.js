@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/database');
 const { requireAdmin } = require('../middleware/admin');
+const { processLoyaltyOrder } = require('../services/loyalty');
 const path = require('path');
 const fs = require('fs');
 const publicImageUrl = require('../utils/publicImageUrl');
@@ -653,7 +654,8 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
     return s.status(400).json({ error: 'Confirm that you verified this payment in your UPI or bank app before unlocking packing.' });
   }
   if (order.payment_status === 'verified') {
-    return s.json({ success: true, order_id: orderId, payment_status: 'verified', message: 'Manual UPI payment was already verified.' });
+    const loyalty = processLoyaltyOrder(orderId, order.customer_id);
+    return s.json({ success: true, order_id: orderId, payment_status: 'verified', loyalty, message: 'Manual UPI payment was already verified.' });
   }
 
   const updated = db.prepare(`
@@ -681,7 +683,8 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
     });
   }
 
-  s.json({ success: true, order_id: orderId, payment_status: 'verified', message: 'Manual UPI payment verified.' });
+  const loyalty = processLoyaltyOrder(orderId, order.customer_id);
+  s.json({ success: true, order_id: orderId, payment_status: 'verified', loyalty, message: 'Manual UPI payment verified.' });
 });
 
 router.post('/orders/:id/reject-manual-payment', async (q, s) => {

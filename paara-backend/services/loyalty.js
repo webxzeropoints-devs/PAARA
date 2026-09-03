@@ -6,7 +6,6 @@ const VALIDITY_MONTHS = 6;
 const QUALIFYING_PAYMENT_STATUSES = new Set([
   'paid',
   'verified',
-  'pending_verification',
   'auto-confirmed - unverified',
 ]);
 

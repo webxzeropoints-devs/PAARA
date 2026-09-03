@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import LoyaltyCard from "./LoyaltyCard";
 
-export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, totalStamps }) {
+export default function LoyaltyAnimationModal({ isOpen, onClose, onAnimationComplete, stampIndex, totalStamps }) {
   if (!isOpen) return null;
   const completed = Number(stampIndex) >= 6;
   const rotationDelay = 0.28;
@@ -44,6 +44,7 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, tot
               ease: [0.45, 0, 0.55, 1],
               times: [0, 0.25, 0.5, 0.75, 1],
             }}
+            onAnimationComplete={onAnimationComplete}
             className="relative will-change-transform"
             style={{ transformStyle: "preserve-3d", willChange: "transform" }}
           >

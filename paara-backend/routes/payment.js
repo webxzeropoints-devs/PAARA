@@ -14,6 +14,7 @@ const { trySendEmail } = require('../utils/email');
 const { createInvoicePdf } = require('../utils/invoice');
 const { maskSensitiveText } = require('../utils/validate');
 const { createOrder } = require('./orders');
+const { processLoyaltyOrder } = require('../services/loyalty');
 const QRCode = require('qrcode');
 
 const router = express.Router();
@@ -226,9 +227,10 @@ router.post('/verify', requireAuth, (req, res) => {
 
   // Signature valid — mark the order paid, snapshot eligibility, and decrement stock once.
   markOrderPaid(order.id, razorpay_payment_id);
+  const loyalty = processLoyaltyOrder(order.id, req.customer.id);
   sendPaidInvoice(order.id, req.customer.id).catch((error) => console.error('Invoice email flow failed:', { message: maskSensitiveText(error.message), name: error.name }));
 
-  res.json({ success: true, order_id: order.id, message: 'Payment verified. Order confirmed.' });
+  res.json({ success: true, order_id: order.id, loyalty, message: 'Payment verified. Order confirmed.' });
 });
 
 async function sendPaidInvoice(orderId, customerId) {

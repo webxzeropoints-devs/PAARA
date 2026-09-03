@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { downloadInvoice, getOrderById, markLoyaltyAnimationShown, processLoyaltyOrder } from "../../lib/api";
+import { downloadInvoice, getLoyaltyOrder, getLoyaltyStatus, getOrderById, markLoyaltyAnimationShown } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import LoyaltyAnimationModal from "../../components/LoyaltyAnimationModal";
 import { useCart } from "../../lib/cart.jsx";
 
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 const CONFIRMED_PAYMENT_STATUSES = new Set(["paid", "verified", "auto-confirmed - unverified"]);
-const LOYALTY_PROCESSABLE_PAYMENT_STATUSES = new Set([...CONFIRMED_PAYMENT_STATUSES, "pending_verification"]);
 const paymentLabels = { manual_upi: "UPI Manual", cod: "COD", razorpay: "Online payment" };
 
 export default function OrderConfirmation() {
@@ -25,6 +24,7 @@ export default function OrderConfirmation() {
   const [copiedOrderId, setCopiedOrderId] = useState(false);
   const [pollingStopped, setPollingStopped] = useState(false);
   const loyaltyProcessedOrderRef = React.useRef(null);
+  const loyaltyAnimationMarkedRef = React.useRef(false);
 
   useEffect(() => {
     if (location.state?.clearCart) clear();
@@ -106,24 +106,20 @@ export default function OrderConfirmation() {
 
   useEffect(() => {
     const paymentStatus = String(order?.payment_status || "").trim().toLowerCase();
-    if (!orderId || !LOYALTY_PROCESSABLE_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
+    if (!orderId || !CONFIRMED_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
     let cancelled = false;
-    processLoyaltyOrder(orderId)
-      .then((result) => {
+    Promise.all([getLoyaltyOrder(orderId), getLoyaltyStatus()])
+      .then(([orderState, state]) => {
         loyaltyProcessedOrderRef.current = orderId;
-        console.info("[LOYALTY_ORDER_PROCESSED]", {
-          orderId,
-          awarded: result?.order?.awarded,
-          newlyAwarded: result?.order?.newlyAwarded,
-          stampCount: result?.state?.stampCount,
-        });
-        if (!cancelled && result?.order?.newlyAwarded) setLoyaltyEvent(result);
+        const currentCount = Number(state?.stampCount || 0);
+        if (!cancelled && orderState?.awarded && !orderState?.animationShown
+          && currentCount > 0) {
+          setLoyaltyEvent({ order: orderState, state });
+        }
       })
-      .catch((err) => {
-        console.error("[LOYALTY_PROCESS_FAILED]", { orderId, message: err?.message });
-      });
+      .catch((err) => console.error("[LOYALTY_STATE_REFRESH_FAILED]", { orderId, message: err?.message }));
     return () => { cancelled = true; };
-  }, [order?.payment_status, paymentSuccess, orderId]);
+  }, [order?.payment_status, orderId]);
 
   if (!orderId) {
     return (
@@ -293,8 +289,22 @@ export default function OrderConfirmation() {
           <LoyaltyAnimationModal
             isOpen={Boolean(loyaltyEvent)}
             stampIndex={loyaltyEvent?.state?.stampCount}
-            totalStamps={loyaltyEvent?.state?.stampCount}
+            totalStamps={6}
+            onAnimationComplete={() => {
+              if (loyaltyAnimationMarkedRef.current) return;
+              loyaltyAnimationMarkedRef.current = true;
+              markLoyaltyAnimationShown(orderId)
+                .catch((err) => {
+                  loyaltyAnimationMarkedRef.current = false;
+                  console.error("[LOYALTY_ANIMATION_MARK_FAILED]", { orderId, message: err?.message });
+                });
+            }}
             onClose={() => {
+              if (loyaltyAnimationMarkedRef.current) {
+                setLoyaltyEvent(null);
+                return;
+              }
+              loyaltyAnimationMarkedRef.current = true;
               markLoyaltyAnimationShown(orderId)
                 .then(() => setLoyaltyEvent(null))
                 .catch((err) => console.error("[LOYALTY_ANIMATION_MARK_FAILED]", { orderId, message: err?.message }));
