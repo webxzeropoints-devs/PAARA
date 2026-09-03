@@ -53,7 +53,14 @@ function RubberStamp({ target }) {
   );
 }
 
-export default function LoyaltyCard({ stampsCount = 0, animatedStampIndex = null, showShine = false, className = "" }) {
+export default function LoyaltyCard({
+  stampsCount = 0,
+  animatedStampIndex = null,
+  showShine = false,
+  onStampAnimationComplete,
+  onShineComplete,
+  className = "",
+}) {
   const count = Math.min(Math.max(Number(stampsCount) || 0, 0), 6);
   const cardRef = useRef(null);
   const heartRefs = useRef({});
@@ -96,7 +103,7 @@ export default function LoyaltyCard({ stampsCount = 0, animatedStampIndex = null
           return (
             <div key={stepNum} ref={(node) => { heartRefs.current[stepNum] = node; }} className="relative aspect-square">
               {animating ? (
-                <motion.div className="relative flex h-full w-full items-center justify-center" animate={reducedMotion ? {} : { x: [0, 0, -1.5, 1.25, 0], y: [0, 0, 1.5, -1, 0], scale: [1, 1, 0.94, 1.04, 1] }} transition={{ duration: 1.8, times: [0, 0.56, 0.63, 0.75, 1] }}>
+                <motion.div className="relative flex h-full w-full items-center justify-center" animate={reducedMotion ? {} : { x: [0, 0, -1.5, 1.25, 0], y: [0, 0, 1.5, -1, 0], scale: [1, 1, 0.94, 1.04, 1] }} transition={{ duration: 1.8, times: [0, 0.56, 0.63, 0.75, 1] }} onAnimationComplete={onStampAnimationComplete}>
                   <Heart size={18} className="absolute h-full w-full text-cocoa/45" strokeWidth={1.4} />
                   <motion.div initial={{ clipPath: "inset(49% 49% 49% 49% round 45%)", scale: 0.72, rotate: -3 }} animate={reducedMotion ? { clipPath: "inset(0% 0% 0% 0% round 0%)", scale: 1, rotate: 0 } : { clipPath: ["inset(49% 49% 49% 49% round 45%)", "inset(49% 49% 49% 49% round 45%)", "inset(2% 2% 2% 2% round 12%)", "inset(0% 0% 0% 0% round 0%)", "inset(0% 0% 0% 0% round 0%)"], scale: [0.72, 0.72, 1.16, 0.97, 1], rotate: [-3, -3, 1.5, -0.7, 0] }} transition={{ duration: 1.8, times: [0, 0.56, 0.63, 0.75, 1], ease: "easeOut" }} className="absolute inset-0 z-10" style={{ transformOrigin: "center center", willChange: "clip-path, transform" }}>
                     <InkHeartImpression number={stepNum} />
@@ -111,7 +118,7 @@ export default function LoyaltyCard({ stampsCount = 0, animatedStampIndex = null
         <span>{count}/6 stamps</span>
         <span>Valid 6 months from first stamp</span>
       </div>
-      {showShine && <motion.div initial={{ x: "-130%", opacity: 0 }} animate={{ x: "230%", opacity: [0, 0.85, 0] }} transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1], delay: 0.05 }} className="pointer-events-none absolute inset-y-0 z-30 w-2/5 skew-x-[-20deg] bg-gradient-to-r from-transparent via-white/55 to-transparent" />}
+      {showShine && <motion.div initial={{ x: "-130%", opacity: 0 }} animate={{ x: "230%", opacity: [0, 0.85, 0] }} transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }} onAnimationComplete={onShineComplete} className="pointer-events-none absolute inset-y-0 z-30 w-2/5 skew-x-[-20deg] bg-gradient-to-r from-transparent via-white/55 to-transparent" />}
       {stampTarget && animatedStampIndex && !reducedMotion && <RubberStamp target={stampTarget} />}
     </div>
   );

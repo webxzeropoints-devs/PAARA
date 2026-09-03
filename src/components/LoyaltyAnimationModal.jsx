@@ -10,29 +10,16 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, tot
   const [animationStep, setAnimationStep] = useState("entering");
   const [showShine, setShowShine] = useState(false);
   const [spinKey, setSpinKey] = useState(0);
-  const [blurReady, setBlurReady] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setAnimationStep("entering");
       setShowShine(false);
-      setBlurReady(false);
       return undefined;
     }
 
     setAnimationStep("entering");
     setShowShine(false);
-    setBlurReady(false);
-    const timerBlur = window.setTimeout(() => setBlurReady(true), 80);
-    const timer1 = window.setTimeout(() => setAnimationStep("sealing"), 620);
-    const timer2 = window.setTimeout(() => setShowShine(true), 2700);
-    const timer3 = window.setTimeout(() => setAnimationStep("revealed"), 2900);
-    return () => {
-      window.clearTimeout(timerBlur);
-      window.clearTimeout(timer1);
-      window.clearTimeout(timer2);
-      window.clearTimeout(timer3);
-    };
   }, [isOpen, safeStampIndex, spinKey]);
 
   if (!isOpen) return null;
@@ -72,10 +59,11 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, tot
             </div>
           </div>
           <motion.div
-            key={`${spinKey}-${blurReady}`}
+            key={spinKey}
             initial={{ scale: 0.94, opacity: 0, rotateX: 7, rotateY: -1440, rotateZ: -1.5, y: 28 }}
-            animate={blurReady ? { scale: [0.94, 1.01, 1], opacity: [0, 1, 1], rotateX: [7, -1, 0], rotateY: [-4, 1, 0], rotateZ: [-1.5, 0.5, 0], y: [28, -2, 0] } : { scale: 0.94, opacity: 0, rotateX: 7, rotateY: -4, rotateZ: -1.5, y: 28 }}
+            animate={{ scale: [0.94, 1.01, 1], opacity: [0, 1, 1], rotateX: [7, -1, 0], rotateY: [-4, 1, 0], rotateZ: [-1.5, 0.5, 0], y: [28, -2, 0] }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            onAnimationComplete={() => setAnimationStep("sealing")}
             className="w-full"
             style={{ transformStyle: "preserve-3d", willChange: "transform" }}
           >
@@ -84,6 +72,8 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, tot
                 stampsCount={animationStep === "entering" ? Math.max(0, safeStampIndex - 1) : safeStampIndex}
                 animatedStampIndex={animationStep === "sealing" ? safeStampIndex : null}
                 showShine={showShine}
+                onStampAnimationComplete={() => setShowShine(true)}
+                onShineComplete={() => setAnimationStep("revealed")}
               />
             </motion.div>
           </motion.div>
