@@ -287,17 +287,19 @@ export default function Checkout() {
     });
   }, [items.length, paymentMethod, selectedAddressId, step]);
 
-  const confirmUpiPaid = () => {
-    if (!order?.order_id) {
-      setError("Generate the UPI QR code before confirming payment.");
+  const confirmUpiPaid = async () => {
+    setError("");
+    const paidOrder = order || await prepareManualUpi();
+    if (!paidOrder?.order_id) {
+      setError("We could not save your order. Please try again before confirming payment.");
       return;
     }
     setUpiPaid(true);
     paymentRedirectStarted.current = true;
     clear();
-    navigate(`/order-confirmation?order_id=${order.order_id}&payment=success&payment_method=manual_upi`, {
+    navigate(`/order-confirmation?order_id=${paidOrder.order_id}&payment=success&payment_method=manual_upi`, {
       replace: true,
-      state: { recentOrder: order, selectedAddress },
+      state: { recentOrder: paidOrder, selectedAddress },
     });
   };
 
@@ -657,7 +659,7 @@ export default function Checkout() {
                       }
 
                       <div className="mt-4 border-t border-gold/20 pt-4">
-                        <button type="button" onClick={confirmUpiPaid} disabled={paying || !order} className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60">I&apos;ve Paid</button>
+                        <button type="button" onClick={confirmUpiPaid} disabled={paying} className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60">I&apos;ve Paid</button>
                         {upiPaid && <p className="mt-3 text-sm text-emerald-700">Payment Successful — Order Confirmed</p>}
                       </div>
                     </div>

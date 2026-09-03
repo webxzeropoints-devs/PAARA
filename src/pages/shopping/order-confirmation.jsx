@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { downloadInvoice, getOrderById, markLoyaltyAnimationShown, processLoyaltyOrder } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
@@ -9,10 +9,11 @@ const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
 export default function OrderConfirmation() {
   const [params] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const orderId = params.get("order_id");
   const paymentSuccess = params.get("payment") === "success";
-  const [order, setOrder] = useState(null);
+  const [order, setOrder] = useState(location.state?.recentOrder || null);
   const [error, setError] = useState("");
   const [downloadState, setDownloadState] = useState("idle");
   const [loyaltyEvent, setLoyaltyEvent] = useState(null);
@@ -21,7 +22,7 @@ export default function OrderConfirmation() {
     if (!orderId) return;
     let cancelled = false;
     setError("");
-    setOrder(null);
+    if (!location.state?.recentOrder) setOrder(null);
     getOrderById(orderId)
       .then((data) => {
         if (!cancelled) setOrder(data);
@@ -32,16 +33,24 @@ export default function OrderConfirmation() {
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [location.state, orderId]);
 
   useEffect(() => {
     if (!paymentSuccess || !orderId) return;
     let cancelled = false;
     processLoyaltyOrder(orderId)
       .then((result) => {
+        console.info("[LOYALTY_ORDER_PROCESSED]", {
+          orderId,
+          awarded: result?.order?.awarded,
+          newlyAwarded: result?.order?.newlyAwarded,
+          stampCount: result?.state?.stampCount,
+        });
         if (!cancelled && result?.order?.newlyAwarded) setLoyaltyEvent(result);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("[LOYALTY_PROCESS_FAILED]", { orderId, message: err?.message });
+      });
     return () => { cancelled = true; };
   }, [paymentSuccess, orderId]);
 
@@ -109,15 +118,6 @@ export default function OrderConfirmation() {
                   </div>
                   <p className="text-[11px] text-cocoa/50 pt-1">Taxes included in product prices.</p>
                 </div>
-                <LoyaltyAnimationModal
-                  isOpen={Boolean(loyaltyEvent)}
-                  stampIndex={loyaltyEvent?.state?.stampCount}
-                  totalStamps={loyaltyEvent?.state?.stampCount}
-                  onClose={() => {
-                    markLoyaltyAnimationShown(orderId).catch(() => {});
-                    setLoyaltyEvent(null);
-                  }}
-                />
               </div>
 
               {Array.isArray(order.items) && order.items.length > 0 && (
@@ -171,6 +171,16 @@ export default function OrderConfirmation() {
               </div>
             </>
           )}
+          <LoyaltyAnimationModal
+            isOpen={Boolean(loyaltyEvent)}
+            stampIndex={loyaltyEvent?.state?.stampCount}
+            totalStamps={loyaltyEvent?.state?.stampCount}
+            onClose={() => {
+              markLoyaltyAnimationShown(orderId)
+                .then(() => setLoyaltyEvent(null))
+                .catch((err) => console.error("[LOYALTY_ANIMATION_MARK_FAILED]", { orderId, message: err?.message }));
+            }}
+          />
         </motion.div>
       </div>
     </div>
