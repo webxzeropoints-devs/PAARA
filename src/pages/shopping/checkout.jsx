@@ -88,13 +88,14 @@ export default function Checkout() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [error, setError] = useState("");
   const upiPreparationStarted = useRef(false);
+  const paymentRedirectStarted = useRef(false);
 
   useEffect(() => {
     if (!getToken()) {
       navigate("/login", { state: { redirectTo: "/checkout" }, replace: true });
       return;
     }
-    if (items.length === 0) {
+    if (items.length === 0 && !paymentRedirectStarted.current) {
       navigate("/cart", { replace: true });
       return;
     }
@@ -292,6 +293,7 @@ export default function Checkout() {
       return;
     }
     setUpiPaid(true);
+    paymentRedirectStarted.current = true;
     clear();
     navigate(`/order-confirmation?order_id=${order.order_id}&payment=success&payment_method=manual_upi`, {
       replace: true,
@@ -326,6 +328,7 @@ export default function Checkout() {
       if (!createdOrder?.order_id) throw new Error("The order could not be created. Please try again.");
       setOrder(createdOrder);
       if (paymentMethod === "cod") {
+        paymentRedirectStarted.current = true;
         clear();
         navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, { replace: true, state: { recentOrder: createdOrder, selectedAddress } });
         return;
@@ -363,6 +366,7 @@ export default function Checkout() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
+            paymentRedirectStarted.current = true;
             clear();
             navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, {
               replace: true,
