@@ -267,7 +267,9 @@ export default function Checkout() {
         amount: provider.amount || 0,
         instructions: provider.instructions || "",
       });
-      setError("");
+      setError(provider.payment_available === false
+        ? provider.payment_error || "UPI payment is temporarily unavailable. Your order was saved; please contact support."
+        : "");
       return createdOrder;
     } catch (err) {
       setError(err?.message || "Could not prepare the UPI payment details. Please try again.");

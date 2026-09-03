@@ -22,7 +22,6 @@ router.post('/create-upi', requireAuth, async (req, res) => {
   try {
     const upiId = String(process.env.UPI_ID || '').trim();
     const payeeName = String(process.env.UPI_PAYEE_NAME || '').trim();
-    if (!upiId || !payeeName) return res.status(503).json({ error: 'UPI payment is not configured.' });
 
     const order = createOrder({
       customerId: req.customer.id,
@@ -30,6 +29,18 @@ router.post('/create-upi', requireAuth, async (req, res) => {
       addressId: req.body?.address_id,
       paymentMethod: 'manual_upi',
     });
+    if (!upiId || !payeeName) {
+      return res.status(201).json({
+        order_id: order.order_id,
+        order_number: order.order_number,
+        payment_method: 'UPI',
+        payment_status: order.payment_status,
+        amount: Number(order.total_amount),
+        order,
+        payment_available: false,
+        payment_error: 'UPI payment is not configured. Your order was saved; please contact support to complete payment.',
+      });
+    }
     const amount = Number(order.total_amount);
     const deepLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount.toFixed(2)}&tn=${encodeURIComponent(String(order.order_id))}&cu=INR`;
     const qrCode = await QRCode.toDataURL(deepLink, { errorCorrectionLevel: 'M', margin: 1, width: 320 });
