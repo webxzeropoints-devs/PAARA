@@ -4,22 +4,42 @@ import { motion } from "framer-motion";
 import { downloadInvoice, getOrderById, markLoyaltyAnimationShown, processLoyaltyOrder } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import LoyaltyAnimationModal from "../../components/LoyaltyAnimationModal";
+import { useCart } from "../../lib/cart.jsx";
 
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
 const CONFIRMED_PAYMENT_STATUSES = new Set(["paid", "verified", "auto-confirmed - unverified"]);
+const LOYALTY_PROCESSABLE_PAYMENT_STATUSES = new Set([...CONFIRMED_PAYMENT_STATUSES, "pending_verification"]);
+const paymentLabels = { manual_upi: "UPI Manual", cod: "COD", razorpay: "Online payment" };
 
 export default function OrderConfirmation() {
   const [params] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { clear } = useCart();
   const orderId = params.get("order_id");
   const paymentSuccess = params.get("payment") === "success";
   const [order, setOrder] = useState(location.state?.recentOrder || null);
   const [error, setError] = useState("");
   const [downloadState, setDownloadState] = useState("idle");
   const [loyaltyEvent, setLoyaltyEvent] = useState(null);
+  const [copiedOrderId, setCopiedOrderId] = useState(false);
   const [pollingStopped, setPollingStopped] = useState(false);
   const loyaltyProcessedOrderRef = React.useRef(null);
+
+  useEffect(() => {
+    if (location.state?.clearCart) clear();
+  }, [clear, location.state?.clearCart]);
+
+  const copyOrderId = async () => {
+    const value = order?.order_number || order?.order_id || orderId;
+    try {
+      await navigator.clipboard.writeText(String(value));
+      setCopiedOrderId(true);
+      window.setTimeout(() => setCopiedOrderId(false), 1800);
+    } catch {
+      setError("Order ID could not be copied. Please select it manually.");
+    }
+  };
 
   useEffect(() => {
     if (!orderId) return;
@@ -86,7 +106,7 @@ export default function OrderConfirmation() {
 
   useEffect(() => {
     const paymentStatus = String(order?.payment_status || "").trim().toLowerCase();
-    if (!orderId || !CONFIRMED_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
+    if (!orderId || !LOYALTY_PROCESSABLE_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
     let cancelled = false;
     processLoyaltyOrder(orderId)
       .then((result) => {
@@ -138,13 +158,19 @@ export default function OrderConfirmation() {
             Thank you
           </p>
           <h1 className="font-display text-3xl md:text-4xl mb-2">
-            {paymentSuccess ? "Payment Successful — Order Confirmed" : "Your order is confirmed"}
+            {paymentSuccess ? "Your order has been placed successfully!" : "Your order is confirmed"}
           </h1>
           <p className="text-sm text-cocoa/60 mb-8">
-            Order {order?.order_number || orderId}
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <span>Order ID: </span>
+              <span className="select-all font-medium">{order?.order_number || orderId}</span>
+              <button type="button" onClick={copyOrderId} className="border border-cocoa/25 px-2 py-1 text-[10px] uppercase tracking-widest hover:border-gold">
+                {copiedOrderId ? "Copied" : "Copy"}
+              </button>
+            </span>
           </p>
 
-          {paymentSuccess && <div className="mb-6 rounded-sm border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Your payment has been confirmed. You can download the invoice below.</div>}
+          {paymentSuccess && <div className="mb-6 rounded-sm border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Your order is saved successfully. You can download the invoice below.</div>}
 
           {error && (
             <div className="text-xs text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-sm mb-6">
@@ -165,9 +191,28 @@ export default function OrderConfirmation() {
             <>
               <div className="bg-sand/60 border border-cocoa/10 rounded-sm p-6 mb-6">
                 <h2 className="font-display text-xl mb-4">Order Summary</h2>
+                <div className="mb-5 border-b border-cocoa/10 pb-4 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-cocoa/70">Payment method</span>
+                    <span className="font-medium">{paymentLabels[String(order.payment_method || "").toLowerCase()] || order.payment_method || "Payment"}</span>
+                  </div>
+                  {String(order.payment_method || "").toLowerCase() === "manual_upi" && (
+                    <p className="mt-3 text-xs leading-relaxed text-cocoa/70">
+                      {order.payment_reference
+                        ? <>Your payment reference <span className="select-all font-medium text-cocoa">{order.payment_reference}</span> has been received. We&apos;ll verify and confirm your order within a few hours.</>
+                        : "Your UPI payment has been received. We&apos;ll verify and confirm your order within a few hours."}
+                    </p>
+                  )}
+                  {String(order.payment_method || "").toLowerCase() === "cod" && (
+                    <p className="mt-3 text-xs leading-relaxed text-cocoa/70">Pay {formatPrice(order.total_amount)} to the delivery person on arrival.</p>
+                  )}
+                  {(order.estimated_delivery || order.delivery_estimate || order.estimated_delivery_date) && (
+                    <p className="mt-3 text-xs text-cocoa/70">Estimated delivery: {order.estimated_delivery || order.delivery_estimate || new Date(order.estimated_delivery_date).toLocaleDateString("en-IN")}</p>
+                  )}
+                </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-cocoa/70">Subtotal</span>
+                    <span className="text-cocoa/70">Item total</span>
                     <span className="font-numeric">{formatPrice(order.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -191,12 +236,24 @@ export default function OrderConfirmation() {
                       className="flex items-center justify-between border-b border-cocoa/10 pb-3 text-sm"
                     >
                       <span className="font-product-name">
-                        {item.name || `Product ${item.product_id}`}{" "}
+                        {item.product_name || item.name || `Product ${item.product_id}`}{" "}
                         <span className="text-cocoa/50">× {item.quantity}</span>
                       </span>
                       <span>{formatPrice(item.line_total)}</span>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {loyaltyEvent?.state?.stampCount > 0 && (
+                <div className="mt-8 border border-gold/30 bg-gold/10 p-5">
+                  <p className="text-xs uppercase tracking-[0.24em] text-gold">Loyalty Card</p>
+                  <p className="mt-2 font-display text-xl">
+                    {loyaltyEvent.state.stampCount === 1 ? "Welcome to your Paara Loyalty Card!" : "Your Loyalty Card has been updated."}
+                  </p>
+                  <p className="mt-2 text-sm text-cocoa/70">
+                    You earned 1 stamp on this order! Total balance: {loyaltyEvent.state.stampCount} stamps.
+                  </p>
                 </div>
               )}
 

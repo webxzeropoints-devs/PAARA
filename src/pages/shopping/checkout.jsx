@@ -51,7 +51,7 @@ function loadRazorpay() {
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items, clear } = useCart();
+  const { items } = useCart();
   const [step, setStep] = useState(0);
 
   // Address step
@@ -298,10 +298,9 @@ export default function Checkout() {
     }
     setUpiPaid(true);
     paymentRedirectStarted.current = true;
-    clear();
     navigate(`/order-confirmation?order_id=${paidOrder.order_id}&payment=success&payment_method=manual_upi`, {
       replace: true,
-      state: { recentOrder: paidOrder, selectedAddress },
+      state: { recentOrder: paidOrder, selectedAddress, clearCart: true },
     });
   };
 
@@ -333,8 +332,7 @@ export default function Checkout() {
       setOrder(createdOrder);
       if (paymentMethod === "cod") {
         paymentRedirectStarted.current = true;
-        clear();
-        navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, { replace: true, state: { recentOrder: createdOrder, selectedAddress } });
+        navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, { replace: true, state: { recentOrder: createdOrder, selectedAddress, clearCart: true } });
         return;
       }
 
@@ -371,10 +369,9 @@ export default function Checkout() {
               razorpay_signature: response.razorpay_signature,
             });
             paymentRedirectStarted.current = true;
-            clear();
             navigate(`/order-confirmation?order_id=${createdOrder.order_id}&payment=success`, {
               replace: true,
-              state: { recentOrder: createdOrder, selectedAddress },
+              state: { recentOrder: createdOrder, selectedAddress, clearCart: true },
             });
           } catch (err) {
             setError(err?.message || "Payment could not be verified. Please contact support if you were charged.");
