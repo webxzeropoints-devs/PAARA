@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Seo from "../../components/Seo";
+import { getProducts } from "../../lib/api";
 
 const Product = () => {
   const navigate = useNavigate();
@@ -87,7 +88,7 @@ const Product = () => {
      PRODUCT DATABASE
   ========================================================== */
 
-  const products = [
+  const fallbackProducts = [
     /* ================= EVERYDAY ================= */
 
     {
@@ -723,6 +724,42 @@ const Product = () => {
     },
   ];
 
+  const [catalogProducts, setCatalogProducts] = useState(null);
+
+  useEffect(() => {
+    const filters = {
+      ...(collectionType === "for-her" ? { gender: "women" } : {}),
+      ...(collectionType === "for-him" ? { gender: "men" } : {}),
+      ...(collectionType === "everyday" ? { vibe: "everyday" } : {}),
+      ...(collectionType === "minimal" ? { vibe: "minimal" } : {}),
+      ...(collectionType === "new-arrivals" ? { sort: "newest" } : {}),
+    };
+
+    let cancelled = false;
+    getProducts(filters)
+      .then((data) => {
+        if (cancelled) return;
+        const apiProducts = Array.isArray(data) ? data : [];
+        setCatalogProducts(apiProducts.map((product) => ({
+          ...product,
+          category: collectionType,
+          image: product.images?.[0],
+          availability: Number(product.stock) > 0,
+          material: product.material || "",
+          rating: product.rating || 0,
+        })));
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogProducts(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionType]);
+
+  const products = catalogProducts || fallbackProducts;
+
   /* ==========================================================
      CURRENT COLLECTION PRODUCTS
   ========================================================== */
@@ -735,7 +772,7 @@ const Product = () => {
     return products.filter(
       (product) => product.category === collectionType
     );
-  }, [collectionType]);
+  }, [collectionType, products]);
 
   /* ==========================================================
      SEARCH + SORT
