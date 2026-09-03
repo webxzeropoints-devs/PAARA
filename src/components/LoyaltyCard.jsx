@@ -1,10 +1,31 @@
+import { useEffect } from "react";
 import { Heart, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function LoyaltyCard({ stampsCount = 0, animateStamps = false, stampAnimationDelay = 0, stampAnimationStagger = 0.34 }) {
+export default function LoyaltyCard({ stampsCount = 0, animateStamps = false, animateOnMount = false, stampAnimationDelay = 0, stampAnimationStagger = 0.34 }) {
   const count = Math.min(Math.max(Number(stampsCount) || 0, 0), 6);
+  useEffect(() => {
+    if (animateOnMount && import.meta.env.DEV) {
+      console.debug("[LOYALTY_CARD_MOUNT_ANIMATION]");
+    }
+  }, [animateOnMount]);
+
   return (
-    <div className="w-full max-w-xl rounded-2xl border border-[#e8d9c8] bg-gradient-to-br from-[#fffaf6] via-[#faf2ea] to-[#f5e8dc] p-5 text-cocoa shadow-[0_12px_32px_-8px_rgba(107,74,51,.22)]">
+    <motion.div
+      initial={animateOnMount ? { opacity: 0, y: 16 } : false}
+      animate={animateOnMount ? { opacity: 1, y: 0 } : undefined}
+      transition={animateOnMount ? { duration: 0.7, ease: [0.22, 1, 0.36, 1] } : undefined}
+      className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-[#e8d9c8] bg-gradient-to-br from-[#fffaf6] via-[#faf2ea] to-[#f5e8dc] p-5 text-cocoa shadow-[0_12px_32px_-8px_rgba(107,74,51,.22)]"
+    >
+      {animateOnMount && (
+        <motion.div
+          aria-hidden="true"
+          initial={{ x: "-130%" }}
+          animate={{ x: "130%" }}
+          transition={{ delay: 0.25, duration: 1.5, ease: "easeInOut" }}
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent"
+        />
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[.3em] text-gold">Paara Loyalty Card</p>
@@ -41,6 +62,6 @@ export default function LoyaltyCard({ stampsCount = 0, animateStamps = false, st
         <span>{count}/6 stamps</span>
         <span>Valid 6 months from first stamp</span>
       </div>
-    </div>
+    </motion.div>
   );
 }

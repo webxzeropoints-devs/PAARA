@@ -736,7 +736,7 @@ export default function Checkout() {
                     <p className="mt-1 text-cocoa/70">This purchase earns you 1 stamp.</p>
                   </div>
                 ) : (
-                  <p className="mb-4 text-xs text-cocoa/60">Spend {formatPrice(599 - productSubtotal)} more to earn your PAARA Rewards stamp.</p>
+                  <p className="mb-4 text-xs text-cocoa/60">Spend {formatPrice(599 - productSubtotal)} more to earn your Loyalty Card stamp.</p>
                 )}
                 <div className="flex justify-between">
                   <span className="text-cocoa/70">Item Total</span>
