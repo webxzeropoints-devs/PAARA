@@ -12,7 +12,6 @@ export default function OrderConfirmation() {
   const navigate = useNavigate();
   const orderId = params.get("order_id");
   const paymentSuccess = params.get("payment") === "success";
-  const isManualUpi = params.get("payment_method") === "manual_upi";
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
   const [downloadState, setDownloadState] = useState("idle");
@@ -73,7 +72,7 @@ export default function OrderConfirmation() {
             Thank you
           </p>
           <h1 className="font-display text-3xl md:text-4xl mb-2">
-            {paymentSuccess && isManualUpi ? "Payment Successful — Order Confirmed" : paymentSuccess ? "Payment successful" : "Your order is confirmed"}
+            {paymentSuccess ? "Payment Successful — Order Confirmed" : "Your order is confirmed"}
           </h1>
           <p className="text-sm text-cocoa/60 mb-8">
             Order {order?.order_number || orderId}

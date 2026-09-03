@@ -6,7 +6,15 @@ const router = express.Router();
 const THRESHOLD = 599;
 const CARD_SIZE = 6;
 const VALIDITY_MONTHS = 6;
-const QUALIFYING_PAYMENT_STATUSES = new Set(['paid', 'verified', 'pending']);
+// Loyalty stamps are earned when a payment completes checkout. Manual UPI is
+// intentionally still pending verification at this point, but the customer
+// has completed the payment flow and should see the earned stamp immediately.
+const QUALIFYING_PAYMENT_STATUSES = new Set([
+  'paid',
+  'verified',
+  'pending_verification',
+  'auto-confirmed - unverified',
+]);
 
 const addMonths = (date, months) => {
   const result = new Date(date);
@@ -78,7 +86,7 @@ router.post('/process-order', requireAuth, (req, res) => {
   try {
     const result = db.transaction(() => {
       const order = db.prepare(`
-        SELECT id, customer_id, subtotal, status, payment_status
+        SELECT id, customer_id, subtotal, payment_status, payment_method
         FROM orders WHERE id = ? AND customer_id = ?
       `).get(orderId, req.customer.id);
       if (!order) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
@@ -89,9 +97,9 @@ router.post('/process-order', requireAuth, (req, res) => {
         return { state, order: { orderId, awarded: true, animationShown: Boolean(existing.animation_shown_at), newlyAwarded: false } };
       }
 
-      const status = String(order.status || '').trim().toLowerCase();
       const paymentStatus = String(order.payment_status || '').trim().toLowerCase();
-      const qualifies = status === 'delivered'
+      const paymentMethod = String(order.payment_method || '').trim().toLowerCase();
+      const qualifies = paymentMethod !== 'cod'
         && QUALIFYING_PAYMENT_STATUSES.has(paymentStatus)
         && Number(order.subtotal) >= THRESHOLD;
       if (!qualifies) {
