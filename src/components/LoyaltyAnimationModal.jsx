@@ -9,7 +9,7 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, tot
   const stampDelay = rotationDelay + rotationDuration - 0.08;
   const completionDelay = stampDelay + Math.max(Number(stampIndex || 0) - 1, 0) * 0.34 + 0.52;
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-cocoa/70 p-5" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[120] isolate flex items-center justify-center bg-cocoa/70 p-5" role="dialog" aria-modal="true">
       <motion.div
         initial={{ opacity: 0, scale: 0.88, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -45,7 +45,7 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, tot
               times: [0, 0.25, 0.5, 0.75, 1],
             }}
             className="relative will-change-transform"
-            style={{ transformStyle: "preserve-3d", willChange: "transform" }}
+              style={{ transformStyle: "preserve-3d", backfaceVisibility: "visible", willChange: "transform", zIndex: 1 }}
           >
             <motion.div
               animate={completed ? { scale: [1, 1.035, 1], filter: ["drop-shadow(0 0 0 rgba(185,143,78,0))", "drop-shadow(0 0 18px rgba(185,143,78,.48))", "drop-shadow(0 0 0 rgba(185,143,78,0))"] } : undefined}
