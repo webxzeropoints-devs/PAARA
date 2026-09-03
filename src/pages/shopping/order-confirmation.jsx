@@ -6,6 +6,7 @@ import { fadeUp } from "../../lib/motion";
 import LoyaltyAnimationModal from "../../components/LoyaltyAnimationModal";
 
 const formatPrice = (n) => `₹${(n || 0).toLocaleString("en-IN")}`;
+const CONFIRMED_PAYMENT_STATUSES = new Set(["paid", "verified", "auto-confirmed - unverified"]);
 
 export default function OrderConfirmation() {
   const [params] = useSearchParams();
@@ -17,11 +18,13 @@ export default function OrderConfirmation() {
   const [error, setError] = useState("");
   const [downloadState, setDownloadState] = useState("idle");
   const [loyaltyEvent, setLoyaltyEvent] = useState(null);
+  const loyaltyProcessedOrderRef = React.useRef(null);
 
   useEffect(() => {
     if (!orderId) return;
     let cancelled = false;
     let retryTimer;
+    let pollTimer;
     setError("");
     if (!location.state?.recentOrder) setOrder(null);
     const loadOrder = async () => {
@@ -45,14 +48,31 @@ export default function OrderConfirmation() {
       }
     };
     loadOrder();
+    if (paymentSuccess) {
+      const pollOrder = async () => {
+        if (cancelled) return;
+        try {
+          const data = await getOrderById(orderId);
+          if (!cancelled) setOrder(data);
+        } catch (err) {
+          if (!cancelled) console.error("[ORDER_STATUS_POLL_FAILED]", { orderId, message: err?.message });
+        } finally {
+          if (!cancelled) pollTimer = window.setTimeout(pollOrder, 5000);
+        }
+      };
+      pollTimer = window.setTimeout(pollOrder, 5000);
+    }
     return () => {
       cancelled = true;
       if (retryTimer) window.clearTimeout(retryTimer);
+      if (pollTimer) window.clearTimeout(pollTimer);
     };
-  }, [location.state, orderId]);
+  }, [location.state, orderId, paymentSuccess]);
 
   useEffect(() => {
-    if (!paymentSuccess || !orderId) return;
+    const paymentStatus = String(order?.payment_status || "").trim().toLowerCase();
+    if (!paymentSuccess || !orderId || !CONFIRMED_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
+    loyaltyProcessedOrderRef.current = orderId;
     let cancelled = false;
     processLoyaltyOrder(orderId)
       .then((result) => {
@@ -68,7 +88,7 @@ export default function OrderConfirmation() {
         console.error("[LOYALTY_PROCESS_FAILED]", { orderId, message: err?.message });
       });
     return () => { cancelled = true; };
-  }, [paymentSuccess, orderId]);
+  }, [order?.payment_status, paymentSuccess, orderId]);
 
   if (!orderId) {
     return (
