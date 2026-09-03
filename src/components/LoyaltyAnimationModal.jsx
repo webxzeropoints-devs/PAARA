@@ -11,7 +11,7 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, stampIndex, tot
           <button type="button" onClick={onClose} className="text-xs uppercase tracking-widest">Close</button>
         </div>
         <LoyaltyCard stampsCount={totalStamps} />
-        <p className="mt-4 text-center text-sm text-white/80">Your PAARA Rewards Card has been updated.</p>
+        <p className="mt-4 text-center text-sm text-white/80">Your PAARA Loyalty Card has been updated.</p>
       </motion.div>
     </div>
   );

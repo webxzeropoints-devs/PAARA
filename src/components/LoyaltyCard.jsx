@@ -6,7 +6,7 @@ export default function LoyaltyCard({ stampsCount = 0 }) {
     <div className="w-full max-w-xl rounded-2xl border border-[#e8d9c8] bg-gradient-to-br from-[#fffaf6] via-[#faf2ea] to-[#f5e8dc] p-5 text-cocoa shadow-[0_12px_32px_-8px_rgba(107,74,51,.22)]">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[.3em] text-gold">Paara Rewards Card</p>
+          <p className="text-xs uppercase tracking-[.3em] text-gold">Paara Loyalty Card</p>
           <p className="font-display text-2xl mt-2">Collect your shine</p>
           <p className="text-xs text-cocoa/65 mt-1">Spend ₹599 or more and earn 1 stamp.</p>
         </div>

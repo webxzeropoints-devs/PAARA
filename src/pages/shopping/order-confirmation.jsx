@@ -21,17 +21,33 @@ export default function OrderConfirmation() {
   useEffect(() => {
     if (!orderId) return;
     let cancelled = false;
+    let retryTimer;
     setError("");
     if (!location.state?.recentOrder) setOrder(null);
-    getOrderById(orderId)
-      .then((data) => {
-        if (!cancelled) setOrder(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err?.message || "Could not load order");
-      });
+    const loadOrder = async () => {
+      let lastError;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const data = await getOrderById(orderId);
+          if (!cancelled) setOrder(data);
+          return;
+        } catch (err) {
+          lastError = err;
+          if (attempt < 2) {
+            await new Promise((resolve) => {
+              retryTimer = window.setTimeout(resolve, 500);
+            });
+          }
+        }
+      }
+      if (!cancelled && !location.state?.recentOrder) {
+        setError(lastError?.message || "Could not load order");
+      }
+    };
+    loadOrder();
     return () => {
       cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
     };
   }, [location.state, orderId]);
 
@@ -67,6 +83,12 @@ export default function OrderConfirmation() {
             className="inline-block bg-gold text-white px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors"
           >
             Back home
+          </Link>
+          <Link
+            to="/account/orders"
+            className="ml-3 inline-block border border-cocoa/30 px-8 py-3 text-xs uppercase tracking-widest hover:bg-cocoa hover:text-white hover:border-cocoa transition-colors"
+          >
+            View my orders
           </Link>
         </div>
       </div>

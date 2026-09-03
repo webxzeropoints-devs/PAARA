@@ -12,7 +12,7 @@ export default function LoyaltyCardPage() {
 
   useEffect(() => {
     if (!authed) return;
-    getLoyaltyStatus().then(setLoyalty).catch((err) => setError(err?.message || "Could not load your PAARA Rewards Card."));
+    getLoyaltyStatus().then(setLoyalty).catch((err) => setError(err?.message || "Could not load your PAARA Loyalty Card."));
   }, [authed]);
 
   if (!authed) {
@@ -22,7 +22,7 @@ export default function LoyaltyCardPage() {
   const count = loyalty?.stampCount || 0;
   return (
     <AccountPageLayout title="PAARA Rewards" subtitle="Earn one stamp on each qualifying delivered order of ₹599 or more.">
-      <Seo title="PAARA Rewards" description="View your PAARA Jewellery Rewards Card and server-synced stamps." />
+      <Seo title="PAARA Loyalty" description="View your PAARA Jewellery Loyalty Card and server-synced stamps." />
       {error && <p className="mb-5 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</p>}
       {!loyalty ? <p className="text-sm text-cocoa/60">Loading your rewards card…</p> : (
         <div className="space-y-6">
