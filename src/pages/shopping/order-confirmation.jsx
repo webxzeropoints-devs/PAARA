@@ -87,10 +87,10 @@ export default function OrderConfirmation() {
   useEffect(() => {
     const paymentStatus = String(order?.payment_status || "").trim().toLowerCase();
     if (!orderId || !CONFIRMED_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
-    loyaltyProcessedOrderRef.current = orderId;
     let cancelled = false;
     processLoyaltyOrder(orderId)
       .then((result) => {
+        loyaltyProcessedOrderRef.current = orderId;
         console.info("[LOYALTY_ORDER_PROCESSED]", {
           orderId,
           awarded: result?.order?.awarded,
