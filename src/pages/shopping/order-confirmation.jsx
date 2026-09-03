@@ -55,7 +55,7 @@ export default function OrderConfirmation() {
       }
     };
     loadOrder();
-    if (paymentSuccess) {
+    if (orderId) {
       const pollOrder = async () => {
         if (cancelled) return;
         try {
@@ -86,7 +86,7 @@ export default function OrderConfirmation() {
 
   useEffect(() => {
     const paymentStatus = String(order?.payment_status || "").trim().toLowerCase();
-    if (!paymentSuccess || !orderId || !CONFIRMED_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
+    if (!orderId || !CONFIRMED_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
     loyaltyProcessedOrderRef.current = orderId;
     let cancelled = false;
     processLoyaltyOrder(orderId)
