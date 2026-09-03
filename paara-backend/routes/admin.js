@@ -4,7 +4,6 @@ const { requireAdmin } = require('../middleware/admin');
 const path = require('path');
 const fs = require('fs');
 const publicImageUrl = require('../utils/publicImageUrl');
-const { processLoyaltyOrder } = require('../services/loyalty');
 
 const router = express.Router();
 
@@ -640,7 +639,7 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
   }
 
   const order = db.prepare(`
-    SELECT o.id, o.customer_id, o.subtotal, o.order_number, o.payment_method, o.payment_status,
+    SELECT o.id, o.order_number, o.payment_method, o.payment_status,
            o.payment_reference, o.total_amount, c.email, c.name
     FROM orders o
     JOIN customers c ON c.id = o.customer_id
@@ -654,8 +653,7 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
     return s.status(400).json({ error: 'Confirm that you verified this payment in your UPI or bank app before unlocking packing.' });
   }
   if (order.payment_status === 'verified') {
-    const loyalty = processLoyaltyOrder(orderId, order.customer_id);
-    return s.json({ success: true, order_id: orderId, payment_status: 'verified', loyalty, message: 'Manual UPI payment was already verified.' });
+    return s.json({ success: true, order_id: orderId, payment_status: 'verified', message: 'Manual UPI payment was already verified.' });
   }
 
   const updated = db.prepare(`
@@ -668,19 +666,6 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
   `).run(orderId);
   if (updated.changes !== 1) {
     return s.status(409).json({ error: 'The payment could not be verified. Refresh the order and try again.' });
-  }
-
-  let loyalty;
-  try {
-    loyalty = processLoyaltyOrder(orderId, order.customer_id);
-  } catch (error) {
-    console.error('[LOYALTY_ADMIN_PROCESS_FAILED]', {
-      orderId,
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-    });
-    return s.status(500).json({ error: 'Payment was verified, but the loyalty stamp could not be processed.' });
   }
 
   if (order.email) {
@@ -696,7 +681,7 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
     });
   }
 
-  s.json({ success: true, order_id: orderId, payment_status: 'verified', loyalty, message: 'Manual UPI payment verified.' });
+  s.json({ success: true, order_id: orderId, payment_status: 'verified', message: 'Manual UPI payment verified.' });
 });
 
 router.post('/orders/:id/reject-manual-payment', async (q, s) => {
