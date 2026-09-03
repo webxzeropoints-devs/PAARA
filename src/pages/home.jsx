@@ -244,7 +244,6 @@ function MeetOwner() {
           <div className="relative shrink-0">
             <div className="founder-pearl-ring relative w-52 h-52">
               <img src={ownerPhotoSrc} alt="Meet the Owner" onError={() => setOwnerPhotoFailed(true)} className="absolute inset-4 h-[calc(100%-2rem)] w-[calc(100%-2rem)] object-cover rounded-[48%_52%_45%_55%/55%_44%_56%_45%]" />
-              <PearlRing />
             </div>
             <svg aria-hidden="true" className="absolute -bottom-6 -left-7 h-14 w-16 text-gold/45" viewBox="0 0 64 56" fill="none"><path d="M31 7l4 16 14-9-9 14 16 4-16 4 9 14-14-9-4 16-4-16-14 9 9-14-16-4 16-4-9-14 14 9z" stroke="currentColor" strokeWidth="1.2" /></svg>
             <svg aria-hidden="true" className="absolute -bottom-4 right-0 h-12 w-14 text-gold/35" viewBox="0 0 56 48" fill="none"><path d="M6 40C7 17 20 5 31 5c12 0 19 12 19 29-12-7-24-7-44 6zM22 14c7 8 11 16 12 26" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
