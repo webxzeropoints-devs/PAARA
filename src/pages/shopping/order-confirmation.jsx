@@ -18,6 +18,7 @@ export default function OrderConfirmation() {
   const [error, setError] = useState("");
   const [downloadState, setDownloadState] = useState("idle");
   const [loyaltyEvent, setLoyaltyEvent] = useState(null);
+  const [pollingStopped, setPollingStopped] = useState(false);
   const loyaltyProcessedOrderRef = React.useRef(null);
 
   useEffect(() => {
@@ -25,13 +26,19 @@ export default function OrderConfirmation() {
     let cancelled = false;
     let retryTimer;
     let pollTimer;
+    let pollAttempts = 0;
+    let paymentConfirmed = false;
+    const pollingOrderId = location.state?.recentOrder?.id
+      ?? location.state?.recentOrder?.order_id
+      ?? orderId;
     setError("");
+    setPollingStopped(false);
     if (!location.state?.recentOrder) setOrder(null);
     const loadOrder = async () => {
       let lastError;
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
-          const data = await getOrderById(orderId);
+          const data = await getOrderById(pollingOrderId);
           if (!cancelled) setOrder(data);
           return;
         } catch (err) {
@@ -52,12 +59,20 @@ export default function OrderConfirmation() {
       const pollOrder = async () => {
         if (cancelled) return;
         try {
-          const data = await getOrderById(orderId);
-          if (!cancelled) setOrder(data);
+          const data = await getOrderById(pollingOrderId);
+          if (cancelled) return;
+          setOrder(data);
+          pollAttempts = 0;
+          paymentConfirmed = CONFIRMED_PAYMENT_STATUSES.has(String(data?.payment_status || "").trim().toLowerCase());
+          if (paymentConfirmed) return;
         } catch (err) {
-          if (!cancelled) console.error("[ORDER_STATUS_POLL_FAILED]", { orderId, message: err?.message });
+          pollAttempts += 1;
+          if (pollAttempts >= 10 && !cancelled) {
+            setPollingStopped(true);
+            console.warn("[ORDER_STATUS_POLL_STOPPED]", { orderId, attempts: pollAttempts });
+          }
         } finally {
-          if (!cancelled) pollTimer = window.setTimeout(pollOrder, 5000);
+          if (!cancelled && !paymentConfirmed && pollAttempts < 10) pollTimer = window.setTimeout(pollOrder, 5000);
         }
       };
       pollTimer = window.setTimeout(pollOrder, 5000);
@@ -135,6 +150,11 @@ export default function OrderConfirmation() {
             <div className="text-xs text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-sm mb-6">
               {error}
             </div>
+          )}
+          {pollingStopped && paymentSuccess && (
+            <p className="mb-6 text-xs text-cocoa/55">
+              We could not refresh the payment status automatically. Please check your order again shortly.
+            </p>
           )}
 
           {!order && !error && (
