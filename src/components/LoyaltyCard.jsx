@@ -1,6 +1,7 @@
 import { Heart, Gift } from "lucide-react";
+import { motion } from "framer-motion";
 
-export default function LoyaltyCard({ stampsCount = 0 }) {
+export default function LoyaltyCard({ stampsCount = 0, animateStamps = false, stampAnimationDelay = 0, stampAnimationStagger = 0.34 }) {
   const count = Math.min(Math.max(Number(stampsCount) || 0, 0), 6);
   return (
     <div className="w-full max-w-xl rounded-2xl border border-[#e8d9c8] bg-gradient-to-br from-[#fffaf6] via-[#faf2ea] to-[#f5e8dc] p-5 text-cocoa shadow-[0_12px_32px_-8px_rgba(107,74,51,.22)]">
@@ -16,9 +17,23 @@ export default function LoyaltyCard({ stampsCount = 0 }) {
         {Array.from({ length: 6 }, (_, index) => {
           const filled = index < count;
           return (
-            <div key={index} className={`aspect-square rounded-full border flex items-center justify-center ${filled ? "border-gold bg-gold text-white" : "border-cocoa/20 bg-white/50 text-cocoa/45"}`}>
+            <motion.div
+              key={index}
+              initial={animateStamps && filled ? { scale: 0.82 } : false}
+              animate={animateStamps && filled ? {
+                scale: [0.82, 1.15, 1],
+                boxShadow: ["0 0 0 rgba(185,143,78,0)", "0 0 16px rgba(185,143,78,.5)", "0 0 0 rgba(185,143,78,0)"],
+              } : undefined}
+              transition={animateStamps && filled ? {
+                delay: stampAnimationDelay + index * stampAnimationStagger,
+                duration: 0.42,
+                ease: [0.22, 1.2, 0.36, 1],
+              } : undefined}
+              className={`aspect-square rounded-full border flex items-center justify-center ${filled ? "border-gold bg-gold text-white" : "border-cocoa/20 bg-white/50 text-cocoa/45"}`}
+              style={{ willChange: animateStamps && filled ? "transform, box-shadow" : undefined }}
+            >
               <Heart size={18} fill={filled ? "currentColor" : "none"} strokeWidth={1.4} />
-            </div>
+            </motion.div>
           );
         })}
       </div>
