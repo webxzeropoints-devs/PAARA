@@ -652,8 +652,11 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
   if (q.body?.confirmed !== true) {
     return s.status(400).json({ error: 'Confirm that you verified this payment in your UPI or bank app before unlocking packing.' });
   }
+  if (order.payment_status === 'verified') {
+    return s.json({ success: true, order_id: orderId, payment_status: 'verified', message: 'Manual UPI payment was already verified.' });
+  }
 
-  db.prepare(`
+  const updated = db.prepare(`
     UPDATE orders
     SET payment_status = 'verified',
         payment_verified_at = datetime('now'),
@@ -661,6 +664,9 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
         status = CASE WHEN status = 'Order Confirmed' THEN 'Order Confirmed' ELSE status END
     WHERE id = ?
   `).run(orderId);
+  if (updated.changes !== 1) {
+    return s.status(409).json({ error: 'The payment could not be verified. Refresh the order and try again.' });
+  }
 
   if (order.email) {
     const { trySendEmail } = require('../utils/email');

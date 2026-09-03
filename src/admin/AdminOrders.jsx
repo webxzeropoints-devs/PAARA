@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { adminRequest, updateOrderStatus } from "../lib/api";
 
 const ORDER_STAGES = ["Order Confirmed", "Packed", "Shipped", "Delivered"];
@@ -21,14 +22,29 @@ export default function AdminOrders() {
   const [verifyingPayment, setVerifyingPayment] = useState(null);
   const [verifiedChecks, setVerifiedChecks] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const loadVersion = useRef(0);
 
   const load = useCallback(async () => {
+    const requestVersion = ++loadVersion.current;
     try {
-      setOrders(await adminRequest("/admin/orders"));
+      const nextOrders = await adminRequest("/admin/orders");
+      if (requestVersion !== loadVersion.current) return;
+      setOrders(nextOrders);
       setLastUpdated(new Date());
     }
     catch (err) { setError(err.message || "Could not load orders."); }
   }, []);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    setError("");
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   useEffect(() => {
     load();
     const intervalId = window.setInterval(load, 20000);
@@ -60,7 +76,12 @@ export default function AdminOrders() {
     setVerifyingPayment(orderId);
     setError("");
     try {
-      await adminRequest(`/admin/orders/${orderId}/verify-manual-payment`, { method: "POST", body: { confirmed: true } });
+      const result = await adminRequest(`/admin/orders/${orderId}/verify-manual-payment`, { method: "POST", body: { confirmed: true } });
+      setOrders((current) => current.map((order) => (
+        order.id === orderId
+          ? { ...order, payment_status: result.payment_status || "verified", payment_verified_at: new Date().toISOString() }
+          : order
+      )));
       await load();
     } catch (err) {
       setError(err.message || "Could not verify manual payment.");
@@ -100,7 +121,20 @@ export default function AdminOrders() {
 
   return (
     <div className="max-w-7xl">
-      <div className="mb-7"><p className="text-[10px] uppercase tracking-[.28em] text-gold">Fulfilment</p><div className="flex items-baseline gap-3"><h1 className="mt-2 font-display text-4xl text-cocoa">Orders</h1>{lastUpdated && <span className="text-[10px] text-cocoa/45">Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}</div><p className="mt-2 text-sm text-cocoa/60">Review purchases and approve qualifying loyalty card grants.</p></div>
+      <div className="mb-7">
+        <p className="text-[10px] uppercase tracking-[.28em] text-gold">Fulfilment</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-baseline gap-3">
+            <h1 className="mt-2 font-display text-4xl text-cocoa">Orders</h1>
+            {lastUpdated && <span className="text-[10px] text-cocoa/45">Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+          </div>
+          <button type="button" onClick={refresh} disabled={refreshing} className="inline-flex items-center gap-2 border border-cocoa/20 bg-shell px-4 py-2 text-xs uppercase tracking-widest text-cocoa transition-colors hover:border-gold disabled:cursor-wait disabled:opacity-60">
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+        <p className="mt-2 text-sm text-cocoa/60">Review purchases and approve qualifying loyalty card grants.</p>
+      </div>
       {error && <p className="mb-5 border border-gold/40 bg-shell px-4 py-3 text-sm text-cocoa">{error}</p>}
       <div className="w-full max-w-full overflow-x-auto border border-cocoa/10 bg-shell">
         <table className="w-full min-w-[1100px] table-fixed bg-shell text-sm">
