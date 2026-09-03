@@ -17,6 +17,12 @@ import {
   adminUpdateProduct,
 } from "../lib/api";
 
+const getLocalDateTimeInputValue = () => {
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+};
+
 function Section({ title, subtitle, action, children }) {
   return (
     <section className="mb-10">
@@ -706,7 +712,7 @@ function ProductEditor({ product, categories, onClose, onSaved }) {
           is_exclusive: false,
           is_bestseller: false,
           is_active: true,
-          release_date: new Date().toISOString().slice(0, 16),
+          release_date: getLocalDateTimeInputValue(),
           images: [],
         }
   );
