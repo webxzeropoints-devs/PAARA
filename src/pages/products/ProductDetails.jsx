@@ -158,7 +158,10 @@ export default function ProductDetails() {
             )}
             <h1 className="font-product-name text-3xl md:text-4xl mb-3">{product.name}</h1>
             {product.description && (
-              <p className="text-sm text-cocoa/70 leading-relaxed mb-6">{product.description}</p>
+              <>
+                <h2 className="font-display text-xl mb-2">Product Description</h2>
+                <p className="text-sm text-cocoa/70 leading-relaxed mb-6">{product.description}</p>
+              </>
             )}
 
             <div className="border-t border-b border-cocoa/10 py-4 my-6 space-y-1.5">
