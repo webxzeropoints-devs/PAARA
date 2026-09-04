@@ -75,7 +75,7 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
           role: "button",
           tabIndex: 0,
           "aria-pressed": flipped,
-          "aria-label": `${product?.name || "Product"} — tap to flip`,
+          "aria-label": `${product?.name || "Product"} — ${navigateOnClick ? "view product" : "tap to flip"}`,
           onKeyDown: (e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
@@ -98,14 +98,19 @@ export default function ProductFlipCard({ product, index = 0, compact = false, b
         >
           {/* FRONT FACE */}
           <div
-            className="absolute inset-0 [backface-visibility:hidden] bg-shell rounded-sm overflow-hidden"
+            className={`absolute inset-0 [backface-visibility:hidden] bg-shell rounded-sm overflow-hidden ${navigateOnClick ? "cursor-pointer" : ""}`}
             style={{ backfaceVisibility: "hidden" }}
+            onClick={navigateOnClick ? onActivate : undefined}
           >
             <img
               src={frontImg}
               alt={product?.name}
               loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${navigateOnClick ? "cursor-pointer" : ""}`}
+              onClick={navigateOnClick ? (event) => {
+                event.stopPropagation();
+                onActivate();
+              } : undefined}
             />
             {product?.is_exclusive && (
               <span className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-0.5 sm:px-3 sm:py-1 bg-espresso-ink/85 text-pearl font-script italic text-xs sm:text-sm rounded-sm tracking-wide">

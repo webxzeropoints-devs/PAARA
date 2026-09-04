@@ -6,6 +6,7 @@
   "scripts": {
     "validate": "node --check api/index.js && node --check server.js",
     "init-db": "node db/init.js",
+    "populate-descriptions": "node db/populate-descriptions.js",
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
