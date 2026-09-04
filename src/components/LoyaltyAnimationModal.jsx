@@ -1,13 +1,20 @@
 import { motion } from "framer-motion";
+import { useEffect } from "react";
 import LoyaltyCard from "./LoyaltyCard";
 
 export default function LoyaltyAnimationModal({ isOpen, onClose, onAnimationComplete, stampIndex, totalStamps }) {
-  if (!isOpen) return null;
   const completed = Number(stampIndex) >= 6;
   const rotationDelay = 0.28;
   const rotationDuration = 1.8;
   const stampDelay = rotationDelay + rotationDuration - 0.08;
   const completionDelay = stampDelay + Math.max(Number(stampIndex || 0) - 1, 0) * 0.34 + 0.52;
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const timer = window.setTimeout(() => onAnimationComplete?.(), (completionDelay + 0.1) * 1000);
+    return () => window.clearTimeout(timer);
+  }, [completionDelay, isOpen, onAnimationComplete]);
+
+  if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-cocoa/70 p-5" role="dialog" aria-modal="true">
       <motion.div
@@ -44,7 +51,6 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, onAnimationComp
               ease: [0.45, 0, 0.55, 1],
               times: [0, 0.25, 0.5, 0.75, 1],
             }}
-            onAnimationComplete={onAnimationComplete}
             className="relative will-change-transform"
             style={{ transformStyle: "preserve-3d", willChange: "transform" }}
           >
@@ -55,9 +61,10 @@ export default function LoyaltyAnimationModal({ isOpen, onClose, onAnimationComp
               style={{ transformStyle: "preserve-3d" }}
             >
               <LoyaltyCard
-                stampsCount={totalStamps}
+                stampsCount={stampIndex}
                 animateStamps
                 stampAnimationDelay={stampDelay}
+                onAnimationComplete={onAnimationComplete}
               />
               <motion.div
                 aria-hidden="true"

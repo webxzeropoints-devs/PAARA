@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Heart, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function LoyaltyCard({ stampsCount = 0, animateStamps = false, animateOnMount = false, stampAnimationDelay = 0, stampAnimationStagger = 0.34 }) {
+export default function LoyaltyCard({ stampsCount = 0, animateStamps = false, animateOnMount = false, stampAnimationDelay = 0, stampAnimationStagger = 0.34, onAnimationComplete }) {
   const count = Math.min(Math.max(Number(stampsCount) || 0, 0), 6);
   useEffect(() => {
     if (animateOnMount && import.meta.env.DEV) {
@@ -50,6 +50,7 @@ export default function LoyaltyCard({ stampsCount = 0, animateStamps = false, an
                 duration: 0.42,
                 ease: [0.22, 1.2, 0.36, 1],
               } : undefined}
+              onAnimationComplete={animateStamps && filled && index === count - 1 ? onAnimationComplete : undefined}
               className={`aspect-square rounded-full border flex items-center justify-center ${filled ? "border-gold bg-gold text-white" : "border-cocoa/20 bg-white/50 text-cocoa/45"}`}
               style={{ willChange: animateStamps && filled ? "transform, box-shadow" : undefined }}
             >

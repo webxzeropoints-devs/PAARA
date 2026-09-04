@@ -131,6 +131,7 @@ h3 {
   to { transform: translateX(calc(-50% - 28px)); }
 }
 
+
 .love-marquee,
 .collection-marquee {
   overflow: hidden;

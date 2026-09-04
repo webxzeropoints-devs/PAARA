@@ -640,7 +640,7 @@ router.post('/orders/:id/verify-manual-payment', async (q, s) => {
   }
 
   const order = db.prepare(`
-    SELECT o.id, o.order_number, o.payment_method, o.payment_status,
+    SELECT o.id, o.customer_id, o.order_number, o.payment_method, o.payment_status,
            o.payment_reference, o.total_amount, c.email, c.name
     FROM orders o
     JOIN customers c ON c.id = o.customer_id
