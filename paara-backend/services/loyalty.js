@@ -66,7 +66,15 @@ function processLoyaltyOrder(orderId, customerId) {
 
     const existing = db.prepare('SELECT awarded_at, animation_shown_at FROM loyalty_stamps WHERE order_id = ?').get(orderId);
     if (existing) {
-      return { state: getLoyaltyState(customerId), order: { orderId, awarded: true, animationShown: Boolean(existing.animation_shown_at), newlyAwarded: false } };
+      return {
+        state: getLoyaltyState(customerId),
+        order: {
+          orderId,
+          awarded: true,
+          animationShown: Boolean(existing.animation_shown_at),
+          newlyAwarded: !existing.animation_shown_at,
+        },
+      };
     }
 
     const paymentStatus = String(order.payment_status || '').trim().toLowerCase();

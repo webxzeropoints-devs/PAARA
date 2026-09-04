@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { downloadInvoice, getLoyaltyOrder, getLoyaltyStatus, getOrderById, markLoyaltyAnimationShown } from "../../lib/api";
+import { downloadInvoice, getOrderById, markLoyaltyAnimationShown, processLoyaltyOrder } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import LoyaltyAnimationModal from "../../components/LoyaltyAnimationModal";
 import { useCart } from "../../lib/cart.jsx";
@@ -107,15 +107,11 @@ export default function OrderConfirmation() {
   useEffect(() => {
     const paymentStatus = String(order?.payment_status || "").trim().toLowerCase();
     if (!orderId || !CONFIRMED_PAYMENT_STATUSES.has(paymentStatus) || loyaltyProcessedOrderRef.current === orderId) return;
+    loyaltyProcessedOrderRef.current = orderId;
     let cancelled = false;
-    Promise.all([getLoyaltyOrder(orderId), getLoyaltyStatus()])
-      .then(([orderState, state]) => {
-        loyaltyProcessedOrderRef.current = orderId;
-        const currentCount = Number(state?.stampCount || 0);
-        if (!cancelled && orderState?.awarded && !orderState?.animationShown
-          && currentCount > 0) {
-          setLoyaltyEvent({ order: orderState, state });
-        }
+    processLoyaltyOrder(orderId)
+      .then((result) => {
+        if (!cancelled && result?.order?.newlyAwarded) setLoyaltyEvent(result);
       })
       .catch((err) => console.error("[LOYALTY_STATE_REFRESH_FAILED]", { orderId, message: err?.message }));
     return () => { cancelled = true; };
