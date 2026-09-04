@@ -34,6 +34,18 @@ export default function CustomerCare() {
         <ContactCard icon={<MessageCircle size={18} strokeWidth={1.4} />} label="Live chat" value="Mon–Sat, 10am–7pm" />
       </div>
 
+      <div className="mb-12 text-sm">
+        <p className="text-xs uppercase tracking-widest text-cocoa/60">Founder</p>
+        <p className="mt-1">Dharshini M</p>
+        <p className="mt-4 text-xs uppercase tracking-widest text-cocoa/60">Address:</p>
+        <address className="mt-1 not-italic leading-relaxed">
+          Murugan R<br />
+          43/28 Anna Cross Street<br />
+          Rajajipuram<br />
+          Tiruvallur - 602001
+        </address>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-10">
         <div>
           <h2 className="font-display text-2xl mb-4">Frequently asked questions</h2>
