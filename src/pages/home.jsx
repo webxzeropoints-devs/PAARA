@@ -307,7 +307,7 @@ function Vault({ products }) {
     <section id="vault" className="max-w-[1600px] mx-auto px-6 md:px-10 py-12">
       {heading}
       <VaultScrollStage>
-        {products.slice(0, 3).map((product, index) => <ProductFlipCard key={product.id} product={product} index={index} disableReveal disableFlip />)}
+        {products.slice(0, 3).map((product, index) => <ProductFlipCard key={product.id} product={product} index={index} disableReveal disableFlip navigateOnClick />)}
       </VaultScrollStage>
     </section>
   );
@@ -427,7 +427,7 @@ function CollectionFlipCard({ collection }) {
 }
 
 function ProductGrid({ title, products, loading }) {
-  return <section className="w-full max-w-7xl mx-auto px-4 md:px-8 py-24"><div className="flex items-end justify-between mb-10"><div><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">{title}</h2><HeadingWave className="mt-3" /></span></div><Link to="/shop" className="text-xs uppercase tracking-[.2em] border-b border-cocoa pb-2">Shop all →</Link></div>{loading ? <div className="py-12 text-center text-sm text-cocoa/60">Loading pieces…</div> : products.length === 0 ? <div className="py-12 text-center text-sm text-cocoa/60">No bestsellers are available right now.</div> : <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-6xl mx-auto px-4 py-12 justify-items-center">{products.map((product, index) => <ProductFlipCard key={product.id} product={product} index={index} boutique bestseller disableFlip />)}</div>}</section>;
+  return <section className="w-full max-w-7xl mx-auto px-4 md:px-8 py-24"><div className="flex items-end justify-between mb-10"><div><span className="heading-wave-wrap"><h2 className="font-display text-4xl mt-2">{title}</h2><HeadingWave className="mt-3" /></span></div><Link to="/shop" className="text-xs uppercase tracking-[.2em] border-b border-cocoa pb-2">Shop all →</Link></div>{loading ? <div className="py-12 text-center text-sm text-cocoa/60">Loading pieces…</div> : products.length === 0 ? <div className="py-12 text-center text-sm text-cocoa/60">No bestsellers are available right now.</div> : <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-6xl mx-auto px-4 py-12 justify-items-center">{products.map((product, index) => <ProductFlipCard key={product.id} product={product} index={index} boutique bestseller disableFlip navigateOnClick />)}</div>}</section>;
 }
 
 function PaaraIRL() {
