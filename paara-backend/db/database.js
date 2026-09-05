@@ -2,7 +2,7 @@ require('dotenv').config();
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-const { dbPath, isServerless, storeIdFromUrl } = require('./blobRestore');
+const { dbPath, isServerless, storeIdFromUrl, getLastPulledAt } = require('./blobRestore');
 const blobReadWriteToken = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
 const blobStoreId = String(process.env.BLOB_STORE_ID || '').trim();
 const blobAuthOptions = blobReadWriteToken
@@ -30,7 +30,31 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// WRITE half — restore (READ half) lives in db/blobRestore.js, called from api/index.js.
+// TEMPORARY PATCH — remove when migrated to Postgres
+// Promise mutex serializes mutating requests on a single serverless instance.
+let writeQueue = Promise.resolve();
+let lastPushAt = null;
+let writesSinceLastPush = 0;
+
+async function acquireWriteLock() {
+  // TEMPORARY PATCH — remove when migrated to Postgres
+  let release;
+  const turn = new Promise((resolve) => {
+    release = resolve;
+  });
+  const previous = writeQueue;
+  writeQueue = writeQueue.then(() => turn);
+  await previous;
+  return release;
+}
+
+function markWrite() {
+  // TEMPORARY PATCH — remove when migrated to Postgres
+  writesSinceLastPush += 1;
+}
+
+// TEMPORARY PATCH — remove when migrated to Postgres
+// READ half — restore lives in db/blobRestore.js and runs once before server.js loads.
 async function persist() {
   if (!isServerless) return;
   const pathname = 'paara-db/paara.db';
@@ -61,6 +85,9 @@ async function persist() {
       etag: uploadedBlob.etag,
       uploadedAt: uploadedBlob.uploadedAt?.toISOString?.() || uploadedBlob.uploadedAt,
     });
+    lastPushAt = new Date().toISOString();
+    writesSinceLastPush = 0;
+    return true;
   } catch (err) {
     console.error('[DB_PERSIST] Private Blob upload failed.', {
       ...diagnostics,
@@ -68,10 +95,23 @@ async function persist() {
       errorName: err.name,
       errorCode: err.code,
     });
-    throw err;
+    return false;
   }
+}
+
+function getSyncStatus() {
+  // TEMPORARY PATCH — remove when migrated to Postgres
+  return {
+    lastPulledFromBlob: getLastPulledAt(),
+    lastPushedToBlob: lastPushAt,
+    dbFileSize: fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0,
+    writesSinceLastPush,
+  };
 }
 
 module.exports = db;
 module.exports.persist = persist;
 module.exports.isServerless = isServerless;
+module.exports.acquireWriteLock = acquireWriteLock;
+module.exports.markWrite = markWrite;
+module.exports.getSyncStatus = getSyncStatus;

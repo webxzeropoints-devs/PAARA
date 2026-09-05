@@ -13,6 +13,7 @@ const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const path = require('path');
 const db = require('./db/database');
+const { requireAdminSession } = require('./middleware/adminAuth');
 const { maskSensitiveText } = require('./utils/validate');
 const { formatOrderNumber } = require('./utils/orderNumber');
 
@@ -366,33 +367,43 @@ if (phoneOtpColumns.length && !phoneOtpColumns.includes('attempts')) {
   db.exec('ALTER TABLE phone_otps ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
 }
 
-// loading before handling any request, and persist writes back to Blob
-// storage before successful write responses are sent.
+// TEMPORARY PATCH — remove when migrated to Postgres
+// Serialize mutating requests and write the updated SQLite file to Blob before
+// sending the response. Blob failures are logged, but the local write remains
+// successful and the request is not replaced with a fake failure.
 if (db.isServerless) {
-  app.use((req, res, next) => {
+  app.use(async (req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+
+    let releaseLock;
+    try {
+      releaseLock = await db.acquireWriteLock();
+      db.markWrite();
+    } catch (error) {
+      return next(error);
+    }
+
     const originalJson = res.json.bind(res);
     const originalSend = res.send.bind(res);
     const originalEnd = res.end.bind(res);
     let persistPromise = null;
-    const respondPersistFailure = (err) => {
-      console.error('[DB_PERSIST] Response blocked because persistence failed.', {
+    let lockReleased = false;
+    const release = () => {
+      if (lockReleased) return;
+      lockReleased = true;
+      releaseLock();
+    };
+    const reportPersistFailure = (err) => {
+      console.error('[DB_PERSIST] Upload failed after local write; serving response anyway.', {
         method: req.method,
         path: req.path,
         error: err.message,
         errorName: err.name,
         errorCode: err.code,
-        headersSent: res.headersSent,
       });
-      if (!res.headersSent) {
-        res.statusCode = 503;
-        res.setHeader('Content-Type', 'application/json');
-        originalEnd(JSON.stringify({ ok: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Database is temporarily unavailable. Please try again.' }));
-      }
     };
 
     const persistBeforeResponse = () => {
-      const isReadOnlyAdminLogin = req.method === 'POST' && req.path === '/api/admin-auth/login';
-      if (req.method === 'GET' || isReadOnlyAdminLogin || res.statusCode >= 400) return Promise.resolve();
       if (!persistPromise) {
         console.log('[DB_PERSIST] Request requires persistence.', { method: req.method, path: req.path });
         persistPromise = db.persist();
@@ -402,23 +413,42 @@ if (db.isServerless) {
 
     res.json = (body) => {
       persistBeforeResponse()
-        .then(() => originalJson(body))
-        .catch(respondPersistFailure);
+        .catch(reportPersistFailure)
+        .then(() => {
+          try {
+            originalJson(body);
+          } finally {
+            release();
+          }
+        });
       return res;
     };
     res.send = (body) => {
       persistBeforeResponse()
-        .then(() => originalSend(body))
-        .catch(respondPersistFailure);
+        .catch(reportPersistFailure)
+        .then(() => {
+          try {
+            originalSend(body);
+          } finally {
+            release();
+          }
+        });
       return res;
     };
     res.end = (...args) => {
       persistBeforeResponse()
-        .then(() => originalEnd(...args))
-        .catch(respondPersistFailure);
+        .catch(reportPersistFailure)
+        .then(() => {
+          try {
+            originalEnd(...args);
+          } finally {
+            release();
+          }
+        });
       return res;
     };
 
+    res.on('close', release);
     next();
   });
 }
@@ -470,6 +500,11 @@ app.use('/api/shipping', shippingRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/loyalty', loyaltyRouter);
+
+// TEMPORARY PATCH — remove when migrated to Postgres
+app.get('/api/db-status', requireAdminSession, (req, res) => {
+  res.json({ ok: true, ...db.getSyncStatus() });
+});
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

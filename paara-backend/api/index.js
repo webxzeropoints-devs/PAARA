@@ -1,3 +1,4 @@
+// TEMPORARY PATCH — remove when migrated to Postgres
 // Vercel routes every /api/* request here (see vercel.json).
 // On Vercel we must restore /tmp/paara.db from Blob BEFORE requiring server.js,
 // since server.js requires ./db/database at load time, which opens the file.

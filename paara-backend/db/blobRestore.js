@@ -6,6 +6,7 @@ const BLOB_PATHNAME = 'paara-db/paara.db';
 const blobStoreId = String(process.env.BLOB_STORE_ID || '').trim();
 const blobReadWriteToken = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
 const dbPath = isServerless ? '/tmp/paara.db' : (process.env.DB_PATH || path.join(__dirname, '..', 'paara.db'));
+let lastPulledAt = null;
 
 function storeIdFromReadWriteToken(token) {
   const parts = String(token || '').split('_');
@@ -38,6 +39,7 @@ const storeIdFromUrl = (url) => {
 // this file must never open/create the SQLite file itself, or it would
 // defeat the fs.existsSync() checks below.
 async function restoreBlobThenInit() {
+  // TEMPORARY PATCH — remove when migrated to Postgres
   if (!isServerless) return;
   if (fs.existsSync(dbPath)) {
     console.log('[DB_RESTORE] Local Vercel database already exists; skipping restore.', blobDiagnostics());
@@ -90,6 +92,7 @@ async function restoreBlobThenInit() {
         totalLength += chunk.length;
       }
       fs.writeFileSync(dbPath, Buffer.concat(chunks, totalLength));
+      lastPulledAt = new Date().toISOString();
       console.log('[DB_RESTORE] Blob restored to /tmp/paara.db.', {
         ...blobDiagnostics(),
         effectiveStoreId: storeIdFromUrl(blob.blob.url),
@@ -122,4 +125,9 @@ async function restoreBlobThenInit() {
   }
 }
 
-module.exports = { restoreBlobThenInit, dbPath, isServerless, storeIdFromUrl };
+function getLastPulledAt() {
+  // TEMPORARY PATCH — remove when migrated to Postgres
+  return lastPulledAt;
+}
+
+module.exports = { restoreBlobThenInit, dbPath, isServerless, storeIdFromUrl, getLastPulledAt };
