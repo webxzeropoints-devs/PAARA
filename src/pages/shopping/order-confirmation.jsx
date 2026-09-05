@@ -285,6 +285,7 @@ export default function OrderConfirmation() {
           <LoyaltyAnimationModal
             isOpen={Boolean(loyaltyEvent)}
             stampIndex={loyaltyEvent?.state?.stampCount}
+            totalStamps={6}
             onAnimationComplete={() => {
               if (loyaltyAnimationMarkedRef.current) return;
               loyaltyAnimationMarkedRef.current = true;
