@@ -1,94 +1,57 @@
-import { motion } from "framer-motion";
-import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import LoyaltyCard from "./LoyaltyCard";
+
+const sparkleData = Array.from({ length: 10 }, (_, index) => {
+  const angle = (Math.PI * 2 / 10) * index;
+  const distance = 26 + (index % 5) * 5;
+  return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance - 8, color: index % 2 ? "#A8483B" : "#D9AE68" };
+});
 
 export default function LoyaltyAnimationModal({ isOpen, onClose, onAnimationComplete, stampIndex, totalStamps }) {
   const completed = Number(stampIndex) >= 6;
-  const rotationDelay = 0.28;
-  const rotationDuration = 1.8;
-  const stampDelay = rotationDelay + rotationDuration - 0.08;
-  const completionDelay = stampDelay + Math.max(Number(stampIndex || 0) - 1, 0) * 0.34 + 0.52;
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    const timer = window.setTimeout(() => onAnimationComplete?.(), (completionDelay + 0.1) * 1000);
-    return () => window.clearTimeout(timer);
-  }, [completionDelay, isOpen, onAnimationComplete]);
+  const [showStamp, setShowStamp] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) {
+      setShowStamp(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setShowStamp(true), 1600);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!showStamp || !onAnimationComplete) return undefined;
+    const timer = window.setTimeout(onAnimationComplete, 800);
+    return () => window.clearTimeout(timer);
+  }, [showStamp, onAnimationComplete]);
+
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-cocoa/70 p-5" role="dialog" aria-modal="true">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.88, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="w-full max-w-xl"
-      >
-        <div className="mb-3 flex items-center justify-between text-white">
-          <p className="text-xs uppercase tracking-[.25em] text-gold">New stamp earned · {stampIndex}/6</p>
-          <button type="button" onClick={onClose} className="text-xs uppercase tracking-widest">Close</button>
-        </div>
-        <div
-          className="relative w-full"
-          style={{ perspective: "1200px", transformStyle: "preserve-3d" }}
-        >
-          <motion.div
-            initial={{ rotateY: 0, rotateX: 0, scale: 1, boxShadow: "0 18px 34px -14px rgba(67,42,27,.25)" }}
-            animate={{
-              rotateY: [0, 270, 540, 810, 1080],
-              rotateX: [0, 8, -6, 5, 0],
-              scale: [1, 1.012, 1.03, 1.012, 1],
-              boxShadow: [
-                "0 18px 34px -14px rgba(67,42,27,.25)",
-                "8px 12px 22px -16px rgba(67,42,27,.12)",
-                "0 28px 48px -12px rgba(67,42,27,.38)",
-                "-8px 12px 22px -16px rgba(67,42,27,.12)",
-                "0 18px 34px -14px rgba(67,42,27,.25)",
-              ],
-            }}
-            transition={{
-              delay: rotationDelay,
-              duration: rotationDuration,
-              ease: [0.45, 0, 0.55, 1],
-              times: [0, 0.25, 0.5, 0.75, 1],
-            }}
-            className="relative will-change-transform"
-            style={{ transformStyle: "preserve-3d", willChange: "transform" }}
-          >
-            <motion.div
-              animate={completed ? { scale: [1, 1.035, 1], filter: ["drop-shadow(0 0 0 rgba(185,143,78,0))", "drop-shadow(0 0 18px rgba(185,143,78,.48))", "drop-shadow(0 0 0 rgba(185,143,78,0))"] } : undefined}
-              transition={completed ? { delay: completionDelay, duration: 0.65, ease: "easeOut" } : undefined}
-              className="relative"
-              style={{ transformStyle: "preserve-3d" }}
-            >
-              <LoyaltyCard
-                stampsCount={stampIndex}
-                animateStamps
-                stampAnimationDelay={stampDelay}
-                onAnimationComplete={onAnimationComplete}
-              />
-              <motion.div
-                aria-hidden="true"
-                initial={{ x: "-130%" }}
-                animate={{ x: ["-130%", "130%"] }}
-                transition={{ delay: rotationDelay + 0.05, duration: rotationDuration, ease: "easeInOut" }}
-                className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-2xl"
-                style={{
-                  willChange: "transform",
-                  background: "linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)",
-                }}
-              />
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div className="paara-reward-modal fixed inset-0 z-[120] flex items-center justify-center p-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true">
+          <style>{`
+            .paara-reward-modal{background:rgba(36,30,26,.85);font-family:Jost,sans-serif}.paara-modal-content{width:min(1000px,96vw);position:relative}.paara-close{position:absolute;right:0;top:-34px;background:none;border:0;color:#fff;font:500 12px Jost,sans-serif;letter-spacing:.18em;cursor:pointer}.paara-modal-card{transform-style:preserve-3d;position:relative}.paara-stamper{position:absolute;left:50%;top:50%;width:56px;height:88px;z-index:5;pointer-events:none;transform:translate(-50%,-140px) rotate(-14deg)}.paara-stamper svg{width:100%;height:100%}.paara-stamper-drop{animation:paara-stamp-down 620ms cubic-bezier(.4,0,.2,1) forwards}@keyframes paara-stamp-down{0%{transform:translate(-50%,-140px) rotate(-14deg);opacity:0}18%{opacity:1}46%{transform:translate(-50%,-6px) rotate(-2deg);opacity:1}54%{transform:translate(-50%,2px) rotate(0deg) scale(1.02,.96)}62%{transform:translate(-50%,-4px) rotate(-1deg) scale(1)}80%{transform:translate(-50%,-4px) rotate(-1deg);opacity:1}100%{transform:translate(-50%,-130px) rotate(-16deg);opacity:0}}.paara-sparkle{position:absolute;width:10px;height:10px;left:50%;top:50%;opacity:0;animation:paara-sparkle-out 640ms ease-out forwards}@keyframes paara-sparkle-out{0%{opacity:0;transform:translate(0,0) scale(.3) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(1) rotate(180deg)}}.paara-complete-glow{animation:paara-glow 1.2s ease-in-out infinite}@keyframes paara-glow{50%{filter:drop-shadow(0 0 18px rgba(217,174,104,.55))}}
+          `}</style>
+          <button type="button" className="paara-close" onClick={onClose}>CLOSE</button>
+          <motion.div className="paara-modal-content" initial={{ opacity: 0, rotateX: 18, rotateY: -26, y: 30, scale: .9 }} animate={{ opacity: 1, rotateX: 0, rotateY: 0, y: 0, scale: 1 }} transition={{ delay: .3, type: "spring", stiffness: 120, damping: 18 }}>
+            <motion.div className={`paara-modal-card ${completed && showStamp ? "paara-complete-glow" : ""}`}>
+              <LoyaltyCard stampsCount={totalStamps} animateStamps stampAnimationDelay={1.3} />
+              {showStamp && (
+                <>
+                  <div className="paara-stamper paara-stamper-drop"><svg viewBox="0 0 70 110"><rect x="26" y="0" width="18" height="34" rx="6" fill="#7a4b2e" /><rect x="21" y="30" width="28" height="10" rx="2" fill="#5b3a24" /><rect x="10" y="40" width="50" height="34" rx="3" fill="#c8cdd2" stroke="#9aa1a8" /><rect x="16" y="74" width="38" height="14" rx="2" fill="#efe3d8" stroke="#c9b9a6" /></svg></div>
+                  {sparkleData.map((sparkle, index) => <span key={index} className="paara-sparkle" style={{ "--x": `${sparkle.x}px`, "--y": `${sparkle.y}px` }}><svg viewBox="0 0 10 10"><path d="M5 0 L6.2 3.8 L10 5 L6.2 6.2 L5 10 L3.8 6.2 L0 5 L3.8 3.8 Z" fill={sparkle.color} /></svg></span>)}
+                </>
+              )}
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: showStamp ? 1 : 0, y: showStamp ? 0 : 8 }} transition={{ duration: .35 }} style={{ textAlign: "center", color: "#fff", marginTop: 18 }}>
+              <div style={{ color: "#D9AE68", textTransform: "uppercase", letterSpacing: ".18em", fontSize: 12 }}>New stamp earned · {stampIndex}/6</div>
+              <div style={{ marginTop: 8, fontSize: 14, opacity: .85 }}>{completed ? "Card Complete — your PAARA reward is ready." : "Your PAARA Loyalty Card has been updated."}</div>
             </motion.div>
           </motion.div>
-        </div>
-        <motion.p
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: completed ? completionDelay + 0.48 : stampDelay + Math.max(Number(stampIndex || 0) - 1, 0) * 0.34 + 0.25, duration: 0.35 }}
-          className="mt-4 text-center text-sm text-white/80"
-        >
-          {completed ? "Card Complete — your PAARA Loyalty Card is ready." : "Your PAARA Loyalty Card has been updated."}
-        </motion.p>
-      </motion.div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
