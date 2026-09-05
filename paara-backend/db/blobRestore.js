@@ -6,7 +6,9 @@ const BLOB_PATHNAME = 'paara-db/paara.db';
 const blobStoreId = String(process.env.BLOB_STORE_ID || '').trim();
 const blobReadWriteToken = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
 const dbPath = isServerless ? '/tmp/paara.db' : (process.env.DB_PATH || path.join(__dirname, '..', 'paara.db'));
-let lastPulledAt = null;
+// TEMPORARY PATCH — remove when migrated to Postgres
+let lastPullAt = 0;
+const PULL_INTERVAL_MS = 30 * 1000;
 
 function storeIdFromReadWriteToken(token) {
   const parts = String(token || '').split('_');
@@ -41,9 +43,11 @@ const storeIdFromUrl = (url) => {
 async function restoreBlobThenInit() {
   // TEMPORARY PATCH — remove when migrated to Postgres
   if (!isServerless) return;
-  if (fs.existsSync(dbPath)) {
-    console.log('[DB_RESTORE] Local Vercel database already exists; skipping restore.', blobDiagnostics());
-    return;
+  const now = Date.now();
+  const isStale = now - lastPullAt > PULL_INTERVAL_MS;
+  if (fs.existsSync(dbPath) && !isStale) {
+    console.log('[DB_RESTORE] DB fresh, skipping pull.', { ageMs: now - lastPullAt });
+    return false;
   }
 
   const dbDir = path.dirname(dbPath);
@@ -57,8 +61,9 @@ async function restoreBlobThenInit() {
     try {
       const seedBuffer = require('./seed-data.js');
       fs.writeFileSync(dbPath, seedBuffer);
+      lastPullAt = Date.now();
       console.log('[DB_RESTORE] Seed database created because no Blob credentials were configured.');
-      return;
+      return true;
     } catch (err) {
       console.error('[DB_RESTORE] Could not create the seed DB on Vercel:', err.message);
       throw err;
@@ -92,7 +97,7 @@ async function restoreBlobThenInit() {
         totalLength += chunk.length;
       }
       fs.writeFileSync(dbPath, Buffer.concat(chunks, totalLength));
-      lastPulledAt = new Date().toISOString();
+      lastPullAt = Date.now();
       console.log('[DB_RESTORE] Blob restored to /tmp/paara.db.', {
         ...blobDiagnostics(),
         effectiveStoreId: storeIdFromUrl(blob.blob.url),
@@ -100,7 +105,7 @@ async function restoreBlobThenInit() {
         uploadedAt: blob.blob.uploadedAt?.toISOString?.() || blob.blob.uploadedAt,
         etag: blob.blob.etag,
       });
-      return;
+      return true;
     }
 
     // A null result means the private store is reachable but this is the first boot.
@@ -108,7 +113,9 @@ async function restoreBlobThenInit() {
     try {
       const seedBuffer = require('./seed-data.js');
       fs.writeFileSync(dbPath, seedBuffer);
+      lastPullAt = Date.now();
       console.log('[DB_RESTORE] No database Blob found; seeded /tmp/paara.db.');
+      return true;
     } catch (err) {
       console.error('[DB_RESTORE] Could not load embedded seed DB:', err.message);
       throw err;
@@ -127,7 +134,19 @@ async function restoreBlobThenInit() {
 
 function getLastPulledAt() {
   // TEMPORARY PATCH — remove when migrated to Postgres
-  return lastPulledAt;
+  return lastPullAt ? new Date(lastPullAt).toISOString() : null;
 }
 
-module.exports = { restoreBlobThenInit, dbPath, isServerless, storeIdFromUrl, getLastPulledAt };
+function getLastPullAt() {
+  // TEMPORARY PATCH — remove when migrated to Postgres
+  return lastPullAt;
+}
+
+module.exports = {
+  restoreBlobThenInit,
+  dbPath,
+  isServerless,
+  storeIdFromUrl,
+  getLastPulledAt,
+  getLastPullAt,
+};

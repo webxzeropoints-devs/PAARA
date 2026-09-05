@@ -26,9 +26,23 @@ if (!fs.existsSync(dbPath)) {
   tmpDb.close();
 }
 
-const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// TEMPORARY PATCH — remove when migrated to Postgres
+let _db = new Database(dbPath);
+_db.pragma('journal_mode = WAL');
+_db.pragma('foreign_keys = ON');
+
+// TEMPORARY PATCH — remove when migrated to Postgres
+function reopen() {
+  try {
+    if (_db.open) _db.close();
+  } catch (error) {
+    console.warn('[DB_REOPEN] Could not close:', error.message);
+  }
+  _db = new Database(dbPath);
+  _db.pragma('journal_mode = WAL');
+  _db.pragma('foreign_keys = ON');
+  console.log('[DB_REOPEN] Connection reopened from fresh /tmp/paara.db');
+}
 
 // TEMPORARY PATCH — remove when migrated to Postgres
 // Promise mutex serializes mutating requests on a single serverless instance.
@@ -68,7 +82,7 @@ async function persist() {
     hasOidcToken: Boolean(process.env.VERCEL_OIDC_TOKEN),
   };
   try {
-    db.pragma('wal_checkpoint(TRUNCATE)');
+    _db.pragma('wal_checkpoint(TRUNCATE)');
     const { put } = require('@vercel/blob');
     const buf = fs.readFileSync(dbPath);
     console.log('[DB_PERSIST] Upload starting.', { ...diagnostics, size: buf.length });
@@ -122,10 +136,23 @@ function getSyncStatus() {
   };
 }
 
+// TEMPORARY PATCH — remove when migrated to Postgres
+const db = new Proxy({}, {
+  get(_target, prop) {
+    if (prop === 'reopen') return reopen;
+    if (prop === 'persist') return persist;
+    if (prop === 'persistAfterWrite') return persistAfterWrite;
+    if (prop === 'isServerless') return isServerless;
+    if (prop === 'acquireWriteLock') return acquireWriteLock;
+    if (prop === 'markWrite') return markWrite;
+    if (prop === 'getSyncStatus') return getSyncStatus;
+    const value = _db[prop];
+    return typeof value === 'function' ? value.bind(_db) : value;
+  },
+  set(_target, prop, value) {
+    _db[prop] = value;
+    return true;
+  },
+});
+
 module.exports = db;
-module.exports.persist = persist;
-module.exports.persistAfterWrite = persistAfterWrite;
-module.exports.isServerless = isServerless;
-module.exports.acquireWriteLock = acquireWriteLock;
-module.exports.markWrite = markWrite;
-module.exports.getSyncStatus = getSyncStatus;
