@@ -78,6 +78,7 @@ export default function Checkout() {
   const [order, setOrder] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [confirmingUpi, setConfirmingUpi] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("manual_upi");
   const [manualUpi, setManualUpi] = useState({ ready: false, qr_code_url: "", deep_link: "", payee_name: "", upi_id: "", amount: 0, instructions: "" });
   const [manualUpiUtr, setManualUpiUtr] = useState("");
@@ -290,13 +291,17 @@ export default function Checkout() {
   }, [items.length, paymentMethod, selectedAddressId, step]);
 
   const confirmUpiPaid = async () => {
+    if (confirmingUpi) return;
+    setConfirmingUpi(true);
     setError("");
+    setUpiPaid(true);
     const paidOrder = order || await prepareManualUpi();
     if (!paidOrder?.order_id) {
+      setUpiPaid(false);
+      setConfirmingUpi(false);
       setError("We could not save your order. Please try again before confirming payment.");
       return;
     }
-    setUpiPaid(true);
     paymentRedirectStarted.current = true;
     navigate(`/order-confirmation?order_id=${paidOrder.order_id}&payment=success&payment_method=manual_upi`, {
       replace: true,
@@ -658,7 +663,7 @@ export default function Checkout() {
                       }
 
                       <div className="mt-4 border-t border-gold/20 pt-4">
-                        <button type="button" onClick={confirmUpiPaid} disabled={paying} className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60">I&apos;ve Paid</button>
+                        <button type="button" onClick={confirmUpiPaid} disabled={confirmingUpi} className="bg-gold text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-cocoa transition-colors disabled:opacity-60">{confirmingUpi ? "Confirming..." : "I've Paid"}</button>
                         {upiPaid && <p className="mt-3 text-sm text-emerald-700">Payment Successful — Order Confirmed</p>}
                       </div>
                     </div>
