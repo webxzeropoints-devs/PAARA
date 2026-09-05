@@ -6,6 +6,7 @@ import { apiPost } from "../lib/api";
 import { fadeUp } from "../lib/motion";
 import { isStrongPassword, PASSWORD_ERROR } from "../lib/validation";
 import PasswordRequirements from "../components/PasswordRequirements";
+import PasswordInput from "../components/PasswordInput";
 
 export default function AdminForgotPassword() {
   const navigate = useNavigate();
@@ -122,8 +123,7 @@ export default function AdminForgotPassword() {
 
             <label className="block">
               <span className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">New password</span>
-              <input
-                type="password"
+              <PasswordInput
                 minLength={8}
                 required
                 value={password}
@@ -135,8 +135,7 @@ export default function AdminForgotPassword() {
 
             <label className="block">
               <span className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">Confirm new password</span>
-              <input
-                type="password"
+              <PasswordInput
                 minLength={8}
                 required
                 value={confirmPassword}

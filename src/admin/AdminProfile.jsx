@@ -8,6 +8,7 @@ import { adminChangeEmail, adminChangePassword, adminChangeProfilePicture, apiPo
 import { useAdmin } from "../lib/adminAuth.jsx";
 import { isStrongPassword, PASSWORD_ERROR } from "../lib/validation";
 import PasswordRequirements from "../components/PasswordRequirements";
+import PasswordInput from "../components/PasswordInput";
 
 export default function AdminProfile() {
   const { admin, updateProfile, logout } = useAdmin();
@@ -165,8 +166,7 @@ export default function AdminProfile() {
               required
               className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
             />
-            <input
-              type="password"
+            <PasswordInput
               value={setupPassword}
               onChange={(e) => setSetupPassword(e.target.value)}
               placeholder="New password"
@@ -175,8 +175,7 @@ export default function AdminProfile() {
               className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
             />
             <PasswordRequirements password={setupPassword} />
-            <input
-              type="password"
+            <PasswordInput
               value={setupConfirmPassword}
               onChange={(e) => setSetupConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
@@ -264,8 +263,7 @@ export default function AdminProfile() {
             required
             className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
           />
-          <input
-            type="password"
+          <PasswordInput
             value={emailPw}
             onChange={(e) => setEmailPw(e.target.value)}
             placeholder="Current password"
@@ -289,8 +287,7 @@ export default function AdminProfile() {
       {/* Change password */}
       <Card title="Change password" subtitle="Minimum 8 characters.">
         <form onSubmit={submitPassword} className="space-y-3">
-          <input
-            type="password"
+          <PasswordInput
             value={currentPw}
             onChange={(e) => setCurrentPw(e.target.value)}
             placeholder="Current password"
@@ -298,8 +295,7 @@ export default function AdminProfile() {
             autoComplete="current-password"
             className="w-full bg-transparent border-b border-cocoa/30 px-0 py-2 text-sm focus:outline-none focus:border-gold"
           />
-          <input
-            type="password"
+          <PasswordInput
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
             placeholder="New password"

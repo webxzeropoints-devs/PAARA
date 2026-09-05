@@ -6,6 +6,7 @@ import { authRegister } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
 import { isStrongPassword, normalizePhone, PASSWORD_ERROR, PHONE_ERROR } from "../../lib/validation";
 import PasswordRequirements from "../../components/PasswordRequirements";
+import PasswordInput from "../../components/PasswordInput";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -111,8 +112,7 @@ export default function Register() {
             <label className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">
               Password *
             </label>
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={12}
               autoComplete="new-password"
@@ -126,8 +126,7 @@ export default function Register() {
             <label className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">
               Confirm Password *
             </label>
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={12}
               autoComplete="new-password"

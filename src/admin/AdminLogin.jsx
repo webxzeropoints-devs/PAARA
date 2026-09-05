@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 
 import { useAdmin } from "../lib/adminAuth.jsx";
+import PasswordInput from "../components/PasswordInput";
 
 export default function AdminLogin() {
   const { requestLogin, error, loading, token } = useAdmin();
@@ -96,14 +97,24 @@ function Field({ label, type = "text", value, onChange, placeholder, ...rest }) 
   return (
     <label className="block">
       <span className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm text-cocoa placeholder-cocoa/35 transition-colors"
-        {...rest}
-      />
+      {type === "password" ? (
+        <PasswordInput
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm text-cocoa placeholder-cocoa/35 transition-colors"
+          {...rest}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-transparent border-b border-cocoa/30 focus:border-gold outline-none py-2 text-sm text-cocoa placeholder-cocoa/35 transition-colors"
+          {...rest}
+        />
+      )}
     </label>
   );
 }

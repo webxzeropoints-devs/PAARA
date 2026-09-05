@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 
 import { authLogin, setToken } from "../../lib/api";
 import { fadeUp } from "../../lib/motion";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -62,8 +63,7 @@ export default function Login() {
             <label className="block text-xs uppercase tracking-widest text-cocoa/60 mb-1.5">
               Password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               required
               autoComplete="current-password"
               value={password}
