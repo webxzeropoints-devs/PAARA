@@ -57,6 +57,7 @@ function markWrite() {
 // READ half — restore lives in db/blobRestore.js and runs once before server.js loads.
 async function persist() {
   if (!isServerless) return;
+  if (lastPushAt && writesSinceLastPush === 0) return true;
   const pathname = 'paara-db/paara.db';
   const diagnostics = {
     pathname,
@@ -99,6 +100,18 @@ async function persist() {
   }
 }
 
+// TEMPORARY PATCH — remove when migrated to Postgres
+async function persistAfterWrite() {
+  try {
+    const persisted = await persist();
+    if (persisted === false) {
+      console.error('[PERSIST_FAILED]', 'Database write was not uploaded to Blob.');
+    }
+  } catch (persistErr) {
+    console.error('[PERSIST_FAILED]', persistErr.message);
+  }
+}
+
 function getSyncStatus() {
   // TEMPORARY PATCH — remove when migrated to Postgres
   return {
@@ -111,6 +124,7 @@ function getSyncStatus() {
 
 module.exports = db;
 module.exports.persist = persist;
+module.exports.persistAfterWrite = persistAfterWrite;
 module.exports.isServerless = isServerless;
 module.exports.acquireWriteLock = acquireWriteLock;
 module.exports.markWrite = markWrite;

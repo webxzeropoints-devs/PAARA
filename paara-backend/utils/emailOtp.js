@@ -19,6 +19,7 @@ async function issueEmailOtp(email, context) {
   db.prepare('UPDATE email_otps SET verified = 1 WHERE email = ? AND verified = 0').run(normalizedEmail);
   db.prepare('INSERT INTO email_otps (email, code, expires_at, verified) VALUES (?, ?, ?, 0)')
     .run(normalizedEmail, hashOtp(code), expiresAt);
+  await db.persistAfterWrite();
   const result = await trySendEmail({
     to: normalizedEmail,
     subject: 'Your Paara verification code',

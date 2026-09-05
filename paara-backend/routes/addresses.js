@@ -11,7 +11,7 @@ router.get('/', requireAuth, (req, res) => {
   res.json(addresses);
 });
 
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const { line1, line2, city, state, pincode, lat, lng, is_default } = req.body || {};
   if (![line1, city, state, pincode].every((value) => typeof value === 'string' && value.trim())) {
     return res.status(400).json({ error: 'line1, city, state and pincode are required.' });
@@ -41,6 +41,7 @@ router.post('/', requireAuth, (req, res) => {
       return db.prepare('SELECT * FROM addresses WHERE id = ?').get(result.lastInsertRowid);
     })();
 
+    await db.persistAfterWrite();
     return res.status(201).json(saveAddress);
   } catch (error) {
     console.error('[ADDRESS_CREATE_FAILED]', {

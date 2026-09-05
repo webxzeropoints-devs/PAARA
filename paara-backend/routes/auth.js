@@ -55,8 +55,10 @@ router.post('/register', async (req, res) => {
     });
     db.prepare('DELETE FROM email_otps WHERE email = ? AND verified = 0').run(normalizedEmail);
     db.prepare('DELETE FROM customers WHERE id = ?').run(info.lastInsertRowid);
+    await db.persistAfterWrite();
     return res.status(503).json({ ok: false, code: 'OTP_DELIVERY_UNAVAILABLE', message: 'Verification email could not be sent. Please try again.' });
   }
+  await db.persistAfterWrite();
   res.status(201).json({ ok: true, success: true, requires_otp: true, requiresOtp: true, email: normalizedEmail, customer: { id: info.lastInsertRowid, name, email: normalizedEmail } });
 });
 
@@ -84,6 +86,7 @@ router.post('/login', async (req, res) => {
     console.error('[JWT_SIGN_ERROR]', error.message);
     return res.status(500).json({ ok: false, code: 'CONFIGURATION_ERROR', message: 'Server configuration error. Contact support.' });
   }
+  await db.persistAfterWrite();
   res.json({ ok: true, success: true, token, customer: { id: customer.id, name: customer.name, email: customer.email } });
 });
 
@@ -102,7 +105,7 @@ router.post('/forgot-password/request', async (req, res) => {
   }
 });
 
-router.post('/forgot-password/reset', (req, res) => {
+router.post('/forgot-password/reset', async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const code = String(req.body.code || '').trim();
   const newPassword = req.body.password;
@@ -127,6 +130,7 @@ router.post('/forgot-password/reset', (req, res) => {
 
   db.prepare('UPDATE customers SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newPassword, 10), customer.id);
   markPasswordResetOtpUsed(validation.record.id);
+  await db.persistAfterWrite();
 
   return res.json({ success: true, message: 'Password reset successful.' });
 });

@@ -9,6 +9,17 @@ const publicImageUrl = require('../utils/publicImageUrl');
 const router = express.Router();
 
 router.use(requireAdmin);
+// TEMPORARY PATCH — remove when migrated to Postgres
+// Route-level safety net for every mutating admin operation.
+router.use((req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const originalEnd = res.end.bind(res);
+  res.end = (...args) => {
+    db.persistAfterWrite().finally(() => originalEnd(...args));
+    return res;
+  };
+  next();
+});
 router.use((q, s, next) => {
   s.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   next();

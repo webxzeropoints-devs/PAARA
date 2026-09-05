@@ -30,6 +30,7 @@ router.post('/create-upi', requireAuth, async (req, res) => {
       addressId: req.body?.address_id,
       paymentMethod: 'manual_upi',
     });
+    await db.persistAfterWrite();
     if (!upiId || !payeeName) {
       return res.status(201).json({
         order_id: order.order_id,
@@ -109,6 +110,7 @@ router.post('/create', requireAuth, async (req, res) => {
       .run('manual_upi', order.id);
   }
 
+  await db.persistAfterWrite();
   return res.json(payload);
 });
 
@@ -138,6 +140,7 @@ router.post('/create-razorpay-order', requireAuth, async (req, res) => {
 
     db.prepare('UPDATE orders SET razorpay_order_id = ? WHERE id = ?').run(rzpOrder.id, order.id);
 
+    await db.persistAfterWrite();
     res.json({
       key_id: process.env.RAZORPAY_KEY_ID,     // safe to expose — it's the public key
       razorpay_order_id: rzpOrder.id,
@@ -160,7 +163,7 @@ router.post('/create-razorpay-order', requireAuth, async (req, res) => {
  * must be verified here, server-side, before we ever mark an order paid.
  * Never trust a "payment succeeded" message from the frontend alone.
  */
-router.post('/verify', requireAuth, (req, res) => {
+router.post('/verify', requireAuth, async (req, res) => {
   const { paara_order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, payment_method, payment_reference, UTR } = req.body;
 
   const order = db
@@ -191,6 +194,7 @@ router.post('/verify', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Unable to record UPI payment attempt.' });
     }
 
+    await db.persistAfterWrite();
     return res.json({
       success: true,
       order_id: order.id,
@@ -222,12 +226,14 @@ router.post('/verify', requireAuth, (req, res) => {
   if (!isValid) {
     db.prepare('UPDATE orders SET status = ?, payment_status = ? WHERE id = ?')
       .run('Order Confirmed', 'unpaid', order.id);
+    await db.persistAfterWrite();
     return res.status(400).json({ error: 'Payment verification failed.' });
   }
 
   // Signature valid — mark the order paid, snapshot eligibility, and decrement stock once.
   markOrderPaid(order.id, razorpay_payment_id);
   const loyalty = processLoyaltyOrder(order.id, req.customer.id);
+  await db.persistAfterWrite();
   sendPaidInvoice(order.id, req.customer.id).catch((error) => console.error('Invoice email flow failed:', { message: maskSensitiveText(error.message), name: error.name }));
 
   res.json({ success: true, order_id: order.id, loyalty, message: 'Payment verified. Order confirmed.' });
@@ -277,7 +283,7 @@ router.get('/provider/:method', requireAuth, async (req, res) => {
   res.json(payload);
 });
 
-router.post('/webhook', (req, res) => {
+router.post('/webhook', async (req, res) => {
   const signature = req.headers['x-razorpay-signature'];
   if (!Buffer.isBuffer(req.body) || typeof signature !== 'string') {
     return res.status(400).json({ error: 'Invalid webhook payload.' });
@@ -314,6 +320,7 @@ router.post('/webhook', (req, res) => {
     `).run(rzpOrderId);
   }
 
+  await db.persistAfterWrite();
   res.json({ received: true });
 });
 

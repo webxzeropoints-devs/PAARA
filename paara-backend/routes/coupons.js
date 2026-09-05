@@ -63,7 +63,7 @@ router.post('/validate', (req, res) => {
 });
 
 // POST /api/coupons/redeem-gift-card — atomically consume a flat coupon once
-router.post('/redeem-gift-card', requireAuth, (req, res) => {
+router.post('/redeem-gift-card', requireAuth, async (req, res) => {
   const code = String(req.body?.code || '').trim().toUpperCase();
   if (!code) return res.status(400).json({ error: 'A gift card code is required.' });
 
@@ -91,6 +91,7 @@ router.post('/redeem-gift-card', requireAuth, (req, res) => {
       return db.prepare('SELECT gift_card_balance FROM customers WHERE id = ?').get(req.customer.id);
     })();
     if (!result) return res.status(409).json({ error: 'This gift card code has already been used.' });
+    await db.persistAfterWrite();
     res.json({ amount: Number(coupon.discount_value), balance: result.gift_card_balance });
   } catch (err) {
     res.status(500).json({ error: err.message === 'Customer account not found.' ? err.message : 'Could not redeem this gift card code.' });

@@ -107,9 +107,11 @@ function createOrder({ customerId, items, addressId, paymentMethod = 'razorpay' 
  * Prices and weights are always re-fetched from the DB here — never trust
  * totals sent from the client.
  */
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
-    return res.status(201).json(createOrder({ customerId: req.customer.id, items: req.body?.items, addressId: req.body?.address_id, paymentMethod: req.body?.payment_method }));
+    const order = createOrder({ customerId: req.customer.id, items: req.body?.items, addressId: req.body?.address_id, paymentMethod: req.body?.payment_method });
+    await db.persistAfterWrite();
+    return res.status(201).json(order);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }

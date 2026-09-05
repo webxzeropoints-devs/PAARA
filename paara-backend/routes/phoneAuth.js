@@ -66,6 +66,7 @@ router.post('/request-otp', async (req, res) => {
   db.prepare('INSERT INTO phone_otps (phone, otp_code, expires_at, attempts) VALUES (?, ?, ?, 0)')
     .run(normalizedPhone, hashOtp(otp), expiresAt);
 
+  await db.persistAfterWrite();
   try {
     const deliveryResponse = await sendSms(normalizedPhone, otp);
     console.log('[AUTH_OTP_SENT]', { channel: 'phone', phone: maskPhone(normalizedPhone) });
@@ -76,7 +77,7 @@ router.post('/request-otp', async (req, res) => {
   }
 });
 
-router.post('/verify-otp', (req, res) => {
+router.post('/verify-otp', async (req, res) => {
   const { phone, otp } = req.body;
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone || !/^\d{6}$/.test(String(otp || '').trim())) {
@@ -92,6 +93,7 @@ router.post('/verify-otp', (req, res) => {
   if (!record) return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
   if (new Date(record.expires_at).getTime() <= Date.now() || record.attempts >= 5) {
     db.prepare('UPDATE phone_otps SET verified = 1 WHERE id = ?').run(record.id);
+    await db.persistAfterWrite();
     return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
   }
   const expected = Buffer.from(record.otp_code);
@@ -100,6 +102,7 @@ router.post('/verify-otp', (req, res) => {
   if (!matches) {
     const nextAttempts = record.attempts + 1;
     db.prepare('UPDATE phone_otps SET attempts = ?, verified = ? WHERE id = ?').run(nextAttempts, nextAttempts >= 5 ? 1 : 0, record.id);
+    await db.persistAfterWrite();
     return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
   }
 
@@ -113,6 +116,7 @@ router.post('/verify-otp', (req, res) => {
     `).run(`User ${normalizedPhone.slice(-4)}`, `${normalizedPhone}@phone.paara.local`, normalizedPhone, 'PHONE_AUTH_NO_PASSWORD');
     customer = { id: info.lastInsertRowid, name: `User ${normalizedPhone.slice(-4)}`, phone: normalizedPhone };
   }
+  await db.persistAfterWrite();
 
   let token;
   try {
@@ -121,6 +125,7 @@ router.post('/verify-otp', (req, res) => {
     console.error('[JWT_SIGN_ERROR]', err.message);
     return res.status(500).json({ ok: false, code: 'CONFIGURATION_ERROR', message: 'Server configuration error. Contact support.' });
   }
+  await db.persistAfterWrite();
   res.json({ ok: true, token, customer: { id: customer.id, name: customer.name, phone: customer.phone } });
 });
 

@@ -31,6 +31,7 @@ router.post('/login', async (req, res) => {
     console.error('[JWT_SIGN_ERROR]', err.message);
     return res.status(500).json({ error: 'Server configuration error. Contact support.' });
   }
+  await db.persistAfterWrite();
   return res.json({
     success: true,
     token,
@@ -44,7 +45,7 @@ router.post('/login', async (req, res) => {
   });
 });
 
-router.post('/set-password', (req, res) => {
+router.post('/set-password', async (req, res) => {
   const { admin_id, new_password, new_email } = req.body;
   const normalizedEmail = normalizeEmail(new_email);
 
@@ -67,6 +68,7 @@ router.post('/set-password', (req, res) => {
   try {
     db.prepare('UPDATE admins SET password_hash = ?, email = ?, must_change_password = 0 WHERE id = ?')
       .run(password_hash, normalizedEmail, admin.id);
+    await db.persistAfterWrite();
     res.json({ success: true, message: 'Password and email updated successfully.' });
   } catch (error) {
     return res.status(409).json({ error: 'That email is already in use.' });
@@ -89,7 +91,7 @@ router.post('/forgot-password/request', async (req, res) => {
   }
 });
 
-router.post('/forgot-password/reset', (req, res) => {
+router.post('/forgot-password/reset', async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const code = String(req.body.code || '').trim();
   const newPassword = req.body.password;
@@ -115,6 +117,7 @@ router.post('/forgot-password/reset', (req, res) => {
   db.prepare('UPDATE admins SET password_hash = ?, must_change_password = 0 WHERE id = ?')
     .run(bcrypt.hashSync(newPassword, 10), admin.id);
   markPasswordResetOtpUsed(validation.record.id);
+  await db.persistAfterWrite();
 
   return res.json({ success: true, message: 'Password reset successful.' });
 });
@@ -125,7 +128,7 @@ router.get('/me', requireAdminSession, (req, res) => {
   res.json(admin);
 });
 
-router.put('/change-password', requireAdminSession, (req, res) => {
+router.put('/change-password', requireAdminSession, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const admin = db.prepare('SELECT id, name, email, password_hash FROM admins WHERE id = ?').get(req.admin.id);
   if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
@@ -135,10 +138,11 @@ router.put('/change-password', requireAdminSession, (req, res) => {
     return res.status(400).json({ error: PASSWORD_ERROR });
   }
   db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newPassword, 10), admin.id);
+  await db.persistAfterWrite();
   res.json({ success: true });
 });
 
-router.put('/change-email', requireAdminSession, (req, res) => {
+router.put('/change-email', requireAdminSession, async (req, res) => {
   const { newEmail, currentPassword } = req.body;
   const admin = db.prepare('SELECT id, name, email, password_hash FROM admins WHERE id = ?').get(req.admin.id);
   if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
@@ -148,6 +152,7 @@ router.put('/change-email', requireAdminSession, (req, res) => {
     const normalizedEmail = normalizeEmail(newEmail);
     if (!normalizedEmail) return res.status(400).json({ error: 'A valid email address is required.' });
     db.prepare('UPDATE admins SET email = ? WHERE id = ?').run(normalizedEmail, admin.id);
+    await db.persistAfterWrite();
     res.json({ success: true });
   } catch (err) {
     res.status(409).json({ error: 'That email is already in use.' });
@@ -157,10 +162,11 @@ router.put('/change-email', requireAdminSession, (req, res) => {
 // Profile picture: accepts a URL for now (not a file upload — keeps this
 // reliable without adding multer/file-storage complexity). Codex: if a real
 // file upload is wanted later, that's a separate follow-up, not part of this.
-router.put('/profile-picture', requireAdminSession, (req, res) => {
+router.put('/profile-picture', requireAdminSession, async (req, res) => {
   const { image_url } = req.body;
   if (!image_url) return res.status(400).json({ error: 'image_url is required.' });
   db.prepare('UPDATE admins SET profile_image_url = ? WHERE id = ?').run(image_url, req.admin.id);
+  await db.persistAfterWrite();
   res.json({ success: true });
 });
 

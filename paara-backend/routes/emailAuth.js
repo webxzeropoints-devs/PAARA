@@ -14,11 +14,12 @@ router.post('/request-otp', async (req, res) => {
   res.json({ ok: true, success: true, message: 'OTP sent.' });
 });
 
-router.post('/verify-otp', (req, res) => {
+router.post('/verify-otp', async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const code = String(req.body.code || '').trim();
   if (!email || !/^\d{6}$/.test(code)) return res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message: 'email and a 6-digit code are required.' });
   const record = consumeEmailOtp(email, code);
+  await db.persistAfterWrite();
   if (!record) return res.status(400).json({ ok: false, code: 'INVALID_OTP', message: 'Invalid or expired OTP.' });
   console.log('[AUTH_OTP_VERIFY]', { channel: 'email', email: maskEmail(email), success: true });
 
@@ -30,6 +31,7 @@ router.post('/verify-otp', (req, res) => {
   if (customer.email !== email) {
     db.prepare('UPDATE customers SET email = ? WHERE id = ?').run(email, customer.id);
     customer.email = email;
+    await db.persistAfterWrite();
   }
 
   let token;
@@ -39,6 +41,7 @@ router.post('/verify-otp', (req, res) => {
     console.error('[JWT_SIGN_ERROR]', err.message);
     return res.status(500).json({ ok: false, code: 'CONFIGURATION_ERROR', message: 'Server configuration error. Contact support.' });
   }
+  await db.persistAfterWrite();
   res.json({ ok: true, token, customer: { id: customer.id, name: customer.name, email: customer.email } });
 });
 

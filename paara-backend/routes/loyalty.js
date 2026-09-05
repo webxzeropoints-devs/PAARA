@@ -25,12 +25,13 @@ router.get('/order/:orderId', requireAuth, (req, res) => {
   });
 });
 
-router.post('/process-order', requireAuth, (req, res) => {
+router.post('/process-order', requireAuth, async (req, res) => {
   const orderId = Number.parseInt(req.body?.order_id, 10);
   if (!Number.isInteger(orderId) || orderId < 1) return res.status(400).json({ error: 'A valid order ID is required.' });
 
   try {
     const result = processLoyaltyOrder(orderId, req.customer.id);
+    await db.persistAfterWrite();
     return res.status(200).json(result);
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
@@ -39,13 +40,14 @@ router.post('/process-order', requireAuth, (req, res) => {
   }
 });
 
-router.post('/mark-animation-shown', requireAuth, (req, res) => {
+router.post('/mark-animation-shown', requireAuth, async (req, res) => {
   const orderId = Number.parseInt(req.body?.order_id, 10);
   if (!Number.isInteger(orderId) || orderId < 1) return res.status(400).json({ error: 'A valid order ID is required.' });
   const updated = db.prepare(`
     UPDATE loyalty_stamps SET animation_shown_at = COALESCE(animation_shown_at, datetime('now'))
     WHERE order_id = ? AND customer_id = ?
   `).run(orderId, req.customer.id);
+  await db.persistAfterWrite();
   if (!updated.changes) return res.status(404).json({ error: 'No loyalty stamp found for this order.' });
   return res.json({ success: true, orderId, animationShown: true });
 });

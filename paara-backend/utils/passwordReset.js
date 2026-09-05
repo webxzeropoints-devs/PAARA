@@ -28,6 +28,7 @@ async function issuePasswordResetOtp(email, userType = 'customer') {
     INSERT INTO password_reset_otps (email, code, user_type, expires_at, used)
     VALUES (?, ?, ?, ?, 0)
   `).run(normalizedEmail, hashResetCode(code), userType, expiresAt);
+  await db.persistAfterWrite();
 
   const subject = userType === 'admin'
     ? 'Paara admin password reset code'
@@ -70,11 +71,13 @@ function consumePasswordResetOtp(email, code, userType = 'customer') {
 
   if (record.attempts >= 5) {
     db.prepare('UPDATE password_reset_otps SET used = 1 WHERE id = ?').run(record.id);
+    db.persistAfterWrite();
     return { valid: false, reason: 'Too many incorrect attempts. Please request a new code.' };
   }
 
   if (new Date(record.expires_at).getTime() <= Date.now()) {
     db.prepare('UPDATE password_reset_otps SET used = 1 WHERE id = ?').run(record.id);
+    db.persistAfterWrite();
     return { valid: false, reason: 'This reset code has expired. Please request a new one.' };
   }
 
@@ -84,6 +87,7 @@ function consumePasswordResetOtp(email, code, userType = 'customer') {
   if (!matches) {
     const nextAttempts = record.attempts + 1;
     db.prepare('UPDATE password_reset_otps SET attempts = ?, used = ? WHERE id = ?').run(nextAttempts, nextAttempts >= 5 ? 1 : 0, record.id);
+    db.persistAfterWrite();
     return { valid: false, reason: 'Incorrect reset code.' };
   }
 
@@ -92,6 +96,7 @@ function consumePasswordResetOtp(email, code, userType = 'customer') {
 
 function markPasswordResetOtpUsed(id) {
   db.prepare('UPDATE password_reset_otps SET used = 1 WHERE id = ?').run(id);
+  db.persistAfterWrite();
 }
 
 module.exports = {
